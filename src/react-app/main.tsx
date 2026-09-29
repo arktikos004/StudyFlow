@@ -10,6 +10,8 @@ import { GuestOnly, RequireAuth } from './components/RequireAuth';
 import { ApiError } from './lib/api';
 import { initTheme, useIsDark } from './lib/theme';
 import { PageLoader } from './components/ui';
+// 數字字型 Archivo（自架，CSP 為 font-src 'self'）：standard = 字重 + 字寬兩個軸
+import '@fontsource-variable/archivo/standard.css';
 import './index.css';
 
 // 各頁面分開打包，進到該頁才下載（圖表函式庫只有總覽與統計頁會載入）
@@ -23,6 +25,8 @@ const TimerPage = lazy(() => import('./pages/Timer').then((m) => ({ default: m.T
 const NotesPage = lazy(() => import('./pages/Notes').then((m) => ({ default: m.NotesPage })));
 const StatsPage = lazy(() => import('./pages/Stats').then((m) => ({ default: m.StatsPage })));
 const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
+const SubjectPage = lazy(() => import('./pages/Subject').then((m) => ({ default: m.SubjectPage })));
+const AchievementsPage = lazy(() => import('./pages/Achievements').then((m) => ({ default: m.AchievementsPage })));
 
 const page = (node: ReactNode) => <Suspense fallback={<PageLoader />}>{node}</Suspense>;
 
@@ -82,14 +86,25 @@ const router = createBrowserRouter([
 			{ path: 'notes', element: page(<NotesPage />) },
 			{ path: 'stats', element: page(<StatsPage />) },
 			{ path: 'settings', element: page(<SettingsPage />) },
+			{ path: 'subjects/:id', element: page(<SubjectPage />) },
+			{ path: 'achievements', element: page(<AchievementsPage />) },
 			{ path: '*', element: <NotFound /> },
 		],
 	},
 ]);
 
+/** 不用 richColors：底色、文字、圖示顏色都由 index.css 以 tokens 設定（深色模式對比也足夠） */
 function ThemedToaster() {
 	const dark = useIsDark();
-	return <Toaster position="top-center" theme={dark ? 'dark' : 'light'} richColors closeButton />;
+	return (
+		<Toaster
+			position="top-center"
+			theme={dark ? 'dark' : 'light'}
+			closeButton
+			// 手機（含加到主畫面的 PWA）避開瀏海與狀態列
+			mobileOffset={{ top: 'calc(env(safe-area-inset-top) + 12px)' }}
+		/>
+	);
 }
 
 createRoot(document.getElementById('root')!).render(

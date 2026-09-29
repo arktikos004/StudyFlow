@@ -27,8 +27,8 @@ export default defineConfig({
 				start_url: '/',
 				scope: '/',
 				display: 'standalone',
-				theme_color: '#2a78d6',
-				background_color: '#f6f6f3',
+				theme_color: '#f7f6f2',
+				background_color: '#f7f6f2',
 				icons: [
 					{ src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
 					{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
@@ -38,7 +38,7 @@ export default defineConfig({
 			},
 			workbox: {
 				// 快取 App 外殼，離線也能開啟；API 一律走網路，不快取個人資料
-				globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+				globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
 				navigateFallback: '/index.html',
 				navigateFallbackDenylist: [/^\/api\//],
 				cleanupOutdatedCaches: true,

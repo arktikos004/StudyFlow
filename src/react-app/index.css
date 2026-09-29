@@ -3,58 +3,226 @@
 /* 深色模式由 <html data-theme="dark"> 控制（跟隨系統或使用者手動切換） */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-:root {
+/*
+ * ==== 色彩 tokens（DESIGN.md §2）====
+ * 藍筆與螢光筆：白天是紙上的藍筆字，晚上反過來。
+ * 元件只用 token；每一組新的顏色搭配都要在淺色與深色下實際計算對比。
+ */
+:root,
+[data-theme='light'] {
 	color-scheme: light;
-	--page: #f6f6f3;
-	--card: #fcfcfb;
-	--subtle: #efeee9;
-	--line: #e1e0d9;
-	--line-strong: #c3c2b7;
-	--ink: #0b0b0b;
-	--ink-2: #52514e;
-	--ink-3: #75736d;
-	--accent: #2a78d6;
-	--accent-hover: #256abf;
-	--accent-ink: #1c5cab;
-	--accent-soft: #e3eefb;
+
+	/* 紙與墨 */
+	--page: #f7f6f2;
+	--card: #fdfcfa;
+	--subtle: #f0ede9;
+	--line: #e2dfd9;
+	--line-strong: #c1bdb5;
+	--line-field: #8f8c84;
+	--ink: #161d31;
+	--ink-2: #4c5058;
+	--ink-3: #64676f;
+
+	/* 主題色：藍筆（預設，其他色組見下方 data-accent） */
+	--accent: #2d53ca;
+	--accent-hover: #2345b4;
+	--accent-ink: #284ab2;
+	--accent-soft: #e5edff;
 	--on-accent: #ffffff;
-	--danger: #d03b3b;
-	--danger-soft: #fbe9e9;
-	--success: #006300;
-	--success-soft: #e3f3e3;
-	--warning: #8a5a00;
-	--warning-soft: #fdf1d6;
-	--chart-grid: #e1e0d9;
-	--chart-axis: #c3c2b7;
-	--chart-rest: #c3c2b7;
-	--shadow: 0 1px 2px rgb(11 11 11 / 0.04), 0 2px 8px rgb(11 11 11 / 0.04);
+
+	/* 狀態 */
+	--danger: #be222a;
+	--danger-soft: #ffebe9;
+	--success: #1d7339;
+	--success-soft: #e0f7e4;
+	--warning: #935a11;
+	--warning-soft: #fff0d2;
+	--mark: #f8ef96;
+	--backdrop: rgb(22 29 49 / 0.4);
+
+	/* 圖表：未完成等其餘項目；熱度圖從主題色推導（heat-0 = subtle） */
+	--chart-rest: #c1bdb5;
+	--heat-1: color-mix(in oklab, var(--accent) 24%, var(--card));
+	--heat-2: color-mix(in oklab, var(--accent) 45%, var(--card));
+	--heat-3: color-mix(in oklab, var(--accent) 70%, var(--card));
+	--heat-4: var(--accent);
+
+	/* 陰影：帶墨色調、分層（sm 靜止／md 浮起／lg 覆蓋層） */
+	--elevation-sm: 0 1px 0 rgb(22 29 49 / 0.04), 0 1px 2px rgb(22 29 49 / 0.05);
+	--elevation-md: 0 1px 2px rgb(22 29 49 / 0.06), 0 6px 16px -4px rgb(22 29 49 / 0.12);
+	--elevation-lg: 0 2px 6px rgb(22 29 49 / 0.08), 0 24px 48px -12px rgb(22 29 49 / 0.24);
+
+	/* 動效時長（DESIGN.md §6） */
+	--dur-press: 120ms;
+	--dur-toggle: 180ms;
+	--dur-pop: 240ms;
+	--dur-sheet: 320ms;
+	--dur-moment: 600ms;
+
+	/* Sprint 1 相容：舊 token 名稱保留為別名 */
+	--chart-grid: var(--line);
+	--chart-axis: var(--line-strong);
+	--shadow: var(--elevation-sm);
 }
 
 [data-theme='dark'] {
 	color-scheme: dark;
-	--page: #0d0d0d;
-	--card: #1a1a19;
-	--subtle: #252524;
-	--line: #2c2c2a;
-	--line-strong: #383835;
-	--ink: #ffffff;
-	--ink-2: #c3c2b7;
-	--ink-3: #99978f;
-	--accent: #3987e5;
-	--accent-hover: #5598e7;
-	--accent-ink: #86b6ef;
-	--accent-soft: #16263a;
+
+	--page: #0c0f18;
+	--card: #151924;
+	--subtle: #1e232f;
+	--line: #292e3a;
+	--line-strong: #424755;
+	--line-field: #646975;
+	--ink: #f3f0ea;
+	--ink-2: #c4c0b8;
+	--ink-3: #9f9b92;
+
+	--accent: #7da1f9;
+	--accent-hover: #96b6ff;
+	--accent-ink: #9fbdff;
+	--accent-soft: #1d2c51;
+	--on-accent: #080e21;
+
+	--danger: #f37671;
+	--danger-soft: #481b1a;
+	--success: #65c67d;
+	--success-soft: #16311d;
+	--warning: #eebb58;
+	--warning-soft: #3b2b07;
+	--mark: #574e0e;
+	--backdrop: rgb(0 0 0 / 0.6);
+
+	--chart-rest: #6c727e;
+	--heat-1: color-mix(in oklab, var(--accent) 10%, var(--accent-soft));
+	--heat-2: color-mix(in oklab, var(--accent) 40%, var(--accent-soft));
+	--heat-3: color-mix(in oklab, var(--accent) 72%, var(--accent-soft));
+	--heat-4: color-mix(in oklab, var(--accent) 50%, var(--accent-ink));
+
+	--elevation-sm: 0 1px 0 rgb(0 0 0 / 0.35);
+	--elevation-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 20px -6px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.04);
+	--elevation-lg: 0 2px 8px rgb(0 0 0 / 0.5), 0 28px 56px -12px rgb(0 0 0 / 0.7);
+}
+
+/*
+ * ==== 主題色（SUB-4）====
+ * 6 組 × 淺色／深色，每組都驗證過：on-accent 在 accent 上 ≥ 4.5:1、accent-ink 在 card／page／subtle／accent-soft 上 ≥ 4.5:1、
+ * accent 當焦點框 ≥ 3:1（數值見 DESIGN.md §2 主題色表）。
+ * 選擇存在 localStorage 'studyflow:accent'，public/theme-init.js 在第一次繪製前設定 <html data-accent>。
+ *
+ * 也可以在任何元素上加 data-accent／data-theme 做局部預覽（例如設定頁的色票、深淺色對照）：
+ *   [data-accent=x]                         (0,1,0) 只指定色組：跟著祖先的深淺色（沒有深色祖先時用淺色）
+ *   [data-theme=dark] [data-accent=x]        (0,2,0) 深色祖先底下的色組
+ *   [data-accent=x] [data-theme=light|dark]  (0,2,0) 只指定深淺色的區塊：沿用祖先的色組
+ *   [data-theme][data-accent=x][data-accent] (0,3,0) 同一個元素兩個都指定時優先（重複屬性只為了提高權重）
+ */
+[data-accent='blue'],
+[data-accent='blue'] [data-theme='light'],
+[data-theme='light'][data-accent='blue'][data-accent] {
+	--accent: #2d53ca;
+	--accent-hover: #2345b4;
+	--accent-ink: #284ab2;
+	--accent-soft: #e5edff;
 	--on-accent: #ffffff;
-	--danger: #e66767;
-	--danger-soft: #3a1c1c;
-	--success: #0ca30c;
-	--success-soft: #143014;
-	--warning: #fab219;
-	--warning-soft: #3a2e10;
-	--chart-grid: #2c2c2a;
-	--chart-axis: #383835;
-	--chart-rest: #6b6a64;
-	--shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+}
+[data-accent='lake'],
+[data-accent='lake'] [data-theme='light'],
+[data-theme='light'][data-accent='lake'][data-accent] {
+	--accent: #006c82;
+	--accent-hover: #005d70;
+	--accent-ink: #005d71;
+	--accent-soft: #d8f2fa;
+	--on-accent: #ffffff;
+}
+[data-accent='green'],
+[data-accent='green'] [data-theme='light'],
+[data-theme='light'][data-accent='green'][data-accent] {
+	--accent: #00614f;
+	--accent-hover: #005242;
+	--accent-ink: #005847;
+	--accent-soft: #d8f4eb;
+	--on-accent: #ffffff;
+}
+[data-accent='grape'],
+[data-accent='grape'] [data-theme='light'],
+[data-theme='light'][data-accent='grape'][data-accent] {
+	--accent: #7e46bd;
+	--accent-hover: #6e3aa9;
+	--accent-ink: #6c39a4;
+	--accent-soft: #f0e8ff;
+	--on-accent: #ffffff;
+}
+[data-accent='berry'],
+[data-accent='berry'] [data-theme='light'],
+[data-theme='light'][data-accent='berry'][data-accent] {
+	--accent: #a8328a;
+	--accent-hover: #952679;
+	--accent-ink: #912776;
+	--accent-soft: #fce5f3;
+	--on-accent: #ffffff;
+}
+[data-accent='graphite'],
+[data-accent='graphite'] [data-theme='light'],
+[data-theme='light'][data-accent='graphite'][data-accent] {
+	--accent: #5a616e;
+	--accent-hover: #4d545f;
+	--accent-ink: #4e5560;
+	--accent-soft: #eaedf2;
+	--on-accent: #ffffff;
+}
+[data-theme='dark'] [data-accent='blue'],
+[data-accent='blue'] [data-theme='dark'],
+[data-theme='dark'][data-accent='blue'][data-accent] {
+	--accent: #7da1f9;
+	--accent-hover: #96b6ff;
+	--accent-ink: #9fbdff;
+	--accent-soft: #1d2c51;
+	--on-accent: #080e21;
+}
+[data-theme='dark'] [data-accent='lake'],
+[data-accent='lake'] [data-theme='dark'],
+[data-theme='dark'][data-accent='lake'][data-accent] {
+	--accent: #38afcc;
+	--accent-hover: #64c0d9;
+	--accent-ink: #78c7dd;
+	--accent-soft: #003440;
+	--on-accent: #001218;
+}
+[data-theme='dark'] [data-accent='green'],
+[data-accent='green'] [data-theme='dark'],
+[data-theme='dark'][data-accent='green'][data-accent] {
+	--accent: #51ad95;
+	--accent-hover: #72bda8;
+	--accent-ink: #87c9b5;
+	--accent-soft: #08362c;
+	--on-accent: #01140e;
+}
+[data-theme='dark'] [data-accent='grape'],
+[data-accent='grape'] [data-theme='dark'],
+[data-theme='dark'][data-accent='grape'][data-accent] {
+	--accent: #b48feb;
+	--accent-hover: #c5a5f5;
+	--accent-ink: #caaef5;
+	--accent-soft: #35244b;
+	--on-accent: #130a1e;
+}
+[data-theme='dark'] [data-accent='berry'],
+[data-accent='berry'] [data-theme='dark'],
+[data-theme='dark'][data-accent='berry'][data-accent] {
+	--accent: #db84bf;
+	--accent-hover: #e89ccf;
+	--accent-ink: #eaa6d3;
+	--accent-soft: #431f38;
+	--on-accent: #1a0815;
+}
+[data-theme='dark'] [data-accent='graphite'],
+[data-accent='graphite'] [data-theme='dark'],
+[data-theme='dark'][data-accent='graphite'][data-accent] {
+	--accent: #9ba2ad;
+	--accent-hover: #afb4be;
+	--accent-ink: #b5bbc3;
+	--accent-soft: #2a2e35;
+	--on-accent: #0b0f17;
 }
 
 @theme inline {
@@ -63,6 +231,7 @@
 	--color-subtle: var(--subtle);
 	--color-line: var(--line);
 	--color-line-strong: var(--line-strong);
+	--color-line-field: var(--line-field);
 	--color-ink: var(--ink);
 	--color-ink-2: var(--ink-2);
 	--color-ink-3: var(--ink-3);
@@ -77,22 +246,131 @@
 	--color-success-soft: var(--success-soft);
 	--color-warning: var(--warning);
 	--color-warning-soft: var(--warning-soft);
-	--shadow-card: var(--shadow);
+	--color-mark: var(--mark);
+	--color-backdrop: var(--backdrop);
+	--color-chart-rest: var(--chart-rest);
+	--color-chart-grid: var(--chart-grid);
+	--color-chart-axis: var(--chart-axis);
+	--color-heat-1: var(--heat-1);
+	--color-heat-2: var(--heat-2);
+	--color-heat-3: var(--heat-3);
+	--color-heat-4: var(--heat-4);
+
+	--shadow-sm: var(--elevation-sm);
+	--shadow-md: var(--elevation-md);
+	--shadow-lg: var(--elevation-lg);
+	--shadow-card: var(--elevation-sm);
+
 	--font-sans: system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Segoe UI', sans-serif;
+	/* 數字：Archivo（有 tnum，實測 1111 與 0000 等寬），中文等其他字元落回文字字型 */
+	--font-num: 'Archivo Variable', system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Segoe UI', sans-serif;
+}
+
+@theme {
+	/* 圓角：巢狀時內層 = 外層 − 內距 */
+	--radius-sm: 0.375rem;
+	--radius-md: 0.5rem;
+	--radius-lg: 0.625rem;
+	--radius-xl: 0.875rem;
+	--radius-2xl: 1.25rem;
+
+	/* 進場 ease-out、離場 ease-in、滑動指示塊 ease-in-out */
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+	/* 字級（DESIGN.md §4）：text-h1 / text-h2 / text-h3 / text-dense / text-meta / text-caption / text-num-lg / text-num-xl */
+	--text-caption: 0.75rem;
+	--text-caption--line-height: 1.5;
+	--text-meta: 0.8125rem;
+	--text-meta--line-height: 1.5;
+	--text-dense: 0.9375rem;
+	--text-dense--line-height: 1.55;
+	--text-h3: 1rem;
+	--text-h3--line-height: 1.5;
+	--text-h2: 1.125rem;
+	--text-h2--line-height: 1.4;
+	--text-h1: 1.5rem;
+	--text-h1--line-height: 1.3;
+	--text-num-lg: 1.75rem;
+	--text-num-lg--line-height: 1.1;
+	--text-num-xl: clamp(3.5rem, 15vw, 5.5rem);
+	--text-num-xl--line-height: 1;
+
+	/* 動畫：animate-fade-in / animate-pop-in / animate-complete（reduced motion 時改成只淡入） */
+	--animate-fade-in: sf-fade-in 120ms var(--ease-out) both;
+	--animate-pop-in: sf-pop-in 240ms var(--ease-out) both;
+	--animate-complete: sf-complete 600ms var(--ease-out) both;
+}
+
+/* keyframes 放在 @theme 外面：不論有沒有用到 animate-* 工具類都會輸出 */
+@keyframes sf-fade-in {
+	from {
+		opacity: 0;
+	}
+}
+@keyframes sf-pop-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px) scale(0.98);
+	}
+}
+/* 唯一刻意設計的時刻：專注完成（600ms） */
+@keyframes sf-complete {
+	0% {
+		opacity: 0.4;
+		transform: scale(0.92);
+	}
+	55% {
+		opacity: 1;
+		transform: scale(1.03);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 
 @layer base {
 	html {
 		-webkit-text-size-adjust: 100%;
+		/* 全域移除點擊高亮；按下的回饋由下方 :active 規則與各元件自己提供 */
 		-webkit-tap-highlight-color: transparent;
+		/* 瀏覽器表面也套用主題 */
+		accent-color: var(--accent);
+		caret-color: var(--accent);
+		scrollbar-color: var(--line-strong) transparent;
+		/* 對話框鎖住捲動時，頁面不會因捲軸消失而左右跳動 */
+		scrollbar-gutter: stable;
+	}
+	html:has(dialog[open]) {
+		overflow: hidden;
 	}
 	body {
-		@apply bg-page text-ink font-sans antialiased;
+		@apply bg-page font-sans text-ink antialiased;
 		min-height: 100dvh;
+	}
+	::selection {
+		background-color: var(--mark);
+		color: var(--ink);
 	}
 	:focus-visible {
 		outline: 2px solid var(--accent);
 		outline-offset: 2px;
+	}
+	a {
+		text-underline-offset: 0.2em;
+	}
+	a,
+	button,
+	summary,
+	label,
+	input,
+	select,
+	textarea,
+	[role='button'],
+	[role='link'] {
+		touch-action: manipulation;
 	}
 	button,
 	[role='button'] {
@@ -101,12 +379,311 @@
 	button:disabled {
 		cursor: not-allowed;
 	}
+	/* 按下時的通用回饋（Button 元件有自己的下沉與加深，不套用這條） */
+	:where(a[href], button:not(.sf-btn), [role='button'], [role='link'], summary):active:not(:disabled, [aria-disabled='true']) {
+		opacity: 0.72;
+	}
 	dialog {
 		color: inherit;
 	}
 	dialog::backdrop {
-		background: rgb(0 0 0 / 0.45);
+		background: var(--backdrop);
 	}
+	/* 螢光筆：只用於 ::selection 與搜尋結果 */
+	mark {
+		background-color: var(--mark);
+		color: var(--ink);
+		border-radius: 0.1875rem;
+		padding-inline: 0.0625em;
+	}
+}
+
+@layer components {
+	/* ---- Button（元件預設值放在 components layer，頁面傳入的 className 工具類一定蓋得過） ---- */
+	.sf-btn {
+		position: relative;
+		display: inline-flex;
+		flex-shrink: 0;
+		align-items: center;
+		justify-content: center;
+		gap: 0.375rem;
+		height: 2.5rem;
+		padding-inline: 1rem;
+		border: 1px solid transparent;
+		border-radius: var(--radius-lg);
+		font-size: 0.9375rem;
+		line-height: 1.25rem;
+		font-weight: 400;
+		white-space: nowrap;
+		user-select: none;
+		transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+		transition-duration: var(--dur-press);
+		transition-timing-function: var(--ease-out);
+	}
+	.sf-btn-sm {
+		height: 2rem;
+		padding-inline: 0.75rem;
+		font-size: 0.875rem;
+	}
+	.sf-btn-lg {
+		height: 3rem;
+		padding-inline: 1.25rem;
+		font-size: 1rem;
+	}
+	.sf-btn-icon {
+		width: 2.25rem;
+		height: 2.25rem;
+		padding-inline: 0;
+	}
+	/* 觸控裝置：目標至少 44px（sm 保持外觀，用 ::after 擴大可點範圍） */
+	@media (pointer: coarse) {
+		.sf-btn {
+			min-height: 2.75rem;
+		}
+		.sf-btn-sm {
+			min-height: 2.25rem;
+		}
+		.sf-btn-sm::after {
+			content: '';
+			position: absolute;
+			inset: -0.25rem 0;
+		}
+		.sf-btn-icon {
+			width: 2.75rem;
+			height: 2.75rem;
+		}
+	}
+	.sf-btn-primary {
+		background-color: var(--accent);
+		color: var(--on-accent);
+		font-weight: 600;
+	}
+	.sf-btn-secondary {
+		background-color: var(--card);
+		border-color: var(--line-strong);
+		color: var(--ink);
+	}
+	.sf-btn-ghost {
+		color: var(--ink-2);
+	}
+	.sf-btn-danger {
+		background-color: var(--danger);
+		color: var(--on-accent);
+		font-weight: 600;
+	}
+	.sf-btn-soft {
+		background-color: var(--accent-soft);
+		color: var(--accent-ink);
+	}
+	@media (hover: hover) {
+		.sf-btn-primary:hover:not(:disabled) {
+			background-color: var(--accent-hover);
+		}
+		.sf-btn-secondary:hover:not(:disabled),
+		.sf-btn-ghost:hover:not(:disabled) {
+			background-color: var(--subtle);
+			color: var(--ink);
+		}
+		.sf-btn-danger:hover:not(:disabled) {
+			background-color: color-mix(in oklab, var(--danger) 90%, transparent);
+		}
+		.sf-btn-soft:hover:not(:disabled) {
+			background-color: color-mix(in oklab, var(--accent-soft) 90%, var(--accent));
+		}
+	}
+	/* 按下：加深填色，並下沉 1px（reduced motion 時只保留顏色） */
+	.sf-btn-primary:active:not(:disabled) {
+		background-color: color-mix(in oklab, var(--accent) 88%, black);
+	}
+	.sf-btn-secondary:active:not(:disabled),
+	.sf-btn-ghost:active:not(:disabled) {
+		background-color: var(--line);
+		color: var(--ink);
+	}
+	.sf-btn-danger:active:not(:disabled) {
+		background-color: color-mix(in oklab, var(--danger) 88%, black);
+	}
+	.sf-btn-soft:active:not(:disabled) {
+		background-color: color-mix(in oklab, var(--accent-soft) 82%, var(--accent));
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.sf-btn:active:not(:disabled) {
+			transform: translateY(1px);
+		}
+	}
+	.sf-btn:disabled:not([aria-busy='true']) {
+		opacity: 0.5;
+	}
+	.sf-btn[aria-busy='true'] {
+		cursor: progress;
+	}
+
+	/* ---- 表單欄位：Input／Select／Textarea ---- */
+	.sf-field {
+		width: 100%;
+		border: 1px solid var(--line-field);
+		border-radius: var(--radius-lg);
+		background-color: var(--page);
+		padding-inline: 0.75rem;
+		color: var(--ink);
+		/* 手機 16px（避免 iOS 自動放大），sm 以上 15px */
+		font-size: 1rem;
+		transition-property: border-color, box-shadow, background-color;
+		transition-duration: var(--dur-press);
+		transition-timing-function: var(--ease-out);
+	}
+	@media (width >= 40rem) {
+		.sf-field {
+			font-size: 0.9375rem;
+		}
+	}
+	.sf-field::placeholder {
+		color: var(--ink-3);
+	}
+	@media (hover: hover) {
+		.sf-field:hover:not(:disabled, :focus) {
+			border-color: var(--ink-3);
+		}
+	}
+	.sf-field:focus {
+		outline: none;
+		border-color: var(--accent);
+		box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent);
+	}
+	.sf-field[aria-invalid='true'] {
+		border-color: var(--danger);
+	}
+	.sf-field[aria-invalid='true']:focus {
+		box-shadow: 0 0 0 3px color-mix(in oklab, var(--danger) 20%, transparent);
+	}
+	.sf-field:disabled {
+		cursor: not-allowed;
+		border-color: var(--line);
+		background-color: var(--subtle);
+		color: var(--ink-2);
+	}
+	.sf-field:is([type='number'], [type='date'], [type='time'], [type='datetime-local']) {
+		font-variant-numeric: tabular-nums;
+	}
+	.sf-input,
+	.sf-select {
+		height: 2.5rem;
+	}
+	@media (pointer: coarse) {
+		.sf-input,
+		.sf-select {
+			min-height: 2.75rem;
+		}
+	}
+	.sf-select {
+		appearance: none;
+		padding-right: 2.25rem;
+		text-overflow: ellipsis;
+	}
+	.sf-textarea {
+		min-height: 6rem;
+		padding-block: 0.5rem;
+		line-height: 1.625;
+		resize: vertical;
+	}
+
+	/* ---- Dialog：只在打開時播放進場動畫；關閉時立即消失（內容同時卸載） ---- */
+	.sf-dialog[open] {
+		transition-property: opacity, transform, overlay, display;
+		transition-duration: var(--dur-sheet);
+		transition-timing-function: var(--ease-out);
+		transition-behavior: allow-discrete;
+	}
+	.sf-dialog[open]::backdrop {
+		transition-property: opacity, overlay, display;
+		transition-duration: var(--dur-sheet);
+		transition-timing-function: var(--ease-out);
+		transition-behavior: allow-discrete;
+	}
+	@starting-style {
+		.sf-dialog[open] {
+			opacity: 0;
+			transform: translateY(100%);
+		}
+		.sf-dialog[open]::backdrop {
+			opacity: 0;
+		}
+	}
+	@media (width >= 40rem) {
+		@starting-style {
+			.sf-dialog[open] {
+				opacity: 0;
+				transform: translateY(0.5rem) scale(0.98);
+			}
+		}
+	}
+
+	/* ---- 圖表：軸線數字用數字字型、等寬 ---- */
+	.recharts-cartesian-axis-tick-value {
+		font-family: var(--font-num);
+		font-variant-numeric: tabular-nums lining-nums;
+	}
+}
+
+/* ---- reduced motion：拿掉位移與縮放，保留 120ms 以內的淡入與顏色變化 ---- */
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--animate-pop-in: sf-fade-in 120ms var(--ease-out) both;
+		--animate-complete: sf-fade-in 120ms var(--ease-out) both;
+	}
+	.sf-dialog[open],
+	.sf-dialog[open]::backdrop {
+		transition-duration: 120ms;
+	}
+	@starting-style {
+		.sf-dialog[open] {
+			opacity: 0;
+			transform: none;
+		}
+	}
+	html {
+		scroll-behavior: auto;
+	}
+}
+
+/* ---- Toast（sonner）：不用 richColors，改用 tokens；類型靠圖示顏色加文字區分 ---- */
+:root [data-sonner-toaster][data-sonner-theme] {
+	--normal-bg: var(--card);
+	--normal-bg-hover: var(--subtle);
+	--normal-border: var(--line);
+	--normal-border-hover: var(--line-strong);
+	--normal-text: var(--ink);
+	--border-radius: var(--radius-xl);
+	font-family: var(--font-sans);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] {
+	box-shadow: var(--elevation-md);
+	font-size: 0.9375rem;
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-title] {
+	font-weight: 600;
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-description] {
+	color: var(--ink-2);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type='success'] [data-icon] {
+	color: var(--success);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type='error'] [data-icon] {
+	color: var(--danger);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type='warning'] [data-icon] {
+	color: var(--warning);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type='info'] [data-icon] {
+	color: var(--accent-ink);
+}
+/* sonner 內建的焦點框是黑色半透明，深色模式下看不見：改用 accent */
+:root [data-sonner-toaster] [data-sonner-toast]:focus-visible {
+	box-shadow: var(--elevation-md), 0 0 0 2px var(--accent);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] :is([data-button], [data-close-button]):focus-visible {
+	box-shadow: 0 0 0 2px var(--accent);
 }
 
 /* Markdown 筆記內容 */

@@ -1,14 +1,15 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from 'recharts';
 import { formatDate, formatMinutes, formatMinutesShort, formatMonthDay, weekdayLabel } from '../lib/format';
-import { useIsDark } from '../lib/theme';
-import { cn } from './ui';
+import { Table2 } from 'lucide-react';
+import { Button, cn } from './ui';
 
 // 科目色的邏輯在 lib/subject-color.ts；這裡保留 re-export，既有的 import 不用改
 export { NO_SUBJECT_COLOR, nextSubjectColor, useSubjectColor } from '../lib/subject-color';
 
 // ---- 共用 ----
 
+// 軸線數字的字型（font-num、等寬數字）由 index.css 的 .recharts-cartesian-axis-tick-value 統一設定
 const axisTick = { fill: 'var(--ink-3)', fontSize: 12 };
 
 /** 分鐘數的整齊刻度：0、30m、1h、1.5h…，最多 5 條線 */
@@ -38,33 +39,36 @@ function stackSegment(key: string, keysBottomToTop: string[]) {
 	};
 }
 
+/** 圖表 tooltip：圓角 10、陰影 md；數值在前、用數字字型 */
 function TooltipBox({ title, children }: { title: string; children: ReactNode }) {
 	return (
-		<div className="min-w-36 rounded-lg border border-line bg-card px-3 py-2 text-sm shadow-lg">
-			<div className="mb-1 font-medium">{title}</div>
+		<div className="min-w-36 rounded-lg border border-line bg-card px-3 py-2 text-sm shadow-md">
+			<div className="mb-1 font-semibold text-ink">{title}</div>
 			{children}
 		</div>
 	);
 }
 
+/** tooltip 的一列：系列用一小段線當記號（不用方塊），數值是最醒目的元素 */
 function TooltipRow({ color, label, value }: { color?: string; label: string; value: string }) {
 	return (
 		<div className="flex items-center justify-between gap-4 text-ink-2">
 			<span className="flex items-center gap-1.5">
-				{color && <span className="size-2.5 rounded-sm" style={{ background: color }} />}
+				{color && <span className="h-0.5 w-3 shrink-0 rounded-full" style={{ background: color }} aria-hidden />}
 				{label}
 			</span>
-			<span className="font-medium text-ink tabular-nums">{value}</span>
+			<span className="font-num font-semibold text-ink tabular-nums">{value}</span>
 		</div>
 	);
 }
 
+/** 圖例：記號跟著圖形走（長條圖用小方塊），文字用 ink-2，不用系列色 */
 export function Legend({ items }: { items: { key?: string; label: string; color: string }[] }) {
 	return (
 		<ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-2">
 			{items.map((i) => (
 				<li key={i.key ?? i.label} className="flex items-center gap-1.5">
-					<span className="size-2.5 rounded-sm" style={{ background: i.color }} aria-hidden />
+					<span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: i.color }} aria-hidden />
 					{i.label}
 				</li>
 			))}
@@ -74,15 +78,49 @@ export function Legend({ items }: { items: { key?: string; label: string; color:
 
 // ---- 數字卡 ----
 
+/** 單張數字卡（Sprint 1 相容保留；新的總覽／統計請改用 StatStrip，不要做一排長得一樣的數字卡） */
 export function StatTile({ label, value, sub, icon }: { label: string; value: ReactNode; sub?: ReactNode; icon?: ReactNode }) {
 	return (
-		<div className="rounded-xl border border-line bg-card p-4 shadow-card">
+		<div className="rounded-xl border border-line bg-card p-4 shadow-sm">
 			<div className="flex items-center gap-1.5 text-sm text-ink-2">
 				{icon}
 				{label}
 			</div>
-			<div className="mt-1.5 text-2xl font-semibold tracking-tight">{value}</div>
+			<div className="mt-1.5 font-num text-2xl font-semibold tabular-nums">{value}</div>
 			{sub && <div className="mt-0.5 text-xs text-ink-3">{sub}</div>}
+		</div>
+	);
+}
+
+export type StatItem = { key?: string; label: ReactNode; value: ReactNode; sub?: ReactNode; icon?: ReactNode };
+
+/**
+ * 一張卡片、用分隔線分成幾格的數字列（手機 2 欄、sm 以上一列最多 4 格）。
+ * 數值用 font-num 28/600、等寬數字；icon 會縮成 16px。
+ */
+export function StatStrip({ items, className }: { items: StatItem[]; className?: string }) {
+	const cols = ['sm:grid-cols-1', 'sm:grid-cols-2', 'sm:grid-cols-3', 'sm:grid-cols-4'][Math.min(4, Math.max(1, items.length)) - 1];
+	return (
+		<div className={cn('overflow-hidden rounded-xl border border-line bg-card shadow-sm', className)}>
+			{/* 每格畫上框與左框，外圈多出來的一條被 -m-px + overflow-hidden 藏起來 */}
+			<dl className={cn('-mt-px -ml-px grid grid-cols-2', cols)}>
+				{items.map((it, i) => (
+					<div
+						key={it.key ?? i}
+						className={cn(
+							'flex min-w-0 flex-col border-t border-l border-line px-4 py-3.5 sm:px-5 sm:py-4',
+							i === items.length - 1 && items.length % 2 === 1 && 'col-span-2 sm:col-span-1',
+						)}
+					>
+						<dt className="flex min-w-0 items-center gap-1.5 text-sm text-ink-2 [&_svg]:size-4 [&_svg]:shrink-0">
+							{it.icon}
+							<span className="truncate">{it.label}</span>
+						</dt>
+						<dd className="mt-1 font-num text-num-lg font-semibold tabular-nums">{it.value}</dd>
+						{it.sub && <dd className="mt-1 text-meta text-ink-3">{it.sub}</dd>}
+					</div>
+				))}
+			</dl>
 		</div>
 	);
 }
@@ -214,10 +252,10 @@ export function SubjectBars({ items }: { items: { key: string; label: string; co
 				<li key={i.key}>
 					<div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
 						<span className="flex min-w-0 items-center gap-1.5">
-							<span className="size-2.5 shrink-0 rounded-sm" style={{ background: i.color }} aria-hidden />
+							<span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: i.color }} aria-hidden />
 							<span className="truncate">{i.label}</span>
 						</span>
-						<span className="shrink-0 text-ink-2 tabular-nums">
+						<span className="shrink-0 font-num text-ink-2 tabular-nums">
 							{formatMinutes(i.minutes)}
 							<span className="ml-1.5 text-xs text-ink-3">{Math.round((i.minutes / total) * 100)}%</span>
 						</span>
@@ -294,11 +332,11 @@ export function WeeklyTaskBars({ data }: { data: { weekStart: string; due: numbe
 	);
 }
 
-// ---- 學習熱度圖（單一色相，由淺到深） ----
+// ---- 學習熱度圖（單一色相，由淺到深；顏色跟著主題色） ----
 
-const HEAT_LIGHT = ['var(--subtle)', '#b7d3f6', '#86b6ef', '#3987e5', '#1c5cab'];
-const HEAT_DARK = ['var(--subtle)', '#104281', '#1c5cab', '#3987e5', '#86b6ef'];
+const HEAT_CLASS = ['bg-subtle', 'bg-heat-1', 'bg-heat-2', 'bg-heat-3', 'bg-heat-4'];
 const HEAT_BINS = [0, 30, 60, 120]; // 分鐘：>0、≥30、≥60、≥120
+const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 
 function heatLevel(min: number) {
 	if (min <= 0) return 0;
@@ -309,43 +347,112 @@ function heatLevel(min: number) {
 	return lvl;
 }
 
+/** 一句話摘要，給 role="img" 報讀 */
+function heatSummary(data: { date: string; minutes: number }[], today: string) {
+	if (!data.length) return '學習熱度：沒有資料。';
+	const since = `${formatDate(data[0].date)} 至今`;
+	const studied = data.filter((d) => d.date <= today && d.minutes > 0);
+	if (!studied.length) return `學習熱度：${since}還沒有學習紀錄。`;
+	const total = studied.reduce((s, d) => s + d.minutes, 0);
+	const best = studied.reduce((a, b) => (b.minutes > a.minutes ? b : a));
+	return `學習熱度：${since}有 ${studied.length} 天讀書，共 ${formatMinutes(total)}；最多的一天是 ${formatDate(best.date)}，${formatMinutes(best.minutes)}。`;
+}
+
+const th = 'px-3 py-2 text-left font-semibold text-ink-2';
+const td = 'px-3 py-1.5 font-num tabular-nums';
+
 export function Heatmap({ data, today }: { data: { date: string; minutes: number }[]; today: string }) {
-	const dark = useIsDark();
-	const ramp = dark ? HEAT_DARK : HEAT_LIGHT;
+	const [table, setTable] = useState(false);
 	const weeks: { date: string; minutes: number }[][] = [];
 	data.forEach((d, i) => {
 		if (i % 7 === 0) weeks.push([]);
 		weeks[weeks.length - 1].push(d);
 	});
+	const summary = heatSummary(data, today);
+
 	return (
 		<div>
-			<div className="flex gap-1 overflow-x-auto pb-1">
-				<div className="mr-1 grid shrink-0 grid-rows-7 gap-1 text-[10px] leading-none text-ink-3">
-					{['一', '', '三', '', '五', '', '日'].map((l, i) => (
-						<span key={i} className="flex h-3.5 items-center">
-							{l}
-						</span>
-					))}
+			{table ? (
+				<div className="max-h-80 overflow-auto rounded-lg border border-line">
+					<table className="w-full text-sm">
+						<caption className="caption-bottom px-3 py-2 text-left text-meta text-ink-3">單位：分鐘（— 表示沒有紀錄）</caption>
+						<thead className="sticky top-0 bg-subtle">
+							<tr>
+								<th scope="col" className={th}>
+									週
+								</th>
+								{WEEKDAYS.map((w) => (
+									<th key={w} scope="col" className={th}>
+										{w}
+									</th>
+								))}
+								<th scope="col" className={th}>
+									合計
+								</th>
+							</tr>
+						</thead>
+						<tbody className="divide-y divide-line">
+							{[...weeks].reverse().map((w) => (
+								<tr key={w[0].date}>
+									<th scope="row" className={cn(td, 'text-left font-normal text-ink-2')}>
+										{formatMonthDay(w[0].date)} 起
+									</th>
+									{WEEKDAYS.map((_, i) => {
+										const d = w[i];
+										return (
+											<td key={i} className={td}>
+												{!d || d.date > today ? '' : d.minutes ? Math.round(d.minutes) : '—'}
+											</td>
+										);
+									})}
+									<td className={cn(td, 'font-semibold')}>{Math.round(w.filter((d) => d.date <= today).reduce((s, d) => s + d.minutes, 0)) || '—'}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
 				</div>
-				{weeks.map((w) => (
-					<div key={w[0].date} className="grid shrink-0 grid-rows-7 gap-1">
-						{w.map((d) => (
-							<div
-								key={d.date}
-								title={`${formatDate(d.date)}：${d.minutes ? formatMinutes(d.minutes) : '沒有紀錄'}`}
-								className={cn('size-3.5 rounded-[3px]', d.date === today && 'ring-1 ring-ink-2 ring-offset-1 ring-offset-card')}
-								style={{ background: d.date > today ? 'transparent' : ramp[heatLevel(d.minutes)] }}
-							/>
+			) : (
+				<div className="flex gap-1 overflow-x-auto pb-1" role="img" aria-label={summary}>
+					<div className="mr-1 grid shrink-0 grid-rows-7 gap-1 text-caption leading-none text-ink-3">
+						{['一', '', '三', '', '五', '', '日'].map((l, i) => (
+							<span key={i} className="flex h-3.5 items-center">
+								{l}
+							</span>
 						))}
 					</div>
-				))}
-			</div>
-			<div className="mt-2 flex items-center justify-end gap-1.5 text-xs text-ink-3">
-				少
-				{ramp.map((c) => (
-					<span key={c} className="size-3 rounded-[3px]" style={{ background: c }} />
-				))}
-				多（2 小時以上）
+					{weeks.map((w) => (
+						<div key={w[0].date} className="grid shrink-0 grid-rows-7 gap-1">
+							{w.map((d) => (
+								<div
+									key={d.date}
+									title={`${formatDate(d.date)}：${d.minutes ? formatMinutes(d.minutes) : '沒有紀錄'}`}
+									className={cn(
+										'size-3.5 rounded-[3px]',
+										d.date > today ? 'bg-transparent' : HEAT_CLASS[heatLevel(d.minutes)],
+										d.date === today && 'ring-1 ring-ink-2 ring-offset-1 ring-offset-card',
+									)}
+								/>
+							))}
+						</div>
+					))}
+				</div>
+			)}
+			<div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+				{table ? (
+					<span />
+				) : (
+					<div className="flex items-center gap-1.5 text-xs text-ink-3" aria-hidden>
+						少
+						{HEAT_CLASS.map((c) => (
+							<span key={c} className={cn('size-3 rounded-[3px]', c)} />
+						))}
+						多（2 小時以上）
+					</div>
+				)}
+				<Button size="sm" variant="ghost" onClick={() => setTable((v) => !v)} aria-pressed={table}>
+					<Table2 className="size-4" aria-hidden />
+					{table ? '圖表' : '表格'}
+				</Button>
 			</div>
 		</div>
 	);

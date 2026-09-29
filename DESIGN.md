@@ -30,7 +30,7 @@
 
 ## 2. 色彩 tokens
 
-`index.css` 的 `:root` 和 `[data-theme='dark']` 定義 tokens，再透過 `@theme inline` 提供給 Tailwind 使用。
+`index.css` 的 `:root, [data-theme='light']` 和 `[data-theme='dark']` 定義 tokens，再透過 `@theme inline` 提供給 Tailwind 使用（`bg-page`、`text-ink-2`、`border-line-field`、`bg-heat-3`、`bg-backdrop`…，表格裡每個 token 都有對應的 `--color-*`）。
 
 | token | 淺色 | 深色 | 用途 |
 |---|---|---|---|
@@ -53,7 +53,7 @@
 | warning／soft | #935a11／#fff0d2 | #eebb58／#3b2b07 | 今天到期、待複習 |
 | mark | #f8ef96 | #574e0e | 螢光筆黃：只用於 `::selection` 和搜尋結果 |
 | chart-rest | #c1bdb5 | #6c727e | 圖表中的「未完成」等其餘項目 |
-| heat-1…4 | #cfdeff #98b7f8 #5f87e7 #2f58c8 | #233459 #345197 #537bd9 #8caffe | 熱度圖（heat-0 = subtle） |
+| heat-1…4 | accent 以 24／45／70／100% 混入 card | accent 以 10／40／72% 混入 accent-soft；heat-4 = accent 與 accent-ink 各半 | 熱度圖（heat-0 = subtle），跟著主題色；藍筆時為淺 #c7d5f2 #9ab2e9 #6689dc #2d53ca、深 #263660 #415890 #607ec7 #8eaffc |
 | backdrop | rgb(22 29 49 / .4) | rgb(0 0 0 / .6) | 對話框背景遮罩 |
 
 - **元件只能使用 token。**
@@ -64,8 +64,42 @@
   - `accent-color` 和 `caret-color` 用 accent。
   - `scrollbar-color` 用 line-strong。
   - `theme-color` meta 用 page。
-- **主題色（SUB-4）**：`data-accent` 提供 6 組經過驗證的強調色，每一組都要有淺色與深色版本的 `accent*` 與 `on-accent`。在 `public/theme-init.js` 裡於第一次繪製前套用。
-- **Sprint 1 相容規則**：舊的 token 名稱都要保留，可以用別名代替。例如 `--chart-grid`、`--chart-axis`、`--chart-rest`、`--shadow`。
+- **主題色（SUB-4）**：`<html data-accent>` 提供 6 組經過驗證的強調色，每一組都有淺色與深色版本的 `accent`、`accent-hover`、`accent-ink`、`accent-soft`、`on-accent`。
+  - 選擇存在 localStorage 的 `studyflow:accent`，`public/theme-init.js` 在第一次繪製前套用（同時套用 `data-theme` 與 `theme-color`），不會閃爍。
+  - 程式介面在 `lib/theme.ts`：`ACCENTS`（id、zh-TW 名稱、`preview.light／dark`）、`AccentId`、`useAccent()`、`setAccent(id)`。新增色組時 `theme-init.js` 的清單要同步。
+  - heat-*、圖表的 accent 系列、計時環、焦點框都直接用 accent token，換色組時一起變。
+
+  | id | 名稱 | 淺色 accent／hover／ink／soft／on | 深色 accent／hover／ink／soft／on |
+  |---|---|---|---|
+  | blue（預設） | 藍筆 | #2d53ca #2345b4 #284ab2 #e5edff #ffffff | #7da1f9 #96b6ff #9fbdff #1d2c51 #080e21 |
+  | lake | 湖水青 | #006c82 #005d70 #005d71 #d8f2fa #ffffff | #38afcc #64c0d9 #78c7dd #003440 #001218 |
+  | green | 墨綠 | #00614f #005242 #005847 #d8f4eb #ffffff | #51ad95 #72bda8 #87c9b5 #08362c #01140e |
+  | grape | 葡萄紫 | #7e46bd #6e3aa9 #6c39a4 #f0e8ff #ffffff | #b48feb #c5a5f5 #caaef5 #35244b #130a1e |
+  | berry | 莓果 | #a8328a #952679 #912776 #fce5f3 #ffffff | #db84bf #e89ccf #eaa6d3 #431f38 #1a0815 |
+  | graphite | 鉛筆 | #5a616e #4d545f #4e5560 #eaedf2 #ffffff | #9ba2ad #afb4be #b5bbc3 #2a2e35 #0b0f17 |
+
+  - **對比（實際計算，WCAG）**，6 組中的最低值：
+
+    | 組合 | 淺色 | 深色 | 門檻 |
+    |---|---|---|---|
+    | on-accent／accent | 6.00（葡萄紫） | 7.01（墨綠） | 4.5 |
+    | on-accent／accent-hover | 7.39 | 8.63 | 4.5 |
+    | on-accent／按下（accent 混 12% 黑） | 7.76 | 5.04 | 4.5 |
+    | on-accent／danger、success 填色 | 6.08、5.89 | 6.90、8.96 | 4.5 |
+    | accent-ink／card、page、subtle | 7.30、6.93、6.42 | 9.08、9.90、8.13 | 4.5 |
+    | accent-ink／accent-soft（badge、導覽） | 6.40 | 7.02 | 4.5 |
+    | accent／page、card（焦點框） | 5.55、5.86 | 7.07、6.49 | 3 |
+    | accent／accent-soft（進度條填色與軌道） | 5.06 | 4.93 | 3 |
+    | heat-4／card | 5.86 | 7.77 | 3 |
+
+  - **語意撞色（OKLab ΔE×100）**：莓果和 danger 14.2／11.0；墨綠和 success 7.7／9.2（計時環的專注與休息階段靠文字標籤區分）。
+  - **不收錄琥珀橘**：和 warning（ΔE 4.7）、danger（ΔE 8.6）幾乎同色，主要按鈕與「今天到期」會分不出來，所以改收錄中性的「鉛筆」。紅、橘、黃系一律不做主題色。
+- **局部預覽**：任何元素都可以加 `data-theme="light|dark"` 或 `data-accent="…"`，只影響該區塊的 tokens（例如設定頁的深淺色對照、色組色票）。
+  - 權重：只給 `data-accent`（0,1,0）< 祖先組合（0,2,0）< 同一個元素同時給兩者（0,3,0），所以預覽時盡量把兩個屬性放在同一個元素上。
+  - Tailwind 的 `dark:` 變體仍以 `<html>` 為準；局部預覽請用 tokens，不要用 `dark:`。
+  - heat-* 只在有 `data-theme` 的元素上重新計算；只加 `data-accent` 的色票不會改變熱度圖色階。
+- **Sprint 1 相容規則**：舊的 token 名稱都要保留，可以用別名代替。
+  - `--chart-grid` = line、`--chart-axis` = line-strong、`--chart-rest` 保留原值、`--shadow` = `--elevation-sm`、工具類 `shadow-card` = `shadow-sm`。
 
 ## 3. 科目色
 
@@ -77,7 +111,7 @@
     - 其他顏色把 L 0.43–0.77 線性對應到 0.55–0.67，C 夾在 0.10–0.16。
   - tint：`color-mix(in oklab, mark 14%（深色 22%）, var(--card))`。
   - ring：mark 35% 疊在透明上。
-  - onMark：`#fff` 或 ink，選對比較高的那個。
+  - onMark：`#fff` 或深色文字，選對比較高的那個；深色模式的深色文字用 `#0c0f18`（深色的 page 色）。
 - **文字永遠不用科目色。** chip 是 ink 色的字配上科目 tint 底色，全部 48 色在淺色下都 ≥ 12.9:1，深色下 ≥ 11.2:1。
 - **推薦色**：色盲友善，順序固定，對應的名稱依序是藍、橘、青綠、琥珀、粉紅、綠、靛紫、紅。
 
@@ -97,31 +131,36 @@
   - 觸發條件：
     - C < 0.10（太灰）。
     - 和圖表上相鄰的科目太像：ΔE < 15，或色盲模擬下 ΔE < 8。
-    - 和任何一個科目 ΔE < 8（幾乎一樣）。
-  - 提醒旁附「改用建議色」。
+      - 色盲只判定 protan 與 deutan；tritan 只計算、不列入判定，和 dataviz 驗證器的判定方式一致（推薦色的琥珀↔粉紅在 tritan 下只有 5.8）。
+    - 和任何一個科目幾乎一樣：淺色 ΔE < 8，或兩色的**深色 mark** ΔE < 5（深色也要判定）。
+  - 推薦色彼此之間不提醒「幾乎一樣」（它們是驗證過的一組）；但兩個科目用了同一個推薦色時仍然提醒。
+  - 提醒旁附「改用建議色」；建議色必須在淺色與深色兩種模式下都通過以上檢查。
+- **色格排版**：桌面 10 × 4、每格 32px；觸控裝置或窄容器改成兩塊 5 × 4、每格 44px。
 - **驗證**：色盤有改動時，必須用 dataviz skill 的 `validate_palette.js` 驗證淺色與深色兩種模式。
+- **待評估（Sprint 2）：是否放寬深色的 DARK_BAND**。目前深色把 L 0.43–0.77 壓進 0.55–0.67，同色相的 4 個色調在深色只差 ΔE 3–5，所以深色的色格實際上只剩約 10 種可分辨的顏色。這個 Sprint 不改 `src/shared/color.ts`（屬於 s1/color）。
 
 ## 4. 字型與排版
 
 - **文字**：`system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Segoe UI', sans-serif`。
-- **數字**：`--font-num` 是 `'Archivo Variable'` 加上文字的字型堆疊。
-  - 套件：`@fontsource-variable/archivo`，引入 `standard.css`（字重加字寬）。
+- **數字**：`--font-num` 是 `'Archivo Variable'` 加上文字的字型堆疊（中文等其他字元落回文字字型）。工具類是 `font-num`。
+  - 套件：`@fontsource-variable/archivo`，在 `main.tsx` 引入 `standard.css`（字重 100–900、字寬 62–125%）。自架，符合 CSP `font-src 'self'`；workbox 也快取 woff2。
   - 一律使用 `tabular-nums lining-nums`；計時和倒數加上 `font-stretch: semi-condensed`。
-  - 要實際量「1111」和「0000」的寬度是否相同。不同就代表不支援 tnum，改用系統字型。
+  - **tnum 實測結論（Sprint 1）：支援。** fontTools 讀 GSUB 有 `tnum`（`.tf` 字形，所有數字等寬）；Chrome 實測 `tabular-nums` 時「1111」和「0000」在字重 400／600／700、字寬 100%／87.5% 下都等寬（例如 600／100% 都是 92.64px@40px），不加 tnum 時不等寬（400：83.42 vs 91.64）。
+  - 圖表軸線的數字由 `index.css` 統一套用數字字型與等寬數字，不必逐一設定。
 - **字重**：只用 400、600、700。微軟正黑體會把 500 顯示成 400。
 - **字級**：
 
-| 用途 | 大小 / 行高 | 字重 |
-|---|---|---|
-| num-xl（計時） | clamp(3.5rem, 15vw, 5.5rem) / 1 | |
-| num-lg（倒數、統計） | 1.75rem / 1.1 | |
-| h1 | 1.5rem / 1.3（手機 1.375rem） | 700 |
-| h2 | 1.125rem | 600 |
-| h3 | 1rem | 600 |
-| body | 1rem / 1.6 | |
-| dense | .9375rem | |
-| meta | .8125rem | |
-| caption | .75rem（最小，不能再小） | |
+| 用途 | 大小 / 行高 | 字重 | 工具類 |
+|---|---|---|---|
+| num-xl（計時） | clamp(3.5rem, 15vw, 5.5rem) / 1 | 600 | `text-num-xl` |
+| num-lg（倒數、統計） | 1.75rem / 1.1 | 600 | `text-num-lg` |
+| h1 | 1.5rem / 1.3（手機 1.375rem） | 700 | `text-h1` |
+| h2 | 1.125rem / 1.4 | 600 | `text-h2` |
+| h3 | 1rem / 1.5 | 600 | `text-h3` |
+| body | 1rem / 1.6 | | `text-base` |
+| dense | .9375rem / 1.55 | | `text-dense` |
+| meta | .8125rem / 1.5 | | `text-meta` |
+| caption | .75rem / 1.5（最小，不能再小） | | `text-caption`（= `text-xs`） |
 
 - **字距**：中文字距為 0，不可為負；32px 以上的數字用 −0.02em。
 - **長文**：最寬 38em，行高 1.75。
@@ -150,6 +189,8 @@
 
   巢狀時，內層圓角 = 外層圓角 − 內距。
 - **層次**：邊框表示結構，陰影表示高度（帶 ink 色調、分層）。
+  - 原始值是 `--elevation-sm／md／lg`，工具類是 `shadow-sm／md／lg`；`shadow-card` 是 `shadow-sm` 的別名。
+  - 深色模式靠較亮的表面表示高度（例如 Segmented 選中的項目用 line 色底）。
 
   | 陰影 | 淺色 | 深色 |
   |---|---|---|
@@ -170,15 +211,18 @@
   | 120ms | 按壓、hover |
   | 180ms | 切換、核取方塊、分段按鈕 |
   | 240ms | popover、toast |
-  | 320ms | bottom sheet／對話框進場（離場 200ms） |
+  | 320ms | bottom sheet／對話框進場（離場不做動畫：立即關閉，內容同時卸載） |
   | 600ms | 唯一刻意設計的時刻：專注完成 |
 
+  時長也有 token：`--dur-press` 120、`--dur-toggle` 180、`--dur-pop` 240、`--dur-sheet` 320、`--dur-moment` 600；Tailwind 直接寫 `duration-120`、`duration-180`。
+- **動畫工具類**：`animate-fade-in`（120ms）、`animate-pop-in`（240ms，popover）、`animate-complete`（600ms，只給「專注完成」用）。
+- **對話框**：只有進場動畫（`@starting-style`＋`transition-behavior: allow-discrete`）：手機由下滑入、sm 以上輕微放大淡入；關閉時立即消失，因為內容同時卸載。
 - **只動畫 transform、opacity、顏色。**
   - 不用 `transition: all`。
-  - 不動畫 width、height、top、left。
+  - 不動畫 width、height、top、left；進度條用 translateX，不動畫寬度。
 - **`prefers-reduced-motion`**：
-  - 拿掉位移和縮放。
-  - 保留 120ms 以內的淡入淡出與顏色變化。
+  - 拿掉位移和縮放（按下的 1px 下沉、Switch 滑動、對話框滑入都拿掉）。
+  - 保留 120ms 以內的淡入淡出與顏色變化；`animate-pop-in`／`animate-complete` 自動改成只淡入。
 
 ## 7. 元件
 
@@ -257,6 +301,42 @@
   - 堆疊段之間留 2px 空隙。
   - 顏色跟著科目走。
 
+### 元件 API（Sprint 1 定案，給 Sprint 2 各 lane）
+
+元件的預設樣式放在 `index.css` 的 `@layer components`（`.sf-btn`、`.sf-field`、`.sf-dialog`），頁面傳入的 `className` 工具類一定蓋得過（例如 `className="h-12 text-base"`、`text-danger`）。頁面不要直接寫 `.sf-*`，請用元件。
+
+**`components/ui.tsx`**
+
+| 元件 | Props（新 prop 都是可選的） | 說明 |
+|---|---|---|
+| `Button` | `variant: 'primary'｜'secondary'（預設）｜'ghost'｜'danger'｜'soft'`、`size: 'sm'｜'md'（預設）｜'lg'｜'icon'`、`loading` | 40px（觸控 44px；sm 32px 另有 44px 點擊範圍；lg 48px；icon 36px、觸控 44px）。`loading` 保留文字並加 `aria-busy`。只有圖示時一定要給 `aria-label`。型別 `ButtonVariant`、`ButtonSize` |
+| `Input`、`Textarea` | 原生屬性 | 手機 16px、sm 以上 15px；page 色內嵌底、line-field 邊框、focus 時 accent 邊框加光環；`aria-invalid` 時變紅 |
+| `Select` | 原生屬性 | 右側 ChevronDown。**`className` 套在外層容器**（寬度、版面），select 填滿容器 |
+| `Field` | `label`、`hint`、`error`、`children: (id, aria) => …`、`className` | `aria` 是 `FieldAria`（`aria-describedby`、`aria-invalid`），請展開到欄位上：`{(id, aria) => <Input id={id} {...aria} />}`。舊寫法 `(id) =>` 會自動把 aria 補到回傳的元素上 |
+| `Card` | `as: 'section'｜'div'｜'article'｜'li'`、`variant: 'default'｜'inset'｜'plain'`、`interactive` | 只有整張可點的卡片才加 `interactive` |
+| `CardHeader` | `title`、`icon`、`meta`、`action` | 標題是 h2（18px／600）；meta 例如「3 項」 |
+| `PageHeader` | `title`、`description`（ReactNode）、`actions` | h1；description 放即時摘要 |
+| `Badge` | `tone: 'neutral'｜'accent'｜'danger'｜'success'｜'warning'｜'outline'`、`icon` | 20px 高；圖示自動縮成 12px；型別 `BadgeTone` |
+| `EmptyState` | `icon`、`title`、`description`、`action`、`variant: 'page'｜'inline'`、`className` | inline 版：一行文字（`title`，`description`）＋右側 ghost 動作 |
+| `Spinner`、`PageLoader`、`ErrorNote` | — | PageLoader 延遲 150ms 才出現；ErrorNote 有圖示 |
+| `Segmented<T>` | `value`、`onChange`、`options: { value, label, disabled? }[]`、`label`（必填，群組名稱）、`stretch`、`className` | WAI-ARIA radio：roving tabindex、方向鍵循環並選取、Home／End |
+| `Dialog` | `open`、`onClose`、`title`、`footer`、`wide` | `aria-labelledby`；手機 bottom sheet（拖曳把手往下拉可關閉）；觸控裝置不自動 focus，桌面版 `autoFocus` 有效；關閉後卸載內容 |
+| `useConfirm()` | 回傳 `[confirm, element]` | 預設焦點在「取消」 |
+| `ProgressBar` | `value`、`max`（100）、`label` 或 `labelledBy`、`valueText`、`tone: 'accent'｜'success'｜'warning'｜'danger'`、`color`、`size: 'sm'｜'md'` | `role="progressbar"`；`color` 傳 `subjectTone(...).mark`，軌道自動用同色淡一階；型別 `ProgressTone` |
+| `ProgressRing` | 同上，另有 `size`（40）、`stroke`（4）、`trackColor`、`children`（圓心內容） | 底色和軌道同色時（例如膠囊底上）用 `trackColor` 換軌道色 |
+| `GoalProgress` | `label`、`value`、`goal`（> 0）、`unit`（'分鐘'）、`format`、`color` | 已讀／目標、百分比、「還差 …」或「已達成」（圖示加文字，進度條轉成 success）。沒設目標時不要用它，改顯示「設定目標」連結 |
+| `Switch`、`Checkbox` | `checked`、`onChange(checked)`、`label`、`disabled`、`id`、`aria-*`；Checkbox 另有 `indeterminate` | `role="switch"／"checkbox"` + `aria-checked`，整列可點、至少 44px；沒有 `label` 時要給 `aria-label` |
+| `Highlight` | `text`、`query`（字串以空白分隔，或字串陣列）、`className` | 用 `<mark>`（mark token）標出關鍵字，不分大小寫 |
+| `Kbd` | `children` | 例如 `<Kbd>Ctrl</Kbd> <Kbd>K</Kbd>` |
+| `NumDisplay` | `children`、`unit`、`size: 'xl'｜'lg'（預設）｜'md'｜'sm'` | 數字字型、等寬數字；xl 為計時大字；型別 `NumSize` |
+| `Countdown` | `seconds`、`size`（'xl'） | `role="timer"`，mm:ss 或 h:mm:ss，半窄字寬 |
+
+**`components/charts.tsx`**：`StatStrip({ items: StatItem[] })`，`StatItem = { key?, label, value, sub?, icon? }`（一張卡片用分隔線分格、手機 2 欄、sm 以上最多 4 格、數值 28／600）。`Heatmap` 內建「表格／圖表」切換與 `role="img"` 摘要。`StatTile`、`Legend`、`SubjectBars`、`MiniDailyBars`、`DailyStackedBars`、`WeeklyTaskBars`、`SeriesDef` 的 API 不變（`StatTile` 只為相容保留，新頁面改用 `StatStrip`）。
+
+**導覽與版面**：`components/nav.ts` 提供 `NAV`、`NAV_GROUPS`（側欄分組）、`MOBILE_MAIN`、`NavItem { to, label, short?, icon, end? }`；`components/TimerPill.tsx` 提供 `TimerPill`、`TimerNavIcon`。`<main id="main-content">` 是「跳到主要內容」的目標。佔位路由：`/subjects/:id`（`pages/Subject.tsx`，s2/subjects 實作）、`/achievements`（`pages/Achievements.tsx`，s2/shell 實作）。
+
+**`lib/theme.ts`**：原有的 `ThemeMode`、`initTheme`、`setThemeMode`、`useThemeMode`、`useIsDark` 不變；新增 `ACCENTS`、`AccentId`、`useAccent()`、`setAccent(id)`（設定頁的主題色卡可以直接用色票 `<span data-accent={id} className="bg-accent" />`，會跟著目前的深淺色）。
+
 ## 8. 該做／不要做
 
 **該做**
@@ -272,3 +352,15 @@
 - 漸層文字、毛玻璃／模糊、裝飾性或零散的動畫、`transition: all`。
 - 用科目色當文字色；把紅色用在不緊急的地方；灰色的科目色。
 - 用字重 500 做層次；中文負字距；小於 12px 的文字；觸控裝置自動 focus；raw hex。
+- 局部預覽用 Tailwind 的 `dark:`；在頁面直接寫 `.sf-*` 元件 class；紅、橘、黃系當主題色。
+
+## 9. 已知限制與待評估
+
+- **多層巢狀 `data-accent`**：祖先 A 底下的元素 B 又設了 `data-accent`，B 裡面的子元素只加 `data-theme` 時，會依原始碼順序取 A 或 B，不保證取最近的 B。預覽時請把 `data-accent` 和 `data-theme` 放在同一個元素上。
+- **Tailwind `dark:` 以 `<html>` 為準**：局部 `data-theme` 只切換 tokens，不影響 `dark:` 變體。
+- **只加 `data-accent` 的元素不會重算 heat-***：熱度圖色階跟著 `<html>` 的主題色。
+- **熱度圖最淺一階**：heat-1 對 card 約 1.3:1。依 dataviz 對 sequential 色階的規則（最淺一階代表接近 0，可以貼近表面）保留，並以表格檢視、格子的 title 提示與 `role="img"` 摘要補足。
+- **墨綠主題色與 success 相近**（ΔE 7.7／9.2）：計時環的專注（accent）與休息（success）靠文字標籤區分。
+- **待評估（Sprint 2）**：是否放寬深色的 DARK_BAND（見 §3）。
+- **第三方與頁面層**：sonner 的關閉鈕只有 20px（套件內建；toast 會自動消失，也能滑掉）；PWA 啟動畫面（manifest `background_color`）只有淺色；`Logo.tsx` 的品牌藍是寫死的，不跟主題色。頁面裡的 emoji、「・」、「→」、一排 `StatTile` 等舊寫法留給 Sprint 2 各頁 lane（UI-2）。
+- **Field 舊寫法的自動 aria**：只補在 children 回傳的那個元素上；自訂元件（例如 `SubjectSelect`）沒有把 aria 屬性傳給內部欄位時不會生效，Sprint 2 請改成 `(id, aria)` 並往下傳。
