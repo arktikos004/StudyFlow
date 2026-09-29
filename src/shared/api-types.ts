@@ -3,7 +3,16 @@ import type { Attachment, Note, StudyEvent, StudySession, Subject, Task } from '
 
 export type { StudySession, Subject, Task };
 
-export type PublicUser = { id: string; email: string; displayName: string; timezone: string; createdAt: number };
+export type PublicUser = {
+	id: string;
+	email: string;
+	displayName: string;
+	timezone: string;
+	createdAt: number;
+	/** 讀書目標（分鐘）；null = 沒有設定 */
+	dailyGoalMinutes: number | null;
+	weeklyGoalMinutes: number | null;
+};
 
 export type EventItem = StudyEvent & { taskTotal: number; taskDone: number };
 
@@ -21,6 +30,13 @@ export type DashboardResponse = {
 	weekMinutes: number;
 	streak: number;
 	last7: { date: string; minutes: number }[];
+	/** 讀書目標；今天與本週的進度用 todayMinutes、weekMinutes */
+	goals: {
+		dailyMinutes: number | null;
+		weeklyMinutes: number | null;
+		/** 有設定每週目標、沒有封存的科目，依科目順序排列；minutes 是本週（週一起算）的分鐘數 */
+		subjects: { subjectId: string; goalMinutes: number; minutes: number }[];
+	};
 };
 
 export type StatsResponse = {
@@ -32,6 +48,8 @@ export type StatsResponse = {
 		avgMinutesPerDay: number;
 		currentStreak: number;
 		longestStreak: number;
+		/** 區間內達成每日目標的天數；沒有設定目標時為 0 */
+		goalMetDays: number;
 	};
 	daily: { date: string; minutes: number; bySubject: Record<string, number> }[];
 	bySubject: { subjectId: string | null; minutes: number }[];
@@ -39,4 +57,5 @@ export type StatsResponse = {
 	weekly: { weekStart: string; due: number; done: number }[];
 	tasks: { total: number; done: number; overdue: number };
 	mistakes: { total: number; mastered: number; due: number };
+	dailyGoalMinutes: number | null;
 };

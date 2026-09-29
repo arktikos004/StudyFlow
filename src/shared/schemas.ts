@@ -24,6 +24,19 @@ export const loginSchema = z.object({
 	password: z.string().min(1, '請輸入密碼').max(128),
 });
 
+// 讀書目標（分鐘）的範圍；前端輸入框的 min／max 也用這組數字
+export const GOAL_LIMITS = {
+	daily: { min: 10, max: 720 },
+	weekly: { min: 60, max: 5040 },
+	subjectWeekly: { min: 10, max: 3000 },
+} as const;
+
+/** 目標分鐘數：整數、在範圍內；null 代表清除目標 */
+const goalMinutes = (label: string, { min, max }: { min: number; max: number }) => {
+	const range = `${label}需介於 ${min}–${max} 分鐘`;
+	return z.number({ error: `${label}請輸入數字` }).int(`${label}必須是整數`).min(min, range).max(max, range).nullish();
+};
+
 export const updateProfileSchema = z.object({
 	displayName: z.string().trim().min(1, '請輸入暱稱').max(30, '暱稱最多 30 個字').optional(),
 	timezone: z
@@ -37,6 +50,8 @@ export const updateProfileSchema = z.object({
 			}
 		}, '時區格式錯誤')
 		.optional(),
+	dailyGoalMinutes: goalMinutes('每日目標', GOAL_LIMITS.daily),
+	weeklyGoalMinutes: goalMinutes('每週目標', GOAL_LIMITS.weekly),
 });
 
 export const changePasswordSchema = z.object({
@@ -50,6 +65,7 @@ export const SUBJECT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87
 export const subjectSchema = z.object({
 	name: z.string().trim().min(1, '請輸入科目名稱').max(30, '科目名稱最多 30 個字'),
 	color: z.string().regex(/^#[0-9a-f]{6}$/i, '顏色格式錯誤'),
+	weeklyGoalMinutes: goalMinutes('科目每週目標', GOAL_LIMITS.subjectWeekly),
 });
 export const subjectUpdateSchema = subjectSchema.partial().extend({ archived: z.boolean().optional() });
 

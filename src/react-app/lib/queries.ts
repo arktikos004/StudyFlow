@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import type { z } from 'zod';
+import type { subjectSchema, subjectUpdateSchema, updateProfileSchema } from '../../shared/schemas';
 import type {
 	DashboardResponse,
 	EventItem,
@@ -127,14 +129,15 @@ function useApiMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, i
 // 任務、考試、學習紀錄的變動都會影響儀表板與統計
 const OVERVIEW: QueryKey[] = [['dashboard'], ['stats']];
 
-export type SubjectInput = { name: string; color: string };
+// 科目的名稱、顏色、目標、順序會出現在總覽（各科目標）與統計圖表
+const SUBJECT_KEYS: QueryKey[] = [['subjects'], ['dashboard'], ['stats']];
+
+export type SubjectInput = z.input<typeof subjectSchema>;
+export type SubjectUpdateInput = z.input<typeof subjectUpdateSchema> & { id: string };
 export const useCreateSubject = () =>
-	useApiMutation((v: SubjectInput) => api.post<{ subject: Subject }>('/subjects', v), [['subjects']], '已新增科目');
+	useApiMutation((v: SubjectInput) => api.post<{ subject: Subject }>('/subjects', v), SUBJECT_KEYS, '已新增科目');
 export const useUpdateSubject = () =>
-	useApiMutation(
-		({ id, ...v }: Partial<SubjectInput> & { id: string; archived?: boolean }) => api.patch(`/subjects/${id}`, v),
-		[['subjects']],
-	);
+	useApiMutation(({ id, ...v }: SubjectUpdateInput) => api.patch<{ subject: Subject }>(`/subjects/${id}`, v), SUBJECT_KEYS);
 export const useDeleteSubject = () =>
 	useApiMutation((id: string) => api.del(`/subjects/${id}`), [['subjects'], ['events'], ['tasks'], ['notes'], ...OVERVIEW], '已刪除科目');
 
@@ -227,10 +230,12 @@ export const useUploadAttachment = () =>
 	}, NOTE_KEYS);
 export const useDeleteAttachment = () => useApiMutation((id: string) => api.del(`/attachments/${id}`), NOTE_KEYS, '已刪除照片');
 
+/** 暱稱、時區、每日／每週目標；目標傳 null 代表清除 */
+export type ProfileInput = z.input<typeof updateProfileSchema>;
 export const useUpdateProfile = () => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (v: { displayName?: string; timezone?: string }) => api.patch<{ user: PublicUser }>('/auth/me', v),
+		mutationFn: (v: ProfileInput) => api.patch<{ user: PublicUser }>('/auth/me', v),
 		onSuccess: ({ user }) => {
 			qc.setQueryData(['me'], user);
 			// 時區改變會影響「今天」的判斷

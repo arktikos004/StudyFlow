@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { subjectSchema, subjectUpdateSchema } from '../../shared/schemas';
 import { subjects } from '../db/schema';
-import { notFound, type DB } from '../lib/db';
+import { hasValues, notFound, type DB } from '../lib/db';
 import { validate } from '../lib/validator';
 import { requireAuth } from '../middleware/auth';
 import type { AppEnv } from '../types';
@@ -37,12 +37,10 @@ export const subjectRoutes = new Hono<AppEnv>()
 		const input = c.req.valid('json');
 		const id = c.req.param('id');
 		if (input.name) await assertNameFree(c.var.db, c.var.user.id, input.name, id);
-		const row = await c.var.db
-			.update(subjects)
-			.set(input)
-			.where(and(eq(subjects.id, id), eq(subjects.userId, c.var.user.id)))
-			.returning()
-			.get();
+		const own = and(eq(subjects.id, id), eq(subjects.userId, c.var.user.id));
+		const row = hasValues(input)
+			? await c.var.db.update(subjects).set(input).where(own).returning().get()
+			: await c.var.db.select().from(subjects).where(own).get();
 		if (!row) notFound('科目');
 		return c.json({ subject: row });
 	})
