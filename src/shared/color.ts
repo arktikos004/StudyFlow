@@ -351,12 +351,24 @@ function makeTone(mark: string, dark: boolean, surface: string): SubjectTone {
 	});
 }
 
-/** 「未分類」的 tone：兩種模式都是保留的灰色 */
-export function neutralTone(dark: boolean, surface = 'var(--card)'): SubjectTone {
-	return makeTone(NO_SUBJECT_COLOR, dark, surface);
+// 同樣的輸入回傳同一個凍結物件，React 的 props 比較與 memo 才會穩定（超過 1024 筆時整批清除）
+const toneCache = new Map<string, SubjectTone>();
+
+function cachedTone(key: string, make: () => SubjectTone): SubjectTone {
+	let tone = toneCache.get(key);
+	if (!tone) {
+		tone = make();
+		if (toneCache.size >= 1024) toneCache.clear();
+		toneCache.set(key, tone);
+	}
+	return tone;
 }
 
-const toneCache = new Map<string, SubjectTone>();
+/** 「未分類」的 tone：兩種模式都是保留的灰色 */
+export function neutralTone(dark: boolean, surface = 'var(--card)'): SubjectTone {
+	// key 不以 # 開頭，不會和科目色的 key 衝突
+	return cachedTone(`${dark}|${surface}`, () => makeTone(NO_SUBJECT_COLOR, dark, surface));
+}
 
 /**
  * 科目色的顯示方式（所有顯示科目色的地方都要經過這裡）。
@@ -371,14 +383,7 @@ const toneCache = new Map<string, SubjectTone>();
 export function subjectTone(hex: string, dark: boolean, surface = 'var(--card)'): SubjectTone {
 	const h = parseHex(hex);
 	if (!h || h === NO_SUBJECT_COLOR) return neutralTone(dark, surface);
-	const key = `${h}|${dark ? 'dark' : 'light'}|${surface}`;
-	let tone = toneCache.get(key);
-	if (!tone) {
-		tone = makeTone(dark ? darkMark(h) : lightMark(h), dark, surface);
-		if (toneCache.size >= 1024) toneCache.clear();
-		toneCache.set(key, tone);
-	}
-	return tone;
+	return cachedTone(`${h}|${dark ? 'dark' : 'light'}|${surface}`, () => makeTone(dark ? darkMark(h) : lightMark(h), dark, surface));
 }
 
 // ---- 選色提醒與建議色 ----
