@@ -91,22 +91,43 @@ export function dateRange(from: string, to: string): string[] {
 	return out;
 }
 
-/** 某時區當地的 'YYYY-MM-DD' 加上 'HH:mm' 所對應的 epoch 毫秒（處理任意 UTC 偏移與夏令時間） */
+const DAY_MS = 86_400_000;
+
+/** 某個瞬間在該時區的牆上時間，換成「當作 UTC 的毫秒」（精確到分鐘） */
+function wallClock(epochMs: number, timeZone: string) {
+	const p = localParts(epochMs, timeZone);
+	return Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute));
+}
+
+/** 某個瞬間該時區的 UTC 偏移（毫秒）＝牆上時間 − UTC */
+const offsetAt = (epochMs: number, timeZone: string) => wallClock(epochMs, timeZone) - Math.floor(epochMs / 60_000) * 60_000;
+
+/**
+ * 某時區當地的 'YYYY-MM-DD' 加上 'HH:mm' 所對應的 epoch 毫秒。
+ * 夏令時間切換時依 RFC 5545 §3.3.5，一律用切換前的偏移解讀：
+ * - 春季跳過、不存在的時間（紐約 2026-03-08 02:30）：當成 02:30 EST = 07:30Z，牆上顯示 03:30
+ * - 秋季重複出現的時間（紐約 2026-11-01 01:30）：取第一次出現（EDT）
+ */
 export function zonedTime(date: string, time: string, timeZone: string): number {
 	const [y, m, d] = date.split('-').map(Number);
 	const [hh, mm] = time.split(':').map(Number);
-	const guess = Date.UTC(y, m - 1, d, hh, mm);
-	// 用該時刻在目標時區的時間差修正偏移，最多修正兩次以處理夏令時間邊界
-	let ts = guess;
-	for (let i = 0; i < 2; i++) {
-		const p = localParts(ts, timeZone);
-		const asUtc = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute));
-		ts += guess - asUtc;
-	}
-	return ts;
+	const local = Date.UTC(y, m - 1, d, hh, mm);
+	// 前一天與後一天的偏移，就是切換前與切換後的偏移（一天內最多切換一次）
+	const before = local - offsetAt(local - DAY_MS, timeZone);
+	const after = local - offsetAt(local + DAY_MS, timeZone);
+	if (before === after) return before;
+	const beforeOk = wallClock(before, timeZone) === local;
+	const afterOk = wallClock(after, timeZone) === local;
+	if (beforeOk && afterOk) return Math.min(before, after); // 重複的時段：第一次出現
+	if (afterOk) return after;
+	return before; // 只有切換前的對得上，或是落在跳過的時段：用切換前的偏移
 }
 
-/** 某時區某日 00:00 的 epoch 毫秒（處理任意 UTC 偏移） */
+/**
+ * 某時區某日開始的 epoch 毫秒（處理任意 UTC 偏移）。
+ * 在午夜切換夏令時間的時區（Santiago、Havana），當天的 00:00 不存在，
+ * 會得到跳躍的那個瞬間，也就是那一天真正開始的時間，不會落到前一天。
+ */
 export function startOfLocalDay(date: string, timeZone: string): number {
 	return zonedTime(date, '00:00', timeZone);
 }
