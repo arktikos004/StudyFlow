@@ -15,10 +15,10 @@
 
 | Lane | Agent | 故事 | 狀態 |
 |---|---|---|---|
-| s1/backend | backend-engineer | 資料模型與 migration、所有新 API 與 hook、BUG-1 | 待辦 |
-| s1/design | ui-designer | UI-1、SUB-4（tokens） | 待辦 |
-| s1/color | frontend-engineer | SUB-1、拆分設定頁 | 待辦 |
-| QA 把關 | qa-engineer | 全套檢查、migration 演練 | 待辦 |
+| s1/backend | backend-engineer | 資料模型與 migration、所有新 API 與 hook、BUG-1 | 已合併（review：修正後合併） |
+| s1/design | ui-designer | UI-1、SUB-4（tokens） | 已合併（review：修正後合併） |
+| s1/color | frontend-engineer | SUB-1、拆分設定頁 | 已合併（review：修正後合併） |
+| QA 把關 | qa-engineer（Sonnet） | 全套檢查、migration 演練 | 進行中 |
 
 ## Sprint 2：功能與頁面
 
