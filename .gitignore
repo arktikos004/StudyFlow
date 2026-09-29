@@ -197,3 +197,7 @@ dist
 !.env.example
 .dev.vars*
 !.dev.vars.example
+
+# Claude Code：agent 並行開發用的 worktree 與個人設定，不納入版本控制
+.claude/worktrees/
+.claude/settings.local.json

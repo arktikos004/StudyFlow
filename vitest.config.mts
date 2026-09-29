@@ -13,6 +13,8 @@ export default defineConfig(async () => {
 			}),
 		],
 		test: {
+			// 只跑 test/ 裡的測試；.claude/worktrees/ 內其他 agent 的工作副本不列入
+			include: ['test/**/*.spec.ts'],
 			setupFiles: ['./test/apply-migrations.ts'],
 		},
 	};

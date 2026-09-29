@@ -5,6 +5,8 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+	// 不監看 agent 的 worktree（.claude/worktrees/），避免其他分支的檔案觸發重新整理
+	server: { watch: { ignored: ['**/.claude/**'] } },
 	plugins: [
 		react(),
 		tailwindcss(),
