@@ -10,6 +10,8 @@ import { GuestOnly, RequireAuth } from './components/RequireAuth';
 import { ApiError } from './lib/api';
 import { initTheme, useIsDark } from './lib/theme';
 import { PageLoader } from './components/ui';
+// 數字字型 Archivo（自架，CSP 為 font-src 'self'）：standard = 字重 + 字寬兩個軸
+import '@fontsource-variable/archivo/standard.css';
 import './index.css';
 
 // 各頁面分開打包，進到該頁才下載（圖表函式庫只有總覽與統計頁會載入）
