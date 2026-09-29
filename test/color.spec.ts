@@ -241,6 +241,23 @@ describe('subjectTone', () => {
 		expect(subjectTone(NO_SUBJECT_COLOR, true).mark).toBe('#898781');
 		expect(neutralTone(true).mark).toBe('#898781');
 	});
+
+	it('同樣的輸入回傳同一個凍結物件（科目色與「未分類」都是）', () => {
+		for (const dark of [false, true]) {
+			const tone = subjectTone('#396ed6', dark);
+			expect(subjectTone('#396ed6', dark)).toBe(tone);
+			expect(subjectTone(' #396ED6 ', dark)).toBe(tone); // 同一個顏色的不同寫法也共用
+			expect(Object.isFrozen(tone)).toBe(true);
+			expect(subjectTone('#396ed6', dark, TONE_SURFACES.light.card)).not.toBe(tone); // surface 不同就是不同的 tone
+
+			const neutral = neutralTone(dark);
+			expect(neutralTone(dark)).toBe(neutral);
+			expect(Object.isFrozen(neutral)).toBe(true);
+			expect(subjectTone('not-a-color', dark)).toBe(neutral);
+			expect(subjectTone(NO_SUBJECT_COLOR, dark)).toBe(neutral);
+		}
+		expect(neutralTone(true)).not.toBe(neutralTone(false));
+	});
 });
 
 describe('colorWarnings', () => {
@@ -283,6 +300,16 @@ describe('colorWarnings', () => {
 		}
 	});
 
+	it('推薦色彼此不提醒「幾乎一樣」，但排在隔壁時仍然提醒「很接近」', () => {
+		const red = rec.find((c) => c.name === '紅')!;
+		const orange = rec.find((c) => c.name === '橘')!;
+		const others = rec.filter((c) => c !== red);
+		// 橘↔紅在淺色只差 ΔE 7.1：不相鄰時不提醒
+		expect(colorWarnings(red.hex, others)).toEqual([]);
+		// 「紅」排在「橘」隔壁：淺色與深色都分不清，提醒「很接近」（沒有模式前綴），不是「幾乎一樣」
+		expect(colorWarnings(red.hex, others, [orange])).toEqual(['和「橘」很接近，統計圖中不易分辨']);
+	});
+
 	it('格式錯誤的顏色不提醒', () => {
 		expect(colorWarnings('#12', rec)).toEqual([]);
 	});
@@ -314,6 +341,18 @@ describe('suggestColor', () => {
 
 	it('沒有其他科目時，灰色也會得到有彩度的建議', () => {
 		expect(hexToOklch(suggestColor(NO_SUBJECT_COLOR, [])).c).toBeGreaterThanOrEqual(0.1);
+	});
+
+	it('深色模式：8 個推薦色都在用時，任意顏色的建議都沒有提醒，而且深色 ΔE 都 ≥ 5', () => {
+		const rand = seeded(99);
+		for (let i = 0; i < 60; i++) {
+			const hex = rgbToHex([rand(), rand(), rand()]);
+			const last = [used[i % used.length]];
+			const got = suggestColor(hex, used, last);
+			expect(colorWarnings(got, named(used), named(last)), `${hex} → ${got}`).toEqual([]);
+			for (const u of used)
+				expect(deltaE(darkMark(got), darkMark(u)), `${hex} → ${got} vs ${u}`).toBeGreaterThanOrEqual(DARK_SAME_MAX_DELTA_E);
+		}
 	});
 });
 
