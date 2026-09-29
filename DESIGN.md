@@ -301,6 +301,42 @@
   - 堆疊段之間留 2px 空隙。
   - 顏色跟著科目走。
 
+### 元件 API（Sprint 1 定案，給 Sprint 2 各 lane）
+
+元件的預設樣式放在 `index.css` 的 `@layer components`（`.sf-btn`、`.sf-field`、`.sf-dialog`），頁面傳入的 `className` 工具類一定蓋得過（例如 `className="h-12 text-base"`、`text-danger`）。頁面不要直接寫 `.sf-*`，請用元件。
+
+**`components/ui.tsx`**
+
+| 元件 | Props（新 prop 都是可選的） | 說明 |
+|---|---|---|
+| `Button` | `variant: 'primary'｜'secondary'（預設）｜'ghost'｜'danger'｜'soft'`、`size: 'sm'｜'md'（預設）｜'lg'｜'icon'`、`loading` | 40px（觸控 44px；sm 32px 另有 44px 點擊範圍；lg 48px；icon 36px、觸控 44px）。`loading` 保留文字並加 `aria-busy`。只有圖示時一定要給 `aria-label`。型別 `ButtonVariant`、`ButtonSize` |
+| `Input`、`Textarea` | 原生屬性 | 手機 16px、sm 以上 15px；page 色內嵌底、line-field 邊框、focus 時 accent 邊框加光環；`aria-invalid` 時變紅 |
+| `Select` | 原生屬性 | 右側 ChevronDown。**`className` 套在外層容器**（寬度、版面），select 填滿容器 |
+| `Field` | `label`、`hint`、`error`、`children: (id, aria) => …`、`className` | `aria` 是 `FieldAria`（`aria-describedby`、`aria-invalid`），請展開到欄位上：`{(id, aria) => <Input id={id} {...aria} />}`。舊寫法 `(id) =>` 會自動把 aria 補到回傳的元素上 |
+| `Card` | `as: 'section'｜'div'｜'article'｜'li'`、`variant: 'default'｜'inset'｜'plain'`、`interactive` | 只有整張可點的卡片才加 `interactive` |
+| `CardHeader` | `title`、`icon`、`meta`、`action` | 標題是 h2（18px／600）；meta 例如「3 項」 |
+| `PageHeader` | `title`、`description`（ReactNode）、`actions` | h1；description 放即時摘要 |
+| `Badge` | `tone: 'neutral'｜'accent'｜'danger'｜'success'｜'warning'｜'outline'`、`icon` | 20px 高；圖示自動縮成 12px；型別 `BadgeTone` |
+| `EmptyState` | `icon`、`title`、`description`、`action`、`variant: 'page'｜'inline'`、`className` | inline 版：一行文字（`title`，`description`）＋右側 ghost 動作 |
+| `Spinner`、`PageLoader`、`ErrorNote` | — | PageLoader 延遲 150ms 才出現；ErrorNote 有圖示 |
+| `Segmented<T>` | `value`、`onChange`、`options: { value, label, disabled? }[]`、`label`（必填，群組名稱）、`stretch`、`className` | WAI-ARIA radio：roving tabindex、方向鍵循環並選取、Home／End |
+| `Dialog` | `open`、`onClose`、`title`、`footer`、`wide` | `aria-labelledby`；手機 bottom sheet（拖曳把手往下拉可關閉）；觸控裝置不自動 focus，桌面版 `autoFocus` 有效；關閉後卸載內容 |
+| `useConfirm()` | 回傳 `[confirm, element]` | 預設焦點在「取消」 |
+| `ProgressBar` | `value`、`max`（100）、`label` 或 `labelledBy`、`valueText`、`tone: 'accent'｜'success'｜'warning'｜'danger'`、`color`、`size: 'sm'｜'md'` | `role="progressbar"`；`color` 傳 `subjectTone(...).mark`，軌道自動用同色淡一階；型別 `ProgressTone` |
+| `ProgressRing` | 同上，另有 `size`（40）、`stroke`（4）、`children`（圓心內容） | |
+| `GoalProgress` | `label`、`value`、`goal`（> 0）、`unit`（'分鐘'）、`format`、`color` | 已讀／目標、百分比、「還差 …」或「已達成」（圖示加文字，進度條轉成 success）。沒設目標時不要用它，改顯示「設定目標」連結 |
+| `Switch`、`Checkbox` | `checked`、`onChange(checked)`、`label`、`disabled`、`id`、`aria-*`；Checkbox 另有 `indeterminate` | `role="switch"／"checkbox"` + `aria-checked`，整列可點、至少 44px；沒有 `label` 時要給 `aria-label` |
+| `Highlight` | `text`、`query`（字串以空白分隔，或字串陣列）、`className` | 用 `<mark>`（mark token）標出關鍵字，不分大小寫 |
+| `Kbd` | `children` | 例如 `<Kbd>Ctrl</Kbd> <Kbd>K</Kbd>` |
+| `NumDisplay` | `children`、`unit`、`size: 'xl'｜'lg'（預設）｜'md'｜'sm'` | 數字字型、等寬數字；xl 為計時大字；型別 `NumSize` |
+| `Countdown` | `seconds`、`size`（'xl'） | `role="timer"`，mm:ss 或 h:mm:ss，半窄字寬 |
+
+**`components/charts.tsx`**：`StatStrip({ items: StatItem[] })`，`StatItem = { key?, label, value, sub?, icon? }`（一張卡片用分隔線分格、手機 2 欄、sm 以上最多 4 格、數值 28／600）。`Heatmap` 內建「表格／圖表」切換與 `role="img"` 摘要。`StatTile`、`Legend`、`SubjectBars`、`MiniDailyBars`、`DailyStackedBars`、`WeeklyTaskBars`、`SeriesDef` 的 API 不變（`StatTile` 只為相容保留，新頁面改用 `StatStrip`）。
+
+**導覽與版面**：`components/nav.ts` 提供 `NAV`、`NAV_GROUPS`（側欄分組）、`MOBILE_MAIN`、`NavItem { to, label, short?, icon, end? }`；`components/TimerPill.tsx` 提供 `TimerPill`、`TimerNavIcon`。`<main id="main-content">` 是「跳到主要內容」的目標。佔位路由：`/subjects/:id`（`pages/Subject.tsx`，s2/subjects 實作）、`/achievements`（`pages/Achievements.tsx`，s2/shell 實作）。
+
+**`lib/theme.ts`**：原有的 `ThemeMode`、`initTheme`、`setThemeMode`、`useThemeMode`、`useIsDark` 不變；新增 `ACCENTS`、`AccentId`、`useAccent()`、`setAccent(id)`（設定頁的主題色卡可以直接用色票 `<span data-accent={id} className="bg-accent" />`，會跟著目前的深淺色）。
+
 ## 8. 該做／不要做
 
 **該做**
@@ -316,3 +352,15 @@
 - 漸層文字、毛玻璃／模糊、裝飾性或零散的動畫、`transition: all`。
 - 用科目色當文字色；把紅色用在不緊急的地方；灰色的科目色。
 - 用字重 500 做層次；中文負字距；小於 12px 的文字；觸控裝置自動 focus；raw hex。
+- 局部預覽用 Tailwind 的 `dark:`；在頁面直接寫 `.sf-*` 元件 class；紅、橘、黃系當主題色。
+
+## 9. 已知限制與待評估
+
+- **多層巢狀 `data-accent`**：祖先 A 底下的元素 B 又設了 `data-accent`，B 裡面的子元素只加 `data-theme` 時，會依原始碼順序取 A 或 B，不保證取最近的 B。預覽時請把 `data-accent` 和 `data-theme` 放在同一個元素上。
+- **Tailwind `dark:` 以 `<html>` 為準**：局部 `data-theme` 只切換 tokens，不影響 `dark:` 變體。
+- **只加 `data-accent` 的元素不會重算 heat-***：熱度圖色階跟著 `<html>` 的主題色。
+- **熱度圖最淺一階**：heat-1 對 card 約 1.3:1。依 dataviz 對 sequential 色階的規則（最淺一階代表接近 0，可以貼近表面）保留，並以表格檢視、格子的 title 提示與 `role="img"` 摘要補足。
+- **墨綠主題色與 success 相近**（ΔE 7.7／9.2）：計時環的專注（accent）與休息（success）靠文字標籤區分。
+- **待評估（Sprint 2）**：是否放寬深色的 DARK_BAND（見 §3）。
+- **第三方與頁面層**：sonner 的關閉鈕只有 20px（套件內建；toast 會自動消失，也能滑掉）；PWA 啟動畫面（manifest `background_color`）只有淺色；`Logo.tsx` 的品牌藍是寫死的，不跟主題色。頁面裡的 emoji、「・」、「→」、一排 `StatTile` 等舊寫法留給 Sprint 2 各頁 lane（UI-2）。
+- **Field 舊寫法的自動 aria**：只補在 children 回傳的那個元素上；自訂元件（例如 `SubjectSelect`）沒有把 aria 屬性傳給內部欄位時不會生效，Sprint 2 請改成 `(id, aria)` 並往下傳。
