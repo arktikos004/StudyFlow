@@ -227,6 +227,9 @@ export const noteUpdateSchema = z.object({
 });
 export const reviewSchema = z.object({ result: z.enum(['remembered', 'forgot']) });
 
+/** GET /api/export/calendar.ics?tasks=1：是否把有期限的任務也匯出成全天事件 */
+export const calendarExportQuerySchema = z.object({ tasks: z.enum(['0', '1'], { error: '參數格式錯誤' }).optional() });
+
 // 間隔重複：第 n 次答對後隔幾天再複習；全部通過即視為已掌握
 export const REVIEW_INTERVALS = [1, 3, 7, 14, 30] as const;
 
