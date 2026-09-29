@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatterCacheSize, localDate, startOfLocalDay, zonedTime } from '../src/shared/dates';
+import { formatterCacheSize, localDate, localDateTime, startOfLocalDay, zonedTime } from '../src/shared/dates';
 
 /** 同一個時區名稱的各種大小寫寫法：asia/taipei、Asia/taipei、aSia/taipei… */
 function caseVariants(name: string, limit: number) {
@@ -22,6 +22,38 @@ describe('Intl.DateTimeFormat 快取', () => {
 		// 2026-01-01 20:00 UTC = 台北 2026-01-02
 		for (const tz of variants) expect(localDate(Date.UTC(2026, 0, 1, 20), tz)).toBe('2026-01-02');
 		expect(formatterCacheSize()).toBeLessThanOrEqual(64);
+	});
+});
+
+describe('localDateTime', () => {
+	it('輸出 YYYY-MM-DD HH:mm，和逐欄組合的結果完全相同', () => {
+		const partsFormat = new Map<string, Intl.DateTimeFormat>();
+		const reference = (ms: number, timeZone: string) => {
+			let f = partsFormat.get(timeZone);
+			if (!f) {
+				f = new Intl.DateTimeFormat('en-US', {
+					timeZone,
+					hourCycle: 'h23',
+					year: 'numeric',
+					month: '2-digit',
+					day: '2-digit',
+					hour: '2-digit',
+					minute: '2-digit',
+				});
+				partsFormat.set(timeZone, f);
+			}
+			const parts = f.formatToParts(ms);
+			const get = (t: string) => parts.find((p) => p.type === t)!.value;
+			return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
+		};
+		// 一整年、每 7 小時 13 分取一個時間點，涵蓋午夜、夏令時間與非整點偏移的時區
+		for (const tz of ['Asia/Taipei', 'America/New_York', 'Europe/Berlin', 'Asia/Kolkata', 'Pacific/Chatham', 'UTC']) {
+			for (let ms = Date.UTC(2026, 0, 1); ms < Date.UTC(2027, 0, 1); ms += 7 * 3_600_000 + 13 * 60_000) {
+				expect(localDateTime(ms, tz)).toBe(reference(ms, tz));
+			}
+		}
+		// 午夜是 00:00，不是 24:00
+		expect(localDateTime(Date.UTC(2026, 0, 15, 16, 0), 'Asia/Taipei')).toBe('2026-01-16 00:00');
 	});
 });
 

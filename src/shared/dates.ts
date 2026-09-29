@@ -50,10 +50,25 @@ export function localDate(epochMs: number, timeZone: string): string {
 	return dateFormat(timeZone).format(epochMs);
 }
 
+// sv-SE 的日期時間格式剛好是 'YYYY-MM-DD HH:mm'：匯出時每筆只需要呼叫一次 format()
+const dateTimeFormat = (timeZone: string) =>
+	cached(
+		`datetime|${timeZone}`,
+		() =>
+			new Intl.DateTimeFormat('sv-SE', {
+				timeZone,
+				hourCycle: 'h23',
+				year: 'numeric',
+				month: '2-digit',
+				day: '2-digit',
+				hour: '2-digit',
+				minute: '2-digit',
+			}),
+	);
+
 /** 'YYYY-MM-DD HH:mm'：某個瞬間在該時區的當地日期與時間 */
 export function localDateTime(epochMs: number, timeZone: string): string {
-	const p = localParts(epochMs, timeZone);
-	return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+	return dateTimeFormat(timeZone).format(epochMs);
 }
 
 export function today(timeZone: string): string {
