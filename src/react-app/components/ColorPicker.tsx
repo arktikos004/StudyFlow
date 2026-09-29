@@ -229,66 +229,112 @@ function RecommendedRow({ value, onChange, usedBy, label }: SwatchGroupProps) {
 /** 更多顏色：4 列（色調）× 10 欄（色相）的 radiogroup；左右在同一列移動、上下換列、Home／End 到列頭列尾 */
 function PaletteGrid({ value, onChange, usedBy, label }: SwatchGroupProps) {
 	const toneOf = useSubjectTone();
+	const gridRef = useRef<HTMLDivElement>(null);
 	const refs = useRef<(HTMLButtonElement | null)[]>([]);
 	const at = paletteIndex(value);
 	const checked = at ? at.tone * COLS + at.hue : -1;
 	const tabStop = Math.max(0, checked);
 
 	const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>, tone: number, hue: number) => {
-		let t = tone;
-		let h = hue;
-		if (e.key === 'ArrowLeft') h = Math.max(0, hue - 1);
-		else if (e.key === 'ArrowRight') h = Math.min(COLS - 1, hue + 1);
-		else if (e.key === 'ArrowUp') t = Math.max(0, tone - 1);
-		else if (e.key === 'ArrowDown') t = Math.min(PALETTE.length - 1, tone + 1);
-		else if (e.key === 'Home') h = 0;
-		else if (e.key === 'End') h = COLS - 1;
-		else return;
+		// 排版由 CSS 決定（容器查詢＋pointer 媒體查詢），這裡讀同一組查詢設定的 --grid-blocks，方向鍵跟著畫面走
+		const grid = gridRef.current;
+		const blocks = grid && getComputedStyle(grid).getPropertyValue('--grid-blocks').trim() === '1' ? 1 : 2;
+		const next = moveInGrid(tone, hue, e.key, blocks);
+		if (!next) return;
 		e.preventDefault();
-		if (t === tone && h === hue) return;
-		onChange(PALETTE[t][h]);
-		refs.current[t * COLS + h]?.focus();
+		if (next.tone === tone && next.hue === hue) return;
+		onChange(PALETTE[next.tone][next.hue]);
+		refs.current[next.tone * COLS + next.hue]?.focus();
 	};
 
 	return (
-		<div role="radiogroup" aria-label={`${label}：更多顏色`} className="grid w-full max-w-[22.25rem] grid-cols-10 gap-1">
-			{PALETTE.map((row, t) =>
-				row.map((hex, h) => {
-					const i = t * COLS + h;
-					const tone = toneOf(hex);
-					const users = usedBy.get(hex);
-					const colorTitle = colorName(hex) ?? hex;
-					const on = i === checked;
-					return (
-						<button
-							key={hex}
-							ref={(el) => {
-								refs.current[i] = el;
-							}}
-							type="button"
-							role="radio"
-							aria-checked={on}
-							aria-label={users ? `${colorTitle}，已用於${quote(users)}` : colorTitle}
-							title={users ? `${colorTitle}，已用於${quote(users)}` : colorTitle}
-							tabIndex={i === tabStop ? 0 : -1}
-							onClick={() => onChange(hex)}
-							onKeyDown={(e) => onKeyDown(e, t, h)}
-							className={cn(
-								'relative grid aspect-square w-full place-items-center rounded-sm',
-								on && 'ring-2 ring-ink ring-offset-1 ring-offset-card',
-							)}
-							style={{ background: tone.mark }}
-						>
-							{on && <Check className="size-4" strokeWidth={3} style={{ color: tone.onMark }} aria-hidden />}
-							{users && (
-								<span aria-hidden className="absolute top-0.5 right-0.5 size-1.5 rounded-full" style={{ background: tone.onMark }} />
-							)}
-						</button>
-					);
-				}),
+		<div
+			ref={gridRef}
+			role="radiogroup"
+			aria-label={`${label}：更多顏色`}
+			className={cn(
+				// 預設（觸控裝置或容器不夠寬）：兩塊 5 色相 × 4 色調上下排列，中間多 4px 的空行分隔
+				'grid grid-cols-[repeat(5,2.75rem)] grid-rows-[repeat(4,2.75rem)_0.25rem_repeat(4,2.75rem)] gap-1 [--grid-blocks:2]',
+				// 滑鼠等精確指標、而且容器放得下 10 格 × 44px（含間距 476px）：10 × 4 一整塊
+				'@min-[29.75rem]:pointer-fine:grid-cols-[repeat(10,2.75rem)] @min-[29.75rem]:pointer-fine:grid-rows-[repeat(4,2.75rem)] @min-[29.75rem]:pointer-fine:[--grid-blocks:1]',
 			)}
+		>
+			{GRID_CELLS.map(({ hex, tone: t, hue: h }) => {
+				const i = t * COLS + h;
+				const tone = toneOf(hex);
+				const users = usedBy.get(hex);
+				const colorTitle = colorName(hex) ?? hex;
+				const on = i === checked;
+				const block = Math.floor(h / BLOCK_HUES);
+				// 兩種排版各自的格線位置；class 依查詢結果選用其中一組
+				const place = {
+					'--r1': String(t + 1),
+					'--c1': String(h + 1),
+					'--r2': String(block * (PALETTE.length + 1) + t + 1),
+					'--c2': String((h % BLOCK_HUES) + 1),
+				};
+				return (
+					<button
+						key={hex}
+						ref={(el) => {
+							refs.current[i] = el;
+						}}
+						type="button"
+						role="radio"
+						aria-checked={on}
+						aria-label={users ? `${colorTitle}，已用於${quote(users)}` : colorTitle}
+						title={users ? `${colorTitle}，已用於${quote(users)}` : colorTitle}
+						tabIndex={i === tabStop ? 0 : -1}
+						onClick={() => onChange(hex)}
+						onKeyDown={(e) => onKeyDown(e, t, h)}
+						className={cn(
+							'relative grid size-11 place-items-center rounded-sm',
+							'[grid-column:var(--c2)] [grid-row:var(--r2)] @min-[29.75rem]:pointer-fine:[grid-column:var(--c1)] @min-[29.75rem]:pointer-fine:[grid-row:var(--r1)]',
+							on && 'ring-2 ring-ink ring-offset-1 ring-offset-card',
+						)}
+						style={{ background: tone.mark, ...place } as CSSProperties}
+					>
+						{on && <Check className="size-5" strokeWidth={3} style={{ color: tone.onMark }} aria-hidden />}
+						{users && <span aria-hidden className="absolute top-1 right-1 size-2 rounded-full" style={{ background: tone.onMark }} />}
+					</button>
+				);
+			})}
 		</div>
 	);
+}
+
+/** 兩塊排版時每一塊的色相數：第一塊紅到綠、第二塊青到桃紅 */
+const BLOCK_HUES = 5;
+
+/** DOM 順序跟著兩塊排版（手機與大多數寬度的畫面），讓瀏覽模式讀到的順序和畫面一致 */
+const GRID_CELLS = [0, 1].flatMap((block) =>
+	PALETTE.flatMap((row, tone) =>
+		row.slice(block * BLOCK_HUES, (block + 1) * BLOCK_HUES).map((hex, i) => ({ hex, tone, hue: block * BLOCK_HUES + i })),
+	),
+);
+
+/**
+ * 色格的方向鍵，依畫面上的排列移動：
+ * - 一整塊（10 × 4）：左右在同一列、上下換列，Home／End 到列頭列尾。
+ * - 兩塊（上下兩塊 5 × 4）：左右在同一塊的同一列；上下逐列移動，會從第一塊的最後一列跨到第二塊的第一列；
+ *   Home／End 到該塊該列的頭尾。
+ * 不是方向鍵時回傳 null。
+ */
+function moveInGrid(tone: number, hue: number, key: string, blocks: 1 | 2): { tone: number; hue: number } | null {
+	const rows = PALETTE.length;
+	const width = blocks === 1 ? COLS : BLOCK_HUES;
+	const block = blocks === 1 ? 0 : Math.floor(hue / BLOCK_HUES);
+	const col = hue - block * width;
+	let row = block * rows + tone; // 畫面上的第幾列（兩塊時 0–7）
+	let c = col;
+	if (key === 'ArrowLeft') c = Math.max(0, col - 1);
+	else if (key === 'ArrowRight') c = Math.min(width - 1, col + 1);
+	else if (key === 'ArrowUp') row = Math.max(0, row - 1);
+	else if (key === 'ArrowDown') row = Math.min(blocks * rows - 1, row + 1);
+	else if (key === 'Home') c = 0;
+	else if (key === 'End') c = width - 1;
+	else return null;
+	return { tone: row % rows, hue: Math.floor(row / rows) * width + c };
 }
 
 const toPercent = (x: number) => Math.round(x * 100);
