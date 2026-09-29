@@ -2,11 +2,15 @@ import { cloudflare } from '@cloudflare/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// 只忽略「這份專案根目錄」底下的 .claude/（含 agent 的 worktree），避免其他分支的檔案觸發重新整理。
+// 必須用絕對路徑：worktree 本身就在 .claude/worktrees/ 底下，用 '**/.claude/**' 會連 worktree 自己的檔案都忽略。
+const CLAUDE_DIR = fileURLToPath(new URL('./.claude', import.meta.url));
+
 export default defineConfig({
-	// 不監看 agent 的 worktree（.claude/worktrees/），避免其他分支的檔案觸發重新整理
-	server: { watch: { ignored: ['**/.claude/**'] } },
+	server: { watch: { ignored: [`${CLAUDE_DIR}/**`] } },
 	plugins: [
 		react(),
 		tailwindcss(),
