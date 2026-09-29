@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import type {
+	eventSchema,
+	eventUpdateSchema,
 	noteSchema,
 	noteUpdateSchema,
 	studySessionSchema,
@@ -22,6 +24,7 @@ import type {
 	StudySession,
 	Subject,
 	SubjectOverview,
+	SummaryResponse,
 	TaskItem,
 } from '../../shared/api-types';
 import { api, ApiError, qs } from './api';
@@ -130,6 +133,11 @@ export function useDashboard() {
 	return useQuery({ queryKey: ['dashboard'], queryFn: () => api.get<DashboardResponse>('/dashboard') });
 }
 
+/** 頁首摘要：今天到期、逾期、待複習數與下一場考試 */
+export function useSummary() {
+	return useQuery({ queryKey: ['summary'], queryFn: () => api.get<SummaryResponse>('/summary'), staleTime: 30_000 });
+}
+
 // ---- 修改 ----
 
 /**
@@ -147,8 +155,8 @@ function useApiMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, i
 	});
 }
 
-// 任務、考試、學習紀錄的變動都會影響總覽、統計與單科總覽
-const OVERVIEW: QueryKey[] = [['dashboard'], ['stats'], ['subject-overview']];
+// 任務、考試、學習紀錄的變動都會影響總覽、統計、頁首摘要與單科總覽
+const OVERVIEW: QueryKey[] = [['dashboard'], ['stats'], ['summary'], ['subject-overview']];
 
 // 科目的名稱、顏色、圖示、目標、順序會出現在總覽（各科目標）、統計圖表與單科總覽
 const SUBJECT_KEYS: QueryKey[] = [['subjects'], ['dashboard'], ['stats'], ['subject-overview']];
@@ -195,20 +203,13 @@ export const useReorderSubjects = () => {
 	});
 };
 
-export type EventInput = {
-	kind: 'exam' | 'deadline';
-	title: string;
-	date: string;
-	time?: string | null;
-	location?: string | null;
-	notes?: string | null;
-	subjectId?: string | null;
-};
+export type EventInput = z.input<typeof eventSchema>;
+export type EventUpdateInput = z.input<typeof eventUpdateSchema> & { id: string };
 export const useCreateEvent = () =>
 	useApiMutation((v: EventInput) => api.post<{ event: EventItem }>('/events', v), [['events'], ...OVERVIEW], '已新增');
 export const useUpdateEvent = () =>
 	useApiMutation(
-		({ id, ...v }: Partial<EventInput> & { id: string }) => api.patch(`/events/${id}`, v),
+		({ id, ...v }: EventUpdateInput) => api.patch<{ event: EventItem }>(`/events/${id}`, v),
 		[['events'], ...OVERVIEW],
 		'已更新',
 	);
@@ -257,7 +258,7 @@ export const useDeleteSession = () => useApiMutation((id: string) => api.del(`/s
 export type NoteInput = z.input<typeof noteSchema>;
 /** 只送要改的欄位；{ id, pinned } 只改釘選，不會更新「最後更新」時間 */
 export type NoteUpdateInput = z.input<typeof noteUpdateSchema> & { id: string };
-const NOTE_KEYS: QueryKey[] = [['notes'], ['note'], ['dashboard'], ['stats'], ['subject-overview']];
+const NOTE_KEYS: QueryKey[] = [['notes'], ['note'], ['dashboard'], ['stats'], ['summary'], ['subject-overview']];
 export const useCreateNote = () => useApiMutation((v: NoteInput) => api.post<{ note: NoteItem }>('/notes', v), NOTE_KEYS);
 export const useUpdateNote = () =>
 	useApiMutation(({ id, ...v }: NoteUpdateInput) => api.patch<{ note: NoteItem }>(`/notes/${id}`, v), NOTE_KEYS);

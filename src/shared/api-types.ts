@@ -38,7 +38,8 @@ export type NoteItem = Note & { attachments: PublicAttachment[] };
 
 export type DashboardResponse = {
 	today: string;
-	upcomingEvents: StudyEvent[];
+	/** 今天以後的 5 筆考試／截止日，帶相關任務的完成進度（DASH-1） */
+	upcomingEvents: EventItem[];
 	focusTasks: Task[];
 	openTaskCount: number;
 	reviewDueCount: number;
@@ -53,6 +54,19 @@ export type DashboardResponse = {
 		/** 有設定每週目標、沒有封存的科目，依科目順序排列；minutes 是本週（週一起算）的分鐘數 */
 		subjects: { subjectId: string; goalMinutes: number; minutes: number }[];
 	};
+};
+
+/** GET /api/summary：頁首、導覽與快速搜尋用的輕量摘要 */
+export type SummaryResponse = {
+	today: string;
+	/** 未完成、期限是今天的任務數 */
+	dueTodayCount: number;
+	/** 未完成、期限已過的任務數 */
+	overdueCount: number;
+	/** 還沒掌握、複習日在今天以前的筆記數（同 dashboard.reviewDueCount） */
+	reviewDueCount: number;
+	/** 下一場考試：kind = 'exam'、date >= 今天，依日期、時間排序的第一筆 */
+	nextExam: { id: string; title: string; date: string; time: string | null; subjectId: string | null } | null;
 };
 
 export type StatsResponse = {

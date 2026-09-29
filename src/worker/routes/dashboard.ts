@@ -2,6 +2,7 @@ import { and, asc, count, eq, gte, isNotNull, lte, ne, or, sql } from 'drizzle-o
 import { Hono } from 'hono';
 import { addDays, dateRange, startOfLocalDay, today, weekStart } from '../../shared/dates';
 import { events, notes, subjects, tasks } from '../db/schema';
+import { eventItemFields } from '../lib/events';
 import { minutesByDate, round1, sessionsBetween, streaks } from '../lib/stats';
 import { requireAuth } from '../middleware/auth';
 import type { DashboardResponse } from '../../shared/api-types';
@@ -14,8 +15,9 @@ export const dashboardRoutes = new Hono<AppEnv>().use(requireAuth).get('/', asyn
 	const todayStr = today(tz);
 
 	const [upcomingEvents, focusTasks, [openTasks], [reviewDue], yearSessions, goalSubjects] = await Promise.all([
+		// 考試準備進度（DASH-1）：帶相關任務的完成數
 		db
-			.select()
+			.select(eventItemFields())
 			.from(events)
 			.where(and(eq(events.userId, user.id), gte(events.date, todayStr)))
 			.orderBy(asc(events.date), asc(events.time))

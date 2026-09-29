@@ -11,6 +11,7 @@ import { noteRoutes } from './routes/notes';
 import { statsRoutes } from './routes/stats';
 import { studySessionRoutes } from './routes/study-sessions';
 import { subjectRoutes } from './routes/subjects';
+import { summaryRoutes } from './routes/summary';
 import { taskRoutes } from './routes/tasks';
 import type { AppEnv } from './types';
 
@@ -35,7 +36,8 @@ app
 	.route('/api/notes', noteRoutes)
 	.route('/api/attachments', attachmentRoutes)
 	.route('/api/stats', statsRoutes)
-	.route('/api/dashboard', dashboardRoutes);
+	.route('/api/dashboard', dashboardRoutes)
+	.route('/api/summary', summaryRoutes);
 
 app.notFound((c) => c.json({ error: '找不到此 API' }, 404));
 
