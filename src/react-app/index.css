@@ -616,6 +616,46 @@
 	}
 }
 
+/* ---- Toast（sonner）：不用 richColors，改用 tokens；類型靠圖示顏色加文字區分 ---- */
+:root [data-sonner-toaster][data-sonner-theme] {
+	--normal-bg: var(--card);
+	--normal-bg-hover: var(--subtle);
+	--normal-border: var(--line);
+	--normal-border-hover: var(--line-strong);
+	--normal-text: var(--ink);
+	--border-radius: var(--radius-xl);
+	font-family: var(--font-sans);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] {
+	box-shadow: var(--elevation-md);
+	font-size: 0.9375rem;
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-title] {
+	font-weight: 600;
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-description] {
+	color: var(--ink-2);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type='success'] [data-icon] {
+	color: var(--success);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type='error'] [data-icon] {
+	color: var(--danger);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type='warning'] [data-icon] {
+	color: var(--warning);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type='info'] [data-icon] {
+	color: var(--accent-ink);
+}
+/* sonner 內建的焦點框是黑色半透明，深色模式下看不見：改用 accent */
+:root [data-sonner-toaster] [data-sonner-toast]:focus-visible {
+	box-shadow: var(--elevation-md), 0 0 0 2px var(--accent);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] :is([data-button], [data-close-button]):focus-visible {
+	box-shadow: 0 0 0 2px var(--accent);
+}
+
 /* Markdown 筆記內容 */
 .prose-note {
 	line-height: 1.75;
