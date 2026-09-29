@@ -103,6 +103,98 @@
 	--elevation-lg: 0 2px 8px rgb(0 0 0 / 0.5), 0 28px 56px -12px rgb(0 0 0 / 0.7);
 }
 
+/*
+ * ==== 主題色（SUB-4）====
+ * 6 組 × 淺色／深色，每組都驗證過：on-accent 在 accent 上 ≥ 4.5:1、accent-ink 在 card／page／subtle／accent-soft 上 ≥ 4.5:1、
+ * accent 當焦點框 ≥ 3:1（數值見 DESIGN.md §2 主題色表）。
+ * 選擇存在 localStorage 'studyflow:accent'，public/theme-init.js 在第一次繪製前設定 <html data-accent>。
+ * 選擇器不限定 :root，所以任何元素加上 data-accent 都能預覽該色組（例如設定頁的色票）。
+ */
+[data-accent='blue'] {
+	--accent: #2d53ca;
+	--accent-hover: #2345b4;
+	--accent-ink: #284ab2;
+	--accent-soft: #e5edff;
+	--on-accent: #ffffff;
+}
+[data-accent='green'] {
+	--accent: #00614f;
+	--accent-hover: #005242;
+	--accent-ink: #005847;
+	--accent-soft: #d8f4eb;
+	--on-accent: #ffffff;
+}
+[data-accent='lake'] {
+	--accent: #006c82;
+	--accent-hover: #005d70;
+	--accent-ink: #005d71;
+	--accent-soft: #d8f2fa;
+	--on-accent: #ffffff;
+}
+[data-accent='grape'] {
+	--accent: #7e46bd;
+	--accent-hover: #6e3aa9;
+	--accent-ink: #6c39a4;
+	--accent-soft: #f0e8ff;
+	--on-accent: #ffffff;
+}
+[data-accent='berry'] {
+	--accent: #a8328a;
+	--accent-hover: #952679;
+	--accent-ink: #912776;
+	--accent-soft: #fce5f3;
+	--on-accent: #ffffff;
+}
+[data-accent='graphite'] {
+	--accent: #5a616e;
+	--accent-hover: #4d545f;
+	--accent-ink: #4e5560;
+	--accent-soft: #eaedf2;
+	--on-accent: #ffffff;
+}
+:is([data-theme='dark'][data-accent='blue'], [data-theme='dark'] [data-accent='blue']) {
+	--accent: #7da1f9;
+	--accent-hover: #96b6ff;
+	--accent-ink: #9fbdff;
+	--accent-soft: #1d2c51;
+	--on-accent: #080e21;
+}
+:is([data-theme='dark'][data-accent='green'], [data-theme='dark'] [data-accent='green']) {
+	--accent: #51ad95;
+	--accent-hover: #72bda8;
+	--accent-ink: #87c9b5;
+	--accent-soft: #08362c;
+	--on-accent: #01140e;
+}
+:is([data-theme='dark'][data-accent='lake'], [data-theme='dark'] [data-accent='lake']) {
+	--accent: #38afcc;
+	--accent-hover: #64c0d9;
+	--accent-ink: #78c7dd;
+	--accent-soft: #003440;
+	--on-accent: #001218;
+}
+:is([data-theme='dark'][data-accent='grape'], [data-theme='dark'] [data-accent='grape']) {
+	--accent: #b48feb;
+	--accent-hover: #c5a5f5;
+	--accent-ink: #caaef5;
+	--accent-soft: #35244b;
+	--on-accent: #130a1e;
+}
+:is([data-theme='dark'][data-accent='berry'], [data-theme='dark'] [data-accent='berry']) {
+	--accent: #db84bf;
+	--accent-hover: #e89ccf;
+	--accent-ink: #eaa6d3;
+	--accent-soft: #431f38;
+	--on-accent: #1a0815;
+}
+:is([data-theme='dark'][data-accent='graphite'], [data-theme='dark'] [data-accent='graphite']) {
+	--accent: #9ba2ad;
+	--accent-hover: #afb4be;
+	--accent-ink: #b5bbc3;
+	--accent-soft: #2a2e35;
+	--on-accent: #0b0f17;
+}
+
 @theme inline {
 	--color-page: var(--page);
 	--color-card: var(--card);
