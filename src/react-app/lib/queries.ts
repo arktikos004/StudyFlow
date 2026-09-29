@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import type {
+	noteSchema,
+	noteUpdateSchema,
 	studySessionSchema,
 	studySessionUpdateSchema,
 	subjectSchema,
@@ -252,23 +254,13 @@ export const useUpdateSession = () =>
 	);
 export const useDeleteSession = () => useApiMutation((id: string) => api.del(`/study-sessions/${id}`), SESSION_KEYS, '已刪除紀錄');
 
-export type NoteInput = {
-	kind: 'note' | 'mistake';
-	title: string;
-	content?: string | null;
-	question?: string | null;
-	wrongAnswer?: string | null;
-	correctAnswer?: string | null;
-	reason?: string | null;
-	tags?: string[];
-	subjectId?: string | null;
-	scheduleReview?: boolean;
-	mastered?: boolean;
-};
+export type NoteInput = z.input<typeof noteSchema>;
+/** 只送要改的欄位；{ id, pinned } 只改釘選，不會更新「最後更新」時間 */
+export type NoteUpdateInput = z.input<typeof noteUpdateSchema> & { id: string };
 const NOTE_KEYS: QueryKey[] = [['notes'], ['note'], ['dashboard'], ['stats'], ['subject-overview']];
 export const useCreateNote = () => useApiMutation((v: NoteInput) => api.post<{ note: NoteItem }>('/notes', v), NOTE_KEYS);
 export const useUpdateNote = () =>
-	useApiMutation(({ id, ...v }: Partial<NoteInput> & { id: string }) => api.patch<{ note: NoteItem }>(`/notes/${id}`, v), NOTE_KEYS);
+	useApiMutation(({ id, ...v }: NoteUpdateInput) => api.patch<{ note: NoteItem }>(`/notes/${id}`, v), NOTE_KEYS);
 export const useDeleteNote = () => useApiMutation((id: string) => api.del(`/notes/${id}`), NOTE_KEYS, '已刪除');
 export const useReviewNote = () =>
 	useApiMutation(

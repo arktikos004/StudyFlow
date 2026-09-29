@@ -221,6 +221,8 @@ export const noteUpdateSchema = z.object({
 	tags: noteFields.tags.optional(),
 	subjectId: noteFields.subjectId,
 	mastered: z.boolean().optional(),
+	// 只改釘選時，不會更新「最後更新」時間，也不影響複習排程
+	pinned: z.boolean({ error: '釘選格式錯誤' }).optional(),
 	scheduleReview: z.boolean().optional(),
 });
 export const reviewSchema = z.object({ result: z.enum(['remembered', 'forgot']) });
