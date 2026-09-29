@@ -55,6 +55,31 @@ describe('成就（APP-2）', () => {
 		expect(a['pomodoro-25']).toMatchObject({ unlocked: false, progress: 2, target: 25 });
 	});
 
+	it('番茄鐘只計入 mode = pomodoro 而且至少 10 分鐘的紀錄', async () => {
+		const c = await registeredClient();
+		const now = Date.now();
+		// 每筆的起訖都是 26 分鐘，實際秒數各不相同；時段彼此錯開
+		const cases: [string, number][] = [
+			['pomodoro', 25 * 60], // 算
+			['pomodoro', 600], // 剛好 10 分鐘：算
+			['pomodoro', 599], // 差 1 秒：不算
+			['pomodoro', 60], // 提早結束的 1 分鐘：不算
+			['stopwatch', 25 * 60], // 不是番茄鐘：不算
+			['manual', 25 * 60], // 不是番茄鐘：不算
+		];
+		for (const [i, [mode, durationSec]] of cases.entries()) {
+			const endedAt = now - (i + 1) * 30 * 60_000;
+			const res = await c.post('/api/study-sessions', { mode, startedAt: endedAt - 26 * 60_000, endedAt, durationSec });
+			expect(res.status, JSON.stringify(res.data)).toBe(201);
+		}
+		const a = await achievements(c);
+		expect(a['pomodoro-25']).toMatchObject({ unlocked: false, progress: 2, target: 25 });
+		expect(a['pomodoro-100']).toMatchObject({ unlocked: false, progress: 2, target: 100 });
+		expect(a['pomodoro-25'].description).toContain('至少 10 分鐘');
+		// 其他成就仍計入全部紀錄
+		expect(a['first-session']).toMatchObject({ unlocked: true, progress: 1 });
+	});
+
 	it('差一點達標時不會顯示成已達成（小時數無條件捨去）', async () => {
 		const c = await registeredClient();
 		const end = Date.now() - 60_000;
