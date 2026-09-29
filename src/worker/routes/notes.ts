@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, count, desc, eq, lte, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
@@ -13,9 +13,11 @@ import {
 	reviewSchema,
 } from '../../shared/schemas';
 import { attachments, notes, subjects, type Attachment, type Note } from '../db/schema';
-import { assertOwned, notFound, type DB } from '../lib/db';
+import { assertOwned, hasValues, notFound, type DB } from '../lib/db';
+import { containsText } from '../lib/text';
 import { validate } from '../lib/validator';
 import { requireAuth } from '../middleware/auth';
+import type { NoteItem, PublicAttachment } from '../../shared/api-types';
 import type { AppEnv } from '../types';
 
 const listQuery = z.object({
@@ -27,23 +29,30 @@ const listQuery = z.object({
 	mastered: z.enum(['true', 'false']).optional(),
 });
 
-function publicAttachment(a: Attachment) {
+function publicAttachment(a: Attachment): PublicAttachment {
 	return { id: a.id, noteId: a.noteId, contentType: a.contentType, size: a.size, createdAt: a.createdAt };
 }
 
-async function withAttachments(db: DB, rows: Note[]) {
+/**
+ * 列表：D1 每個查詢最多 100 個參數，不能用 inArray(筆記 id)（BUG-1），
+ * 改成一次取出本人全部照片（attachments_user_idx），在記憶體裡依筆記分組。
+ */
+async function listWithAttachments(db: DB, userId: string, rows: Note[]): Promise<NoteItem[]> {
 	if (rows.length === 0) return [];
-	const atts = await db
-		.select()
-		.from(attachments)
-		.where(
-			inArray(
-				attachments.noteId,
-				rows.map((r) => r.id),
-			),
-		)
-		.orderBy(attachments.createdAt);
-	return rows.map((n) => ({ ...n, attachments: atts.filter((a) => a.noteId === n.id).map(publicAttachment) }));
+	const atts = await db.select().from(attachments).where(eq(attachments.userId, userId)).orderBy(attachments.createdAt);
+	const byNote = new Map<string, PublicAttachment[]>();
+	for (const a of atts) {
+		const list = byNote.get(a.noteId);
+		if (list) list.push(publicAttachment(a));
+		else byNote.set(a.noteId, [publicAttachment(a)]);
+	}
+	return rows.map((n) => ({ ...n, attachments: byNote.get(n.id) ?? [] }));
+}
+
+/** 單筆：依 note_id 查這則筆記的照片 */
+async function withAttachments(db: DB, note: Note): Promise<NoteItem> {
+	const atts = await db.select().from(attachments).where(eq(attachments.noteId, note.id)).orderBy(attachments.createdAt);
+	return { ...note, attachments: atts.map(publicAttachment) };
 }
 
 async function getOwnedNote(db: DB, id: string, userId: string) {
@@ -70,7 +79,6 @@ export const noteRoutes = new Hono<AppEnv>()
 	.get('/', validate('query', listQuery), async (c) => {
 		const q = c.req.valid('query');
 		const user = c.var.user;
-		const pattern = q.q ? `%${q.q.replace(/[\\%_]/g, (m) => `\\${m}`)}%` : null;
 		const rows = await c.var.db
 			.select()
 			.from(notes)
@@ -82,19 +90,17 @@ export const noteRoutes = new Hono<AppEnv>()
 					q.mastered ? eq(notes.mastered, q.mastered === 'true') : undefined,
 					q.review === 'due' ? and(eq(notes.mastered, false), lte(notes.nextReviewDate, today(user.timezone))) : undefined,
 					q.tag ? sql`EXISTS (SELECT 1 FROM json_each(${notes.tags}) WHERE value = ${q.tag})` : undefined,
-					pattern
-						? sql`(${notes.title} LIKE ${pattern} ESCAPE '\\' OR ${notes.content} LIKE ${pattern} ESCAPE '\\' OR ${notes.question} LIKE ${pattern} ESCAPE '\\')`
-						: undefined,
+					q.q ? or(containsText(notes.title, q.q), containsText(notes.content, q.q), containsText(notes.question, q.q)) : undefined,
 				),
 			)
-			.orderBy(desc(notes.updatedAt))
+			// 釘選的排最前面（篩選後也一樣），其次依更新時間
+			.orderBy(desc(notes.pinned), desc(notes.updatedAt))
 			.limit(500);
-		return c.json({ notes: await withAttachments(c.var.db, rows) });
+		return c.json({ notes: await listWithAttachments(c.var.db, user.id, rows) });
 	})
 	.get('/:id', async (c) => {
 		const note = await getOwnedNote(c.var.db, c.req.param('id'), c.var.user.id);
-		const [full] = await withAttachments(c.var.db, [note]);
-		return c.json({ note: full });
+		return c.json({ note: await withAttachments(c.var.db, note) });
 	})
 	.post('/', validate('json', noteSchema), async (c) => {
 		const { scheduleReview, ...input } = c.req.valid('json');
@@ -109,13 +115,15 @@ export const noteRoutes = new Hono<AppEnv>()
 		return c.json({ note: { ...row, attachments: [] } }, 201);
 	})
 	.patch('/:id', validate('json', noteUpdateSchema), async (c) => {
-		const { scheduleReview, ...input } = c.req.valid('json');
+		const { scheduleReview, pinned, ...input } = c.req.valid('json');
 		const db = c.var.db;
 		const user = c.var.user;
 		await assertOwned(db, subjects, input.subjectId, user.id, '科目');
 		const current = await getOwnedNote(db, c.req.param('id'), user.id);
 
-		const patch: Partial<Note> = { ...input, updatedAt: Date.now() };
+		const patch: Partial<Note> = { ...input, pinned };
+		// 只改釘選時不更新「最後更新」時間（NOTE-1）
+		if (hasValues(input) || scheduleReview !== undefined) patch.updatedAt = Date.now();
 		const firstReview = addDays(today(user.timezone), REVIEW_INTERVALS[0]);
 		if (input.mastered === true) {
 			patch.nextReviewDate = null;
@@ -127,9 +135,8 @@ export const noteRoutes = new Hono<AppEnv>()
 		if (scheduleReview === true && !current.nextReviewDate && !current.mastered) patch.nextReviewDate = firstReview;
 		if (scheduleReview === false) patch.nextReviewDate = null;
 
-		const row = await db.update(notes).set(patch).where(eq(notes.id, current.id)).returning().get();
-		const [full] = await withAttachments(db, [row]);
-		return c.json({ note: full });
+		const row = hasValues(patch) ? await db.update(notes).set(patch).where(eq(notes.id, current.id)).returning().get() : current;
+		return c.json({ note: await withAttachments(db, row) });
 	})
 	.post('/:id/review', validate('json', reviewSchema), async (c) => {
 		const { result } = c.req.valid('json');
@@ -155,8 +162,7 @@ export const noteRoutes = new Hono<AppEnv>()
 			.where(eq(notes.id, current.id))
 			.returning()
 			.get();
-		const [full] = await withAttachments(c.var.db, [row]);
-		return c.json({ note: full });
+		return c.json({ note: await withAttachments(c.var.db, row) });
 	})
 	.delete('/:id', async (c) => {
 		const db = c.var.db;

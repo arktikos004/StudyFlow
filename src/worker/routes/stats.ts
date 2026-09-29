@@ -47,6 +47,9 @@ export const statsRoutes = new Hono<AppEnv>().use(requireAuth).get('/', validate
 	const totalMinutes = rangeSessions.reduce((sum, s) => sum + s.durationSec / 60, 0);
 	const activeDays = daily.filter((d) => d.minutes > 0).length;
 	const streak = streaks(new Set(yearByDate.keys()), to);
+	// 和畫面顯示的一樣，用四捨五入到 0.1 分的每日分鐘數判斷是否達標
+	const dailyGoal = user.dailyGoalMinutes;
+	const goalMetDays = dailyGoal ? daily.filter((d) => d.minutes >= dailyGoal).length : 0;
 
 	// 熱度圖：最近 16 週，從週一開始排
 	const heatFrom = weekStart(addDays(to, -(HEATMAP_WEEKS * 7 - 1)));
@@ -94,6 +97,7 @@ export const statsRoutes = new Hono<AppEnv>().use(requireAuth).get('/', validate
 			avgMinutesPerDay: round1(totalMinutes / days),
 			currentStreak: streak.current,
 			longestStreak: streak.longest,
+			goalMetDays,
 		},
 		daily,
 		bySubject: [...subjectTotals.entries()]
@@ -103,6 +107,7 @@ export const statsRoutes = new Hono<AppEnv>().use(requireAuth).get('/', validate
 		weekly,
 		tasks: taskCounts,
 		mistakes: mistakeCounts,
+		dailyGoalMinutes: dailyGoal,
 	};
 	return c.json(body);
 });

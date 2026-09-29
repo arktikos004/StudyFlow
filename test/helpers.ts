@@ -1,4 +1,5 @@
 import { SELF } from 'cloudflare:test';
+import { startOfLocalDay, today } from '../src/shared/dates';
 
 export const BASE = 'http://example.com';
 
@@ -43,6 +44,7 @@ export function createClient() {
 		get: (path: string) => request('GET', path),
 		post: (path: string, body?: unknown, headers?: Record<string, string>) => request('POST', path, body, headers),
 		patch: (path: string, body?: unknown) => request('PATCH', path, body),
+		put: (path: string, body?: unknown) => request('PUT', path, body),
 		del: (path: string) => request('DELETE', path),
 	};
 }
@@ -56,6 +58,41 @@ export async function registeredClient(displayName = '測試同學') {
 	const res = await client.post('/api/auth/register', { email, password: 'correct-horse-battery', displayName });
 	if (res.status !== 201) throw new Error(`register failed: ${res.status} ${JSON.stringify(res.data)}`);
 	return Object.assign(client, { email, user: res.data.user });
+}
+
+/**
+ * 「現在」剛好是當地中午前後的固定時區（Etc/GMT±N，沒有夏令時間）。
+ * 測試「今天」「本週」時，當天早上一定有空檔可以記錄學習時段，不受測試執行時刻影響。
+ */
+export function noonTimezone(now = Date.now()) {
+	const offset = 12 - new Date(now).getUTCHours(); // 當地 = UTC + offset
+	if (offset === 0) return 'Etc/GMT';
+	// Etc/GMT 的正負號和 UTC 偏移相反：Etc/GMT-8 = UTC+8
+	return offset > 0 ? `Etc/GMT-${offset}` : `Etc/GMT+${-offset}`;
+}
+
+/** 已註冊、時區設為 noonTimezone() 的使用者；today 是該時區的今天 */
+export async function noonClient(displayName?: string) {
+	const client = await registeredClient(displayName);
+	const tz = noonTimezone();
+	const res = await client.patch('/api/auth/me', { timezone: tz });
+	if (res.status !== 200) throw new Error(`set timezone failed: ${res.status} ${JSON.stringify(res.data)}`);
+	return Object.assign(client, { tz, today: today(tz) });
+}
+
+export type NoonClient = Awaited<ReturnType<typeof noonClient>>;
+
+/** 在某個當地日期的 startHour 點開始記錄 minutes 分鐘（手動補登） */
+export async function logSession(c: NoonClient, date: string, startHour: number, minutes: number, extra: Record<string, unknown> = {}) {
+	const startedAt = startOfLocalDay(date, c.tz) + startHour * 3_600_000;
+	const res = await c.post('/api/study-sessions', { mode: 'manual', startedAt, endedAt: startedAt + minutes * 60_000, ...extra });
+	if (res.status !== 201) throw new Error(`log session failed: ${res.status} ${JSON.stringify(res.data)}`);
+	return res.data.session;
+}
+
+/** 下載的檔案內容；保留開頭的 BOM（Response.text() 會把它去掉） */
+export function decodeText(data: ArrayBuffer) {
+	return new TextDecoder('utf-8', { fatal: false, ignoreBOM: true }).decode(data);
 }
 
 // 最小的合法 PNG（1x1 像素）

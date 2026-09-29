@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { changePasswordSchema, loginSchema, registerSchema, updateProfileSchema } from '../../shared/schemas';
 import { sessions, users, type User } from '../db/schema';
+import { hasValues } from '../lib/db';
 import { fakeVerify, hashPassword, verifyPassword } from '../lib/password';
 import * as rateLimit from '../lib/rate-limit';
 import { clearSessionCookie, createSession, getSessionToken, setSessionCookie } from '../lib/session';
@@ -16,7 +17,15 @@ const WINDOW_15M = 15 * 60 * 1000;
 const WINDOW_1H = 60 * 60 * 1000;
 
 export function publicUser(u: User): PublicUser {
-	return { id: u.id, email: u.email, displayName: u.displayName, timezone: u.timezone, createdAt: u.createdAt };
+	return {
+		id: u.id,
+		email: u.email,
+		displayName: u.displayName,
+		timezone: u.timezone,
+		createdAt: u.createdAt,
+		dailyGoalMinutes: u.dailyGoalMinutes,
+		weeklyGoalMinutes: u.weeklyGoalMinutes,
+	};
 }
 
 function clientIp(req: Request) {
@@ -73,6 +82,7 @@ export const authRoutes = new Hono<AppEnv>()
 	.get('/me', requireAuth, (c) => c.json({ user: publicUser(c.var.user) }))
 	.patch('/me', requireAuth, validate('json', updateProfileSchema), async (c) => {
 		const input = c.req.valid('json');
+		if (!hasValues(input)) return c.json({ user: publicUser(c.var.user) });
 		const user = await c.var.db.update(users).set(input).where(eq(users.id, c.var.user.id)).returning().get();
 		return c.json({ user: publicUser(user) });
 	})

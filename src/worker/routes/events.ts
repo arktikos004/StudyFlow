@@ -4,8 +4,10 @@ import { z } from 'zod';
 import { dateString, eventSchema, eventUpdateSchema } from '../../shared/schemas';
 import { events, subjects, tasks } from '../db/schema';
 import { assertOwned, notFound } from '../lib/db';
+import { eventItemFields } from '../lib/events';
 import { validate } from '../lib/validator';
 import { requireAuth } from '../middleware/auth';
+import type { EventItem } from '../../shared/api-types';
 import type { AppEnv } from '../types';
 
 const listQuery = z.object({ from: dateString.optional(), to: dateString.optional() });
@@ -15,18 +17,13 @@ export const eventRoutes = new Hono<AppEnv>()
 	.get('/', validate('query', listQuery), async (c) => {
 		const { from, to } = c.req.valid('query');
 		const userId = c.var.user.id;
-		const rows = await c.var.db
-			.select({
-				event: events,
-				// 顯示「相關任務完成幾項」
-				// 子查詢要明確寫出表名，否則 id 會被解析成 tasks.id
-				taskTotal: sql<number>`(SELECT count(*) FROM tasks t WHERE t.event_id = events.id)`,
-				taskDone: sql<number>`(SELECT count(*) FROM tasks t WHERE t.event_id = events.id AND t.status = 'done')`,
-			})
+		// 每筆都帶「相關任務完成幾項」
+		const rows: EventItem[] = await c.var.db
+			.select(eventItemFields())
 			.from(events)
 			.where(and(eq(events.userId, userId), from ? gte(events.date, from) : undefined, to ? lte(events.date, to) : undefined))
 			.orderBy(asc(events.date), asc(events.time));
-		return c.json({ events: rows.map((r) => ({ ...r.event, taskTotal: r.taskTotal, taskDone: r.taskDone })) });
+		return c.json({ events: rows });
 	})
 	.post('/', validate('json', eventSchema), async (c) => {
 		const input = c.req.valid('json');
@@ -48,10 +45,11 @@ export const eventRoutes = new Hono<AppEnv>()
 			.returning()
 			.get();
 		if (!row) notFound('考試或截止日');
+		// 和列表的 eventItemFields 一樣，只計入本人的任務
 		const [stats] = await c.var.db
 			.select({ total: count(), done: sql<number>`sum(CASE WHEN ${tasks.status} = 'done' THEN 1 ELSE 0 END)` })
 			.from(tasks)
-			.where(eq(tasks.eventId, row.id));
+			.where(and(eq(tasks.eventId, row.id), eq(tasks.userId, c.var.user.id)));
 		return c.json({ event: { ...row, taskTotal: stats?.total ?? 0, taskDone: stats?.done ?? 0 } });
 	})
 	.delete('/:id', async (c) => {

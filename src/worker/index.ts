@@ -3,14 +3,18 @@ import { csrf } from 'hono/csrf';
 import { HTTPException } from 'hono/http-exception';
 import { secureHeaders } from 'hono/secure-headers';
 import { createDb } from './lib/db';
+import { achievementRoutes } from './routes/achievements';
 import { attachmentRoutes } from './routes/attachments';
 import { authRoutes } from './routes/auth';
 import { dashboardRoutes } from './routes/dashboard';
 import { eventRoutes } from './routes/events';
+import { exportRoutes } from './routes/export';
 import { noteRoutes } from './routes/notes';
+import { searchRoutes } from './routes/search';
 import { statsRoutes } from './routes/stats';
 import { studySessionRoutes } from './routes/study-sessions';
 import { subjectRoutes } from './routes/subjects';
+import { summaryRoutes } from './routes/summary';
 import { taskRoutes } from './routes/tasks';
 import type { AppEnv } from './types';
 
@@ -35,7 +39,11 @@ app
 	.route('/api/notes', noteRoutes)
 	.route('/api/attachments', attachmentRoutes)
 	.route('/api/stats', statsRoutes)
-	.route('/api/dashboard', dashboardRoutes);
+	.route('/api/dashboard', dashboardRoutes)
+	.route('/api/summary', summaryRoutes)
+	.route('/api/export', exportRoutes)
+	.route('/api/search', searchRoutes)
+	.route('/api/achievements', achievementRoutes);
 
 app.notFound((c) => c.json({ error: '找不到此 API' }, 404));
 

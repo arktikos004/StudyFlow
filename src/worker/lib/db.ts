@@ -28,3 +28,8 @@ export async function assertOwned(db: DB, table: OwnedTable, id: string | null |
 export function notFound(label: string): never {
 	throw new HTTPException(404, { message: `找不到此${label}` });
 }
+
+/** drizzle 的 update().set() 遇到沒有任何欄位（全是 undefined）會丟錯，更新前先檢查 */
+export function hasValues(values: Record<string, unknown>) {
+	return Object.values(values).some((v) => v !== undefined);
+}
