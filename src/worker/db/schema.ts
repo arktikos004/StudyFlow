@@ -18,12 +18,18 @@ const updatedAt = () =>
 		.notNull()
 		.$defaultFn(() => Date.now());
 
+/** 任務的子項目清單，整份存成 JSON 陣列 */
+export type ChecklistItem = { id: string; title: string; done: boolean };
+
 export const users = sqliteTable('users', {
 	id: id(),
 	email: text('email').notNull().unique(),
 	passwordHash: text('password_hash').notNull(),
 	displayName: text('display_name').notNull(),
 	timezone: text('timezone').notNull().default('Asia/Taipei'),
+	// 讀書目標（分鐘）；NULL = 沒有設定
+	dailyGoalMinutes: integer('daily_goal_minutes'),
+	weeklyGoalMinutes: integer('weekly_goal_minutes'),
 	createdAt: createdAt(),
 });
 
@@ -56,6 +62,11 @@ export const subjects = sqliteTable(
 			.references(() => users.id, { onDelete: 'cascade' }),
 		name: text('name').notNull(),
 		color: text('color').notNull(),
+		// SUBJECT_ICONS 裡的 key，前端對應到 lucide 圖示；NULL = 不顯示圖示
+		icon: text('icon'),
+		// 使用者自訂的順序（0 起算）；選單、圖表、圖例都依此排列
+		sortOrder: integer('sort_order').notNull().default(0),
+		weeklyGoalMinutes: integer('weekly_goal_minutes'),
 		archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
 		createdAt: createdAt(),
 	},
@@ -101,6 +112,10 @@ export const tasks = sqliteTable(
 			.notNull()
 			.default('todo'),
 		estimatedMinutes: integer('estimated_minutes'),
+		checklist: text('checklist', { mode: 'json' })
+			.$type<ChecklistItem[]>()
+			.notNull()
+			.default(sql`'[]'`),
 		completedAt: integer('completed_at'),
 		createdAt: createdAt(),
 		updatedAt: updatedAt(),
@@ -124,7 +139,11 @@ export const studySessions = sqliteTable(
 		note: text('note'),
 		createdAt: createdAt(),
 	},
-	(t) => [index('study_sessions_user_started_idx').on(t.userId, t.startedAt)],
+	(t) => [
+		index('study_sessions_user_started_idx').on(t.userId, t.startedAt),
+		// 任務的「已投入時間」子查詢用
+		index('study_sessions_task_idx').on(t.taskId),
+	],
 );
 
 export const notes = sqliteTable(
@@ -147,6 +166,7 @@ export const notes = sqliteTable(
 			.notNull()
 			.default(sql`'[]'`),
 		mastered: integer('mastered', { mode: 'boolean' }).notNull().default(false),
+		pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
 		reviewStage: integer('review_stage').notNull().default(0),
 		nextReviewDate: text('next_review_date'),
 		lastReviewedAt: integer('last_reviewed_at'),
@@ -171,7 +191,11 @@ export const attachments = sqliteTable(
 		size: integer('size').notNull(),
 		createdAt: createdAt(),
 	},
-	(t) => [index('attachments_note_idx').on(t.noteId)],
+	(t) => [
+		index('attachments_note_idx').on(t.noteId),
+		// 筆記列表一次取出本人的全部照片（D1 每個查詢最多 100 個參數，不能用 inArray）
+		index('attachments_user_idx').on(t.userId),
+	],
 );
 
 export type User = typeof users.$inferSelect;
