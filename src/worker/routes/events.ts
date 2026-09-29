@@ -45,10 +45,11 @@ export const eventRoutes = new Hono<AppEnv>()
 			.returning()
 			.get();
 		if (!row) notFound('考試或截止日');
+		// 和列表的 eventItemFields 一樣，只計入本人的任務
 		const [stats] = await c.var.db
 			.select({ total: count(), done: sql<number>`sum(CASE WHEN ${tasks.status} = 'done' THEN 1 ELSE 0 END)` })
 			.from(tasks)
-			.where(eq(tasks.eventId, row.id));
+			.where(and(eq(tasks.eventId, row.id), eq(tasks.userId, c.var.user.id)));
 		return c.json({ event: { ...row, taskTotal: stats?.total ?? 0, taskDone: stats?.done ?? 0 } });
 	})
 	.delete('/:id', async (c) => {

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "081c2c32-739d-49c6-9156-2a0fccb4f363",
+  "id": "59a79674-7b72-49dc-9499-30026cf28612",
   "prevId": "bdcdbee8-1efa-4a8f-bf8b-4a63dc41d91d",
   "tables": {
     "attachments": {
@@ -864,6 +864,13 @@
           "columns": [
             "user_id",
             "due_date"
+          ],
+          "isUnique": false
+        },
+        "tasks_event_idx": {
+          "name": "tasks_event_idx",
+          "columns": [
+            "event_id"
           ],
           "isUnique": false
         }

@@ -3,6 +3,7 @@ ALTER TABLE `subjects` ADD `icon` text;--> statement-breakpoint
 ALTER TABLE `subjects` ADD `sort_order` integer DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE `subjects` ADD `weekly_goal_minutes` integer;--> statement-breakpoint
 ALTER TABLE `tasks` ADD `checklist` text DEFAULT '[]' NOT NULL;--> statement-breakpoint
+CREATE INDEX `tasks_event_idx` ON `tasks` (`event_id`);--> statement-breakpoint
 ALTER TABLE `users` ADD `daily_goal_minutes` integer;--> statement-breakpoint
 ALTER TABLE `users` ADD `weekly_goal_minutes` integer;--> statement-breakpoint
 CREATE INDEX `attachments_user_idx` ON `attachments` (`user_id`);--> statement-breakpoint

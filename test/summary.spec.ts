@@ -78,6 +78,31 @@ describe('總覽：考試準備進度（DASH-1）', () => {
 			{ id: hw.id, title: 'HW1', taskTotal: 0, taskDone: 0 },
 		]);
 	});
+
+	it('準備進度只計入本人的任務（總覽、考試列表、單科總覽、更新考試的回應）', async () => {
+		const alice = await noonClient('Alice');
+		const bob = await registeredClient('Bob');
+		const subject = (await alice.post('/api/subjects', { name: '演算法', color: '#2a78d6' })).data.subject;
+		const exam = (await alice.post('/api/events', { kind: 'exam', title: '期中考', date: addDays(alice.today, 3), subjectId: subject.id })).data
+			.event;
+		const own = (await alice.post('/api/tasks', { title: '自己的準備', eventId: exam.id })).data.task;
+		await alice.patch(`/api/tasks/${own.id}`, { status: 'done' });
+
+		// API 不允許掛到別人的考試（400）；直接寫入資料庫模擬髒資料，確認不會被算進去
+		expect((await bob.post('/api/tasks', { title: '偷掛', eventId: exam.id })).status).toBe(400);
+		const now = Date.now();
+		await env.DB.prepare(
+			"INSERT INTO tasks (id, user_id, event_id, title, status, created_at, updated_at) VALUES (?, ?, ?, '別人的任務', 'done', ?, ?)",
+		)
+			.bind(crypto.randomUUID(), bob.user.id, exam.id, now, now)
+			.run();
+
+		const progress = { id: exam.id, taskTotal: 1, taskDone: 1 };
+		expect((await alice.get('/api/dashboard')).data.upcomingEvents).toMatchObject([progress]);
+		expect((await alice.get('/api/events')).data.events).toMatchObject([progress]);
+		expect((await alice.get(`/api/subjects/${subject.id}/overview`)).data.upcomingEvents).toMatchObject([progress]);
+		expect((await alice.patch(`/api/events/${exam.id}`, { title: '期中考（改）' })).data.event).toMatchObject(progress);
+	});
 });
 
 describe('摘要的跨使用者隔離', () => {

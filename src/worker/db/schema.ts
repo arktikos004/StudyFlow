@@ -120,7 +120,12 @@ export const tasks = sqliteTable(
 		createdAt: createdAt(),
 		updatedAt: updatedAt(),
 	},
-	(t) => [index('tasks_user_status_idx').on(t.userId, t.status), index('tasks_user_due_idx').on(t.userId, t.dueDate)],
+	(t) => [
+		index('tasks_user_status_idx').on(t.userId, t.status),
+		index('tasks_user_due_idx').on(t.userId, t.dueDate),
+		// 考試的準備進度（taskTotal／taskDone）子查詢用
+		index('tasks_event_idx').on(t.eventId),
+	],
 );
 
 export const studySessions = sqliteTable(
