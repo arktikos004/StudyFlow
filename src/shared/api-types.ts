@@ -81,6 +81,22 @@ export type SearchResponse = {
 	subjects: Pick<Subject, 'id' | 'name' | 'color' | 'icon'>[];
 };
 
+/** 成就：由現有資料即時計算，只有本人看得到 */
+export type Achievement = {
+	id: string;
+	title: string;
+	description: string;
+	/** lucide 圖示名稱（kebab-case），例如 'flame'、'calendar-check' */
+	icon: string;
+	unlocked: boolean;
+	/** 目前進度，不會超過 target；單位同 description（小時、天、個、題） */
+	progress: number;
+	target: number;
+};
+
+/** GET /api/achievements：固定順序的成就清單 */
+export type AchievementsResponse = { achievements: Achievement[] };
+
 export type StatsResponse = {
 	range: { from: string; to: string; days: number };
 	totals: {

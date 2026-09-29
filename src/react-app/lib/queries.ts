@@ -15,6 +15,7 @@ import type {
 	updateProfileSchema,
 } from '../../shared/schemas';
 import type {
+	AchievementsResponse,
 	DashboardResponse,
 	EventItem,
 	NoteItem,
@@ -153,6 +154,15 @@ export function useSearch(q: string) {
 	});
 }
 
+/** 成就清單（固定順序）；學習紀錄、任務、錯題有變動時會重新取得，可用來偵測新解鎖 */
+export function useAchievements() {
+	return useQuery({
+		queryKey: ['achievements'],
+		queryFn: async () => (await api.get<AchievementsResponse>('/achievements')).achievements,
+		staleTime: 60_000,
+	});
+}
+
 // ---- 修改 ----
 
 /**
@@ -234,15 +244,12 @@ export const useDeleteEvent = () =>
 /** checklist 可省略（預設空清單）；子項目的 id 由前端產生，例如 crypto.randomUUID() */
 export type TaskInput = z.input<typeof taskSchema>;
 export type TaskUpdateInput = z.input<typeof taskUpdateSchema> & { id: string };
-export const useCreateTask = () =>
-	useApiMutation((v: TaskInput) => api.post<{ task: TaskItem }>('/tasks', v), [['tasks'], ['events'], ...OVERVIEW], '已新增任務');
+// 任務會影響考試的準備進度（events）與「完成 50 個任務」成就
+const TASK_KEYS: QueryKey[] = [['tasks'], ['events'], ['achievements'], ...OVERVIEW];
+export const useCreateTask = () => useApiMutation((v: TaskInput) => api.post<{ task: TaskItem }>('/tasks', v), TASK_KEYS, '已新增任務');
 export const useUpdateTask = () =>
-	useApiMutation(
-		({ id, ...v }: TaskUpdateInput) => api.patch<{ task: TaskItem }>(`/tasks/${id}`, v),
-		[['tasks'], ['events'], ...OVERVIEW],
-	);
-export const useDeleteTask = () =>
-	useApiMutation((id: string) => api.del(`/tasks/${id}`), [['tasks'], ['events'], ...OVERVIEW], '已刪除任務');
+	useApiMutation(({ id, ...v }: TaskUpdateInput) => api.patch<{ task: TaskItem }>(`/tasks/${id}`, v), TASK_KEYS);
+export const useDeleteTask = () => useApiMutation((id: string) => api.del(`/tasks/${id}`), TASK_KEYS, '已刪除任務');
 
 export type SessionInput = z.input<typeof studySessionSchema>;
 /** 只送要改的欄位；沒給 durationSec 但改了起訖時間時，後端會依起訖時間重新計算 */
@@ -273,7 +280,8 @@ export const useDeleteSession = () => useApiMutation((id: string) => api.del(`/s
 export type NoteInput = z.input<typeof noteSchema>;
 /** 只送要改的欄位；{ id, pinned } 只改釘選，不會更新「最後更新」時間 */
 export type NoteUpdateInput = z.input<typeof noteUpdateSchema> & { id: string };
-const NOTE_KEYS: QueryKey[] = [['notes'], ['note'], ['dashboard'], ['stats'], ['summary'], ['subject-overview']];
+// 筆記與錯題會影響待複習數、錯題統計、單科總覽與「掌握錯題」成就
+const NOTE_KEYS: QueryKey[] = [['notes'], ['note'], ['dashboard'], ['stats'], ['summary'], ['achievements'], ['subject-overview']];
 export const useCreateNote = () => useApiMutation((v: NoteInput) => api.post<{ note: NoteItem }>('/notes', v), NOTE_KEYS);
 export const useUpdateNote = () =>
 	useApiMutation(({ id, ...v }: NoteUpdateInput) => api.patch<{ note: NoteItem }>(`/notes/${id}`, v), NOTE_KEYS);

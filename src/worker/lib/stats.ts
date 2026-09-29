@@ -20,7 +20,7 @@ export async function sessionsBetween(db: DB, userId: string, tz: string, from: 
 }
 
 /** 依本地日期加總分鐘數（學習時段歸在開始的那一天） */
-export function minutesByDate(sessions: SessionLite[], tz: string): Map<string, number> {
+export function minutesByDate(sessions: Pick<SessionLite, 'startedAt' | 'durationSec'>[], tz: string): Map<string, number> {
 	const map = new Map<string, number>();
 	for (const s of sessions) {
 		const d = localDate(s.startedAt, tz);
