@@ -3,58 +3,104 @@
 /* 深色模式由 <html data-theme="dark"> 控制（跟隨系統或使用者手動切換） */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
+/*
+ * ==== 色彩 tokens（DESIGN.md §2）====
+ * 藍筆與螢光筆：白天是紙上的藍筆字，晚上反過來。
+ * 元件只用 token；每一組新的顏色搭配都要在淺色與深色下實際計算對比。
+ */
 :root {
 	color-scheme: light;
-	--page: #f6f6f3;
-	--card: #fcfcfb;
-	--subtle: #efeee9;
-	--line: #e1e0d9;
-	--line-strong: #c3c2b7;
-	--ink: #0b0b0b;
-	--ink-2: #52514e;
-	--ink-3: #75736d;
-	--accent: #2a78d6;
-	--accent-hover: #256abf;
-	--accent-ink: #1c5cab;
-	--accent-soft: #e3eefb;
+
+	/* 紙與墨 */
+	--page: #f7f6f2;
+	--card: #fdfcfa;
+	--subtle: #f0ede9;
+	--line: #e2dfd9;
+	--line-strong: #c1bdb5;
+	--line-field: #8f8c84;
+	--ink: #161d31;
+	--ink-2: #4c5058;
+	--ink-3: #64676f;
+
+	/* 主題色：藍筆（預設，其他色組見下方 data-accent） */
+	--accent: #2d53ca;
+	--accent-hover: #2345b4;
+	--accent-ink: #284ab2;
+	--accent-soft: #e5edff;
 	--on-accent: #ffffff;
-	--danger: #d03b3b;
-	--danger-soft: #fbe9e9;
-	--success: #006300;
-	--success-soft: #e3f3e3;
-	--warning: #8a5a00;
-	--warning-soft: #fdf1d6;
-	--chart-grid: #e1e0d9;
-	--chart-axis: #c3c2b7;
-	--chart-rest: #c3c2b7;
-	--shadow: 0 1px 2px rgb(11 11 11 / 0.04), 0 2px 8px rgb(11 11 11 / 0.04);
+
+	/* 狀態 */
+	--danger: #be222a;
+	--danger-soft: #ffebe9;
+	--success: #1d7339;
+	--success-soft: #e0f7e4;
+	--warning: #935a11;
+	--warning-soft: #fff0d2;
+	--mark: #f8ef96;
+	--backdrop: rgb(22 29 49 / 0.4);
+
+	/* 圖表：未完成等其餘項目；熱度圖從主題色推導（heat-0 = subtle） */
+	--chart-rest: #c1bdb5;
+	--heat-1: color-mix(in oklab, var(--accent) 24%, var(--card));
+	--heat-2: color-mix(in oklab, var(--accent) 45%, var(--card));
+	--heat-3: color-mix(in oklab, var(--accent) 70%, var(--card));
+	--heat-4: var(--accent);
+
+	/* 陰影：帶墨色調、分層（sm 靜止／md 浮起／lg 覆蓋層） */
+	--elevation-sm: 0 1px 0 rgb(22 29 49 / 0.04), 0 1px 2px rgb(22 29 49 / 0.05);
+	--elevation-md: 0 1px 2px rgb(22 29 49 / 0.06), 0 6px 16px -4px rgb(22 29 49 / 0.12);
+	--elevation-lg: 0 2px 6px rgb(22 29 49 / 0.08), 0 24px 48px -12px rgb(22 29 49 / 0.24);
+
+	/* 動效時長（DESIGN.md §6） */
+	--dur-press: 120ms;
+	--dur-toggle: 180ms;
+	--dur-pop: 240ms;
+	--dur-sheet: 320ms;
+	--dur-moment: 600ms;
+
+	/* Sprint 1 相容：舊 token 名稱保留為別名 */
+	--chart-grid: var(--line);
+	--chart-axis: var(--line-strong);
+	--shadow: var(--elevation-sm);
 }
 
 [data-theme='dark'] {
 	color-scheme: dark;
-	--page: #0d0d0d;
-	--card: #1a1a19;
-	--subtle: #252524;
-	--line: #2c2c2a;
-	--line-strong: #383835;
-	--ink: #ffffff;
-	--ink-2: #c3c2b7;
-	--ink-3: #99978f;
-	--accent: #3987e5;
-	--accent-hover: #5598e7;
-	--accent-ink: #86b6ef;
-	--accent-soft: #16263a;
-	--on-accent: #ffffff;
-	--danger: #e66767;
-	--danger-soft: #3a1c1c;
-	--success: #0ca30c;
-	--success-soft: #143014;
-	--warning: #fab219;
-	--warning-soft: #3a2e10;
-	--chart-grid: #2c2c2a;
-	--chart-axis: #383835;
-	--chart-rest: #6b6a64;
-	--shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+
+	--page: #0c0f18;
+	--card: #151924;
+	--subtle: #1e232f;
+	--line: #292e3a;
+	--line-strong: #424755;
+	--line-field: #646975;
+	--ink: #f3f0ea;
+	--ink-2: #c4c0b8;
+	--ink-3: #9f9b92;
+
+	--accent: #7da1f9;
+	--accent-hover: #96b6ff;
+	--accent-ink: #9fbdff;
+	--accent-soft: #1d2c51;
+	--on-accent: #080e21;
+
+	--danger: #f37671;
+	--danger-soft: #481b1a;
+	--success: #65c67d;
+	--success-soft: #16311d;
+	--warning: #eebb58;
+	--warning-soft: #3b2b07;
+	--mark: #574e0e;
+	--backdrop: rgb(0 0 0 / 0.6);
+
+	--chart-rest: #6c727e;
+	--heat-1: color-mix(in oklab, var(--accent) 10%, var(--accent-soft));
+	--heat-2: color-mix(in oklab, var(--accent) 40%, var(--accent-soft));
+	--heat-3: color-mix(in oklab, var(--accent) 72%, var(--accent-soft));
+	--heat-4: color-mix(in oklab, var(--accent) 50%, var(--accent-ink));
+
+	--elevation-sm: 0 1px 0 rgb(0 0 0 / 0.35);
+	--elevation-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 20px -6px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.04);
+	--elevation-lg: 0 2px 8px rgb(0 0 0 / 0.5), 0 28px 56px -12px rgb(0 0 0 / 0.7);
 }
 
 @theme inline {
@@ -63,6 +109,7 @@
 	--color-subtle: var(--subtle);
 	--color-line: var(--line);
 	--color-line-strong: var(--line-strong);
+	--color-line-field: var(--line-field);
 	--color-ink: var(--ink);
 	--color-ink-2: var(--ink-2);
 	--color-ink-3: var(--ink-3);
@@ -77,22 +124,131 @@
 	--color-success-soft: var(--success-soft);
 	--color-warning: var(--warning);
 	--color-warning-soft: var(--warning-soft);
-	--shadow-card: var(--shadow);
+	--color-mark: var(--mark);
+	--color-backdrop: var(--backdrop);
+	--color-chart-rest: var(--chart-rest);
+	--color-chart-grid: var(--chart-grid);
+	--color-chart-axis: var(--chart-axis);
+	--color-heat-1: var(--heat-1);
+	--color-heat-2: var(--heat-2);
+	--color-heat-3: var(--heat-3);
+	--color-heat-4: var(--heat-4);
+
+	--shadow-sm: var(--elevation-sm);
+	--shadow-md: var(--elevation-md);
+	--shadow-lg: var(--elevation-lg);
+	--shadow-card: var(--elevation-sm);
+
 	--font-sans: system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Segoe UI', sans-serif;
+	/* 數字：Archivo（有 tnum，實測 1111 與 0000 等寬），中文等其他字元落回文字字型 */
+	--font-num: 'Archivo Variable', system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Segoe UI', sans-serif;
+}
+
+@theme {
+	/* 圓角：巢狀時內層 = 外層 − 內距 */
+	--radius-sm: 0.375rem;
+	--radius-md: 0.5rem;
+	--radius-lg: 0.625rem;
+	--radius-xl: 0.875rem;
+	--radius-2xl: 1.25rem;
+
+	/* 進場 ease-out、離場 ease-in、滑動指示塊 ease-in-out */
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+	/* 字級（DESIGN.md §4）：text-h1 / text-h2 / text-h3 / text-dense / text-meta / text-caption / text-num-lg / text-num-xl */
+	--text-caption: 0.75rem;
+	--text-caption--line-height: 1.5;
+	--text-meta: 0.8125rem;
+	--text-meta--line-height: 1.5;
+	--text-dense: 0.9375rem;
+	--text-dense--line-height: 1.55;
+	--text-h3: 1rem;
+	--text-h3--line-height: 1.5;
+	--text-h2: 1.125rem;
+	--text-h2--line-height: 1.4;
+	--text-h1: 1.5rem;
+	--text-h1--line-height: 1.3;
+	--text-num-lg: 1.75rem;
+	--text-num-lg--line-height: 1.1;
+	--text-num-xl: clamp(3.5rem, 15vw, 5.5rem);
+	--text-num-xl--line-height: 1;
+
+	/* 動畫：animate-fade-in / animate-pop-in / animate-complete（reduced motion 時改成只淡入） */
+	--animate-fade-in: sf-fade-in 120ms var(--ease-out) both;
+	--animate-pop-in: sf-pop-in 240ms var(--ease-out) both;
+	--animate-complete: sf-complete 600ms var(--ease-out) both;
+}
+
+/* keyframes 放在 @theme 外面：不論有沒有用到 animate-* 工具類都會輸出 */
+@keyframes sf-fade-in {
+	from {
+		opacity: 0;
+	}
+}
+@keyframes sf-pop-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px) scale(0.98);
+	}
+}
+/* 唯一刻意設計的時刻：專注完成（600ms） */
+@keyframes sf-complete {
+	0% {
+		opacity: 0.4;
+		transform: scale(0.92);
+	}
+	55% {
+		opacity: 1;
+		transform: scale(1.03);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 
 @layer base {
 	html {
 		-webkit-text-size-adjust: 100%;
+		/* 全域移除點擊高亮；按下的回饋由下方 :active 規則與各元件自己提供 */
 		-webkit-tap-highlight-color: transparent;
+		/* 瀏覽器表面也套用主題 */
+		accent-color: var(--accent);
+		caret-color: var(--accent);
+		scrollbar-color: var(--line-strong) transparent;
+		/* 對話框鎖住捲動時，頁面不會因捲軸消失而左右跳動 */
+		scrollbar-gutter: stable;
+	}
+	html:has(dialog[open]) {
+		overflow: hidden;
 	}
 	body {
-		@apply bg-page text-ink font-sans antialiased;
+		@apply bg-page font-sans text-ink antialiased;
 		min-height: 100dvh;
+	}
+	::selection {
+		background-color: var(--mark);
+		color: var(--ink);
 	}
 	:focus-visible {
 		outline: 2px solid var(--accent);
 		outline-offset: 2px;
+	}
+	a {
+		text-underline-offset: 0.2em;
+	}
+	a,
+	button,
+	summary,
+	label,
+	input,
+	select,
+	textarea,
+	[role='button'],
+	[role='link'] {
+		touch-action: manipulation;
 	}
 	button,
 	[role='button'] {
@@ -101,11 +257,41 @@
 	button:disabled {
 		cursor: not-allowed;
 	}
+	/* 按下時的通用回饋（Button 元件有自己的下沉與加深，不套用這條） */
+	:where(a[href], button:not(.sf-btn), [role='button'], [role='link'], summary):active:not(:disabled, [aria-disabled='true']) {
+		opacity: 0.72;
+	}
 	dialog {
 		color: inherit;
 	}
 	dialog::backdrop {
-		background: rgb(0 0 0 / 0.45);
+		background: var(--backdrop);
+	}
+	/* 螢光筆：只用於 ::selection 與搜尋結果 */
+	mark {
+		background-color: var(--mark);
+		color: var(--ink);
+		border-radius: 0.1875rem;
+		padding-inline: 0.0625em;
+	}
+}
+
+@layer components {
+	/* ---- 圖表：軸線數字用數字字型、等寬 ---- */
+	.recharts-cartesian-axis-tick-value {
+		font-family: var(--font-num);
+		font-variant-numeric: tabular-nums lining-nums;
+	}
+}
+
+/* ---- reduced motion：拿掉位移與縮放，保留 120ms 以內的淡入與顏色變化 ---- */
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--animate-pop-in: sf-fade-in 120ms var(--ease-out) both;
+		--animate-complete: sf-fade-in 120ms var(--ease-out) both;
+	}
+	html {
+		scroll-behavior: auto;
 	}
 }
 
