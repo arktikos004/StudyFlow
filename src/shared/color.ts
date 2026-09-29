@@ -51,8 +51,13 @@ const WHITE = '#ffffff';
 export const NEIGHBOR_MIN_DELTA_E = 15;
 /** 相鄰科目在色盲模擬下的最小 ΔE，與 dataviz 的 CVD target 相同 */
 export const CVD_MIN_DELTA_E = 8;
-/** 任兩個科目低於這個 ΔE 就是「幾乎一樣」 */
+/** 任兩個科目的淺色 mark 低於這個 ΔE 就是「幾乎一樣」 */
 export const SAME_MAX_DELTA_E = 8;
+/**
+ * 任兩個科目的深色 mark 低於這個 ΔE 就是「深色模式下幾乎一樣」。
+ * 深色模式把 L 壓進 0.55–0.67，距離普遍變小，所以門檻比淺色低（例如「藍（明）」和「藍」在深色只差 2.2）。
+ */
+export const DARK_SAME_MAX_DELTA_E = 5;
 /**
  * 提醒使用的色盲模擬種類：和 dataviz 驗證器一樣，只以 protan／deutan 判定，tritan 只計算不判定。
  * 推薦色的相鄰配對「琥珀↔粉紅」在淺色模式的 tritan ΔE 只有 5.8；如果也用 tritan 判定，
@@ -418,11 +423,17 @@ function assess(self: string, others: readonly NamedColor[], neighbors: readonly
 		// 推薦色是 dataviz 驗證過的一組（依固定順序相鄰時可分辨），彼此不提醒「幾乎一樣」；
 		// 例如橘↔紅在淺色只差 ΔE 7.1，照預設指派時不應該跳出提醒。相鄰時仍然會檢查。
 		if (hex !== self && RECOMMENDED_HEXES.has(hex) && RECOMMENDED_HEXES.has(self)) continue;
-		// 「幾乎一樣」看選的顏色本身（淺色 mark）。深色模式刻意把 L 壓進 0.55–0.67，
-		// 如果也用深色判定，8 個科目以後 40 色裡有 36 色會被提醒，建議色也消不掉提醒。
-		if (separation(self, hex, false).normal < SAME_MAX_DELTA_E) {
+		// 淺色看選的顏色本身（ΔE < 8）；深色模式刻意把 L 壓進 0.55–0.67，距離普遍變小，改用 ΔE < 5 的門檻，
+		// 只在深色分不出來時加上「深色模式下」。
+		const modes: Modes | null =
+			separation(self, hex, false).normal < SAME_MAX_DELTA_E
+				? 'both'
+				: separation(self, hex, true).normal < DARK_SAME_MAX_DELTA_E
+					? 'dark'
+					: null;
+		if (modes) {
 			flagged.add(key);
-			issues.push({ kind: 'same', name: o.name, modes: 'both' });
+			issues.push({ kind: 'same', name: o.name, modes });
 		}
 	}
 	for (const n of neighbors) {
@@ -448,7 +459,7 @@ const MODE_PREFIX: Record<Modes, string> = { both: '', light: '淺色模式下',
  * - others：其他所有科目；neighbors：圖表中相鄰的科目（列表順序的前一個和後一個）。
  * - 觸發條件：
  *   - 偏灰：選的顏色 C < 0.10。
- *   - 幾乎一樣：和任何科目的淺色 mark ΔE < 8（推薦色彼此除外）。
+ *   - 幾乎一樣：和任何科目的淺色 mark ΔE < 8；或深色 mark ΔE < 5（訊息加上「深色模式下」）。推薦色彼此除外。
  *   - 很接近：和相鄰科目 ΔE < 15，或色盲模擬（protan／deutan）ΔE < 8。淺色與深色的 mark 分別計算，
  *     只有一種模式有問題時，訊息加上「深色模式下」「淺色模式下」。
  * - 每個科目最多一則訊息，「幾乎一樣」優先。
@@ -481,7 +492,8 @@ function intentDistance(a: string, b: string): number {
 }
 
 /**
- * 建議色：從「更多顏色」的 40 色中，挑出通過所有檢查、而且最接近 hex 的顏色（不會回傳 hex 本身）。
+ * 建議色：從「更多顏色」的 40 色中，挑出在淺色與深色模式下都通過所有檢查（和 colorWarnings 相同，
+ * 包含深色的「幾乎一樣」）、而且最接近 hex 的顏色（不會回傳 hex 本身）。
  * - used：其他科目的顏色。
  * - neighbors：圖表中相鄰科目的顏色；省略時把所有 used 都當成相鄰（最嚴格）。
  * - 「接近」優先保留色相（見 intentDistance）。

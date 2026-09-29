@@ -43,6 +43,11 @@ export const PALETTE: readonly (readonly string[])[] = [
 /** 保留給「未分類」的灰色，兩種模式相同；不提供給科目選用 */
 export const NO_SUBJECT_COLOR = '#898781';
 
+/** 新科目的預設色：下一個尚未使用的推薦色（依固定順序，不循環產生新色；全部用過時依科目數輪替） */
+export function nextSubjectColor(used: readonly string[]): string {
+	return SUBJECT_COLORS.find((c) => !used.includes(c)) ?? SUBJECT_COLORS[used.length % SUBJECT_COLORS.length];
+}
+
 const NAMES = new Map<string, string>([
 	...RECOMMENDED.map((c): [string, string] => [c.hex, c.name]),
 	...PALETTE.flatMap((row, tone) => row.map((hex, hue): [string, string] => [hex, `${PALETTE_HUES[hue]}（${PALETTE_TONES[tone]}）`])),

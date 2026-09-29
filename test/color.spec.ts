@@ -7,6 +7,7 @@ import {
 	darkLightness,
 	DARK_BAND,
 	DARK_CHROMA_MAX,
+	DARK_SAME_MAX_DELTA_E,
 	deltaE,
 	hexToHsv,
 	hexToOklch,
@@ -17,11 +18,12 @@ import {
 	oklchToHex,
 	parseHex,
 	rgbToHex,
+	separation,
 	subjectTone,
 	suggestColor,
 	TONE_SURFACES,
 } from '../src/shared/color';
-import { colorName, DARK_STEPS, NO_SUBJECT_COLOR, PALETTE, paletteIndex, RECOMMENDED } from '../src/shared/palette';
+import { colorName, DARK_STEPS, nextSubjectColor, NO_SUBJECT_COLOR, PALETTE, paletteIndex, RECOMMENDED } from '../src/shared/palette';
 import { SUBJECT_COLORS } from '../src/shared/schemas';
 
 // 8 位元量化（#rrggbb）造成的 OKLCH 誤差上限，只用在「逐一比較相鄰取樣」的單調性檢查
@@ -29,6 +31,8 @@ const QUANT = 0.002;
 const GRID = PALETTE.flat();
 const ALL = [...RECOMMENDED.map((c) => c.hex), ...GRID];
 const hueDiff = (a: number, b: number) => Math.abs(((((a - b) % 360) + 540) % 360) - 180);
+const named = (list: readonly string[]) => list.map((h) => ({ name: h, hex: h }));
+const darkMark = (hex: string) => subjectTone(hex, true).mark;
 
 /** 固定種子的亂數，讓抽樣測試每次結果相同 */
 function seeded(seed: number) {
@@ -259,6 +263,13 @@ describe('colorWarnings', () => {
 		expect(colorWarnings('#86b1ff', [{ name: '微積分', hex: '#2a78d6' }], [])).toEqual([]);
 	});
 
+	it('深色模式下分不出來（深色 mark ΔE < 5）時提醒「深色模式下…幾乎一樣」', () => {
+		// 「藍（明）」和「藍」：淺色不算幾乎一樣，深色只差 2.2
+		expect(separation('#568ef9', '#2a78d6', false).normal).toBeGreaterThanOrEqual(8);
+		expect(separation('#568ef9', '#2a78d6', true).normal).toBeLessThan(DARK_SAME_MAX_DELTA_E);
+		expect(colorWarnings('#568ef9', [{ name: '微積分', hex: '#2a78d6' }])).toEqual(['深色模式下和「微積分」幾乎一樣']);
+	});
+
 	it('同一個科目只提醒一次，「幾乎一樣」優先', () => {
 		const calc = { name: '微積分', hex: '#2a78d6' };
 		expect(colorWarnings('#2b79d7', [calc], [calc])).toEqual(['和「微積分」幾乎一樣']);
@@ -280,11 +291,14 @@ describe('colorWarnings', () => {
 describe('suggestColor', () => {
 	const used = RECOMMENDED.map((c) => c.hex);
 
-	it('從 40 色中挑出通過所有檢查、最接近而且保留色相的顏色', () => {
+	it('從 40 色中挑出淺色與深色都通過所有檢查、最接近而且色相相近的顏色', () => {
 		const got = suggestColor('#396ed6', used, ['#e34948']);
-		expect(got).toBe('#568ef9'); // 藍（明）
-		const named = (list: string[]) => list.map((h) => ({ name: h, hex: h }));
+		expect(GRID).toContain(got);
 		expect(colorWarnings(got, named(used), named(['#e34948']))).toEqual([]);
+		for (const u of used) expect(deltaE(darkMark(got), darkMark(u)), u).toBeGreaterThanOrEqual(DARK_SAME_MAX_DELTA_E);
+		expect(hueDiff(hexToOklch(got).h, hexToOklch('#396ed6').h)).toBeLessThan(30);
+		// 「藍（明）」離得最近，但在深色和「藍」只差 2.2，不能當建議色
+		expect(got).not.toBe('#568ef9');
 	});
 
 	it('一定回傳色格裡的顏色，而且不是原本的顏色', () => {
@@ -300,5 +314,32 @@ describe('suggestColor', () => {
 
 	it('沒有其他科目時，灰色也會得到有彩度的建議', () => {
 		expect(hexToOklch(suggestColor(NO_SUBJECT_COLOR, [])).c).toBeGreaterThanOrEqual(0.1);
+	});
+});
+
+describe('新增科目的預設流程（深色模式）', () => {
+	/** 模擬設定頁新增科目：預設色有提醒就改用建議色；新科目排在最後，相鄰科目是目前的最後一科 */
+	function addSubject(used: readonly string[]): string {
+		const def = nextSubjectColor(used);
+		const last = used.slice(-1);
+		return colorWarnings(def, named(used), named(last)).length ? suggestColor(def, used, last) : def;
+	}
+
+	it('新增第 9 科：預設色和第 1 科相同，建議色在深色模式下和所有科目的 ΔE 都 ≥ 5', () => {
+		const used = [...SUBJECT_COLORS];
+		expect(nextSubjectColor(used)).toBe(used[0]);
+		const pick = addSubject(used);
+		expect(pick).not.toBe(used[0]);
+		for (const u of used) expect(deltaE(darkMark(pick), darkMark(u)), u).toBeGreaterThanOrEqual(DARK_SAME_MAX_DELTA_E);
+	});
+
+	it('一路用建議色加到 16 科：深色模式下任兩科的 ΔE 都 ≥ 5', () => {
+		const used: string[] = [...SUBJECT_COLORS];
+		while (used.length < 16) used.push(addSubject(used));
+		expect(new Set(used).size).toBe(16);
+		let min = Infinity;
+		for (let i = 0; i < used.length; i++)
+			for (let j = i + 1; j < used.length; j++) min = Math.min(min, deltaE(darkMark(used[i]), darkMark(used[j])));
+		expect(min).toBeGreaterThanOrEqual(DARK_SAME_MAX_DELTA_E);
 	});
 });
