@@ -83,6 +83,25 @@ export const eventUpdateSchema = eventSchema.partial();
 
 export const TASK_PRIORITIES = ['low', 'medium', 'high'] as const;
 export const TASK_STATUSES = ['todo', 'doing', 'done'] as const;
+
+// 子任務清單：整份一起送出（新增、勾選、刪除、調整順序都是改陣列）
+export const CHECKLIST_MAX_ITEMS = 30;
+export const CHECKLIST_ITEM_MAX = 100;
+export const checklistItemSchema = z.object({
+	// 由前端產生（例如 crypto.randomUUID()），只用來當 React key 與辨識項目
+	id: z.string({ error: '子項目 ID 格式錯誤' }).min(1, '子項目 ID 格式錯誤').max(40, '子項目 ID 格式錯誤'),
+	title: z
+		.string({ error: '請輸入子項目內容' })
+		.trim()
+		.min(1, '請輸入子項目內容')
+		.max(CHECKLIST_ITEM_MAX, `子項目最多 ${CHECKLIST_ITEM_MAX} 個字`),
+	done: z.boolean({ error: '子項目格式錯誤' }),
+});
+const checklist = z
+	.array(checklistItemSchema, { error: '子項目格式錯誤' })
+	.max(CHECKLIST_MAX_ITEMS, `子項目最多 ${CHECKLIST_MAX_ITEMS} 項`)
+	.refine((items) => new Set(items.map((i) => i.id)).size === items.length, '子項目 ID 重複');
+
 export const taskSchema = z.object({
 	title: z.string().trim().min(1, '請輸入任務名稱').max(200, '任務名稱最多 200 個字'),
 	description: optionalText(5000),
@@ -92,6 +111,7 @@ export const taskSchema = z.object({
 	estimatedMinutes: z.number().int().min(1).max(1440).nullish(),
 	subjectId: id.nullish(),
 	eventId: id.nullish(),
+	checklist: checklist.default([]),
 });
 export const taskUpdateSchema = z.object({
 	title: taskSchema.shape.title.optional(),
@@ -102,6 +122,7 @@ export const taskUpdateSchema = z.object({
 	estimatedMinutes: taskSchema.shape.estimatedMinutes,
 	subjectId: taskSchema.shape.subjectId,
 	eventId: taskSchema.shape.eventId,
+	checklist: checklist.optional(),
 });
 
 const MAX_SESSION_MS = 24 * 60 * 60 * 1000;

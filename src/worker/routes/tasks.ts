@@ -4,8 +4,10 @@ import { z } from 'zod';
 import { TASK_STATUSES, taskSchema, taskUpdateSchema } from '../../shared/schemas';
 import { events, subjects, tasks } from '../db/schema';
 import { assertOwned, notFound, type DB } from '../lib/db';
+import { taskItemFields } from '../lib/tasks';
 import { validate } from '../lib/validator';
 import { requireAuth } from '../middleware/auth';
+import type { TaskItem } from '../../shared/api-types';
 import type { AppEnv } from '../types';
 
 const listQuery = z.object({
@@ -23,8 +25,8 @@ export const taskRoutes = new Hono<AppEnv>()
 	.use(requireAuth)
 	.get('/', validate('query', listQuery), async (c) => {
 		const q = c.req.valid('query');
-		const rows = await c.var.db
-			.select()
+		const rows: TaskItem[] = await c.var.db
+			.select(taskItemFields())
 			.from(tasks)
 			.where(
 				and(
@@ -51,7 +53,8 @@ export const taskRoutes = new Hono<AppEnv>()
 			.values({ ...input, userId: c.var.user.id, completedAt: input.status === 'done' ? Date.now() : null })
 			.returning()
 			.get();
-		return c.json({ task: row }, 201);
+		const task: TaskItem = { ...row, spentMinutes: 0 };
+		return c.json({ task }, 201);
 	})
 	.patch('/:id', validate('json', taskUpdateSchema), async (c) => {
 		const input = c.req.valid('json');
@@ -70,13 +73,14 @@ export const taskRoutes = new Hono<AppEnv>()
 		if (input.status && input.status !== current.status) {
 			completedAt = input.status === 'done' ? Date.now() : null;
 		}
-		const row = await db
+		// 回應和列表一樣帶 spentMinutes，前端可以直接換掉快取裡的那一筆
+		const task: TaskItem = await db
 			.update(tasks)
 			.set({ ...input, completedAt, updatedAt: Date.now() })
 			.where(eq(tasks.id, current.id))
-			.returning()
+			.returning(taskItemFields())
 			.get();
-		return c.json({ task: row });
+		return c.json({ task });
 	})
 	.delete('/:id', async (c) => {
 		const row = await c.var.db

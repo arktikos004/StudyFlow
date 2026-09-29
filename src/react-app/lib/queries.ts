@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { z } from 'zod';
-import type { subjectSchema, subjectUpdateSchema, updateProfileSchema } from '../../shared/schemas';
+import type { subjectSchema, subjectUpdateSchema, taskSchema, taskUpdateSchema, updateProfileSchema } from '../../shared/schemas';
 import type {
 	DashboardResponse,
 	EventItem,
@@ -11,7 +11,7 @@ import type {
 	StatsResponse,
 	StudySession,
 	Subject,
-	Task,
+	TaskItem,
 } from '../../shared/api-types';
 import { api, ApiError, qs } from './api';
 
@@ -59,10 +59,11 @@ export function useEvents(params: { from?: string; to?: string } = {}) {
 	});
 }
 
+/** 每筆都帶 spentMinutes（實際投入時間）與 checklist */
 export function useTasks(params: { status?: string; subjectId?: string; eventId?: string } = {}) {
 	return useQuery({
 		queryKey: ['tasks', params],
-		queryFn: async () => (await api.get<{ tasks: Task[] }>(`/tasks${qs(params)}`)).tasks,
+		queryFn: async () => (await api.get<{ tasks: TaskItem[] }>(`/tasks${qs(params)}`)).tasks,
 	});
 }
 
@@ -161,21 +162,14 @@ export const useUpdateEvent = () =>
 export const useDeleteEvent = () =>
 	useApiMutation((id: string) => api.del(`/events/${id}`), [['events'], ['tasks'], ...OVERVIEW], '已刪除');
 
-export type TaskInput = {
-	title: string;
-	description?: string | null;
-	dueDate?: string | null;
-	priority?: 'low' | 'medium' | 'high';
-	status?: 'todo' | 'doing' | 'done';
-	estimatedMinutes?: number | null;
-	subjectId?: string | null;
-	eventId?: string | null;
-};
+/** checklist 可省略（預設空清單）；子項目的 id 由前端產生，例如 crypto.randomUUID() */
+export type TaskInput = z.input<typeof taskSchema>;
+export type TaskUpdateInput = z.input<typeof taskUpdateSchema> & { id: string };
 export const useCreateTask = () =>
-	useApiMutation((v: TaskInput) => api.post<{ task: Task }>('/tasks', v), [['tasks'], ['events'], ...OVERVIEW], '已新增任務');
+	useApiMutation((v: TaskInput) => api.post<{ task: TaskItem }>('/tasks', v), [['tasks'], ['events'], ...OVERVIEW], '已新增任務');
 export const useUpdateTask = () =>
 	useApiMutation(
-		({ id, ...v }: Partial<TaskInput> & { id: string }) => api.patch<{ task: Task }>(`/tasks/${id}`, v),
+		({ id, ...v }: TaskUpdateInput) => api.patch<{ task: TaskItem }>(`/tasks/${id}`, v),
 		[['tasks'], ['events'], ...OVERVIEW],
 	);
 export const useDeleteTask = () =>

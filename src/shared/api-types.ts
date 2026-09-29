@@ -1,7 +1,7 @@
 // API 回應的資料型別。資料表欄位直接由 Drizzle schema 推導，前後端永遠一致。
-import type { Attachment, Note, StudyEvent, StudySession, Subject, Task } from '../worker/db/schema';
+import type { Attachment, ChecklistItem, Note, StudyEvent, StudySession, Subject, Task } from '../worker/db/schema';
 
-export type { StudySession, Subject, Task };
+export type { ChecklistItem, StudySession, Subject, Task };
 
 export type PublicUser = {
 	id: string;
@@ -15,6 +15,9 @@ export type PublicUser = {
 };
 
 export type EventItem = StudyEvent & { taskTotal: number; taskDone: number };
+
+/** 任務加上實際投入時間：本人連結到此任務的學習紀錄加總（分鐘，小數 1 位） */
+export type TaskItem = Task & { spentMinutes: number };
 
 export type PublicAttachment = Pick<Attachment, 'id' | 'noteId' | 'contentType' | 'size' | 'createdAt'>;
 
