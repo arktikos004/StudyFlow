@@ -412,7 +412,7 @@ function CustomColor({ value, onChange }: { value: string; onChange: (hex: strin
 				style={{ '--hue-track': HUE_TRACK, '--hue-thumb': `hsl(${hsv.h} 100% 50%)` } as CSSProperties}
 			/>
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-				<label htmlFor={hexId} className="text-sm font-medium text-ink-2">
+				<label htmlFor={hexId} className="text-sm font-semibold text-ink-2">
 					色碼
 				</label>
 				<div className="relative w-36">
