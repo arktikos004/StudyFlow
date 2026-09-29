@@ -468,9 +468,23 @@ export function colorWarnings(hex: string, others: readonly NamedColor[], neighb
 const ISSUE_WEIGHT: Record<Issue['kind'], number> = { gray: 1, close: 2, same: 4 };
 
 /**
+ * 建議色用的「接近」：OKLCH 的 ΔL、ΔC，加上加倍計算的色相差 ΔH（×100）。
+ * 單純的 ΔE 會把「藍（中）」的建議排成「紫（中）」（9.7）而不是「藍（明）」（10.1）；
+ * 加重色相後，建議會優先保留使用者選的色相，只調整深淺。
+ */
+function intentDistance(a: string, b: string): number {
+	const p = hexToOklch(a);
+	const q = hexToOklch(b);
+	const dh = ((p.h - q.h + 540) % 360) - 180;
+	const dH = 2 * Math.sqrt(p.c * q.c) * Math.sin((dh * Math.PI) / 360);
+	return 100 * Math.hypot(p.l - q.l, p.c - q.c, 2 * dH);
+}
+
+/**
  * 建議色：從「更多顏色」的 40 色中，挑出通過所有檢查、而且最接近 hex 的顏色（不會回傳 hex 本身）。
  * - used：其他科目的顏色。
  * - neighbors：圖表中相鄰科目的顏色；省略時把所有 used 都當成相鄰（最嚴格）。
+ * - 「接近」優先保留色相（見 intentDistance）。
  * 科目很多、沒有顏色能通過全部檢查時，退而求其次：取問題最少（「幾乎一樣」最嚴重）的顏色中最接近的。
  */
 export function suggestColor(hex: string, used: readonly string[], neighbors: readonly string[] = used): string {
@@ -490,7 +504,7 @@ export function suggestColor(hex: string, used: readonly string[], neighbors: re
 		for (const candidate of row) {
 			if (candidate === target) continue;
 			const score = assess(candidate, others, near).reduce((sum, i) => sum + ISSUE_WEIGHT[i.kind], 0);
-			const dist = deltaE(candidate, target);
+			const dist = intentDistance(candidate, target);
 			if (score < bestScore || (score === bestScore && dist < bestDist)) {
 				best = candidate;
 				bestScore = score;
