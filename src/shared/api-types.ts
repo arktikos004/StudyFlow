@@ -19,6 +19,19 @@ export type EventItem = StudyEvent & { taskTotal: number; taskDone: number };
 /** 任務加上實際投入時間：本人連結到此任務的學習紀錄加總（分鐘，小數 1 位） */
 export type TaskItem = Task & { spentMinutes: number };
 
+/** GET /api/subjects/:id/overview：單科總覽，一次取得 */
+export type SubjectOverview = {
+	subject: Subject;
+	/** 這一科今天以後的考試與截止日，依日期、時間排序 */
+	upcomingEvents: EventItem[];
+	/** 這一科還沒完成的任務，排序同任務列表 */
+	openTasks: TaskItem[];
+	/** 本週（週一起算）與近 30 天（含今天）的讀書分鐘數，依使用者時區 */
+	minutes: { week: number; last30: number };
+	/** 這一科的錯題：總數、已掌握、今天以前到期待複習 */
+	mistakes: { total: number; mastered: number; due: number };
+};
+
 export type PublicAttachment = Pick<Attachment, 'id' | 'noteId' | 'contentType' | 'size' | 'createdAt'>;
 
 export type NoteItem = Note & { attachments: PublicAttachment[] };

@@ -62,12 +62,51 @@ export const changePasswordSchema = z.object({
 // 科目顏色：dataviz 驗證過的分類色盤，依固定順序指派，色盲使用者也能分辨相鄰顏色
 export const SUBJECT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'] as const;
 
+// 科目圖示的白名單：前端把每個 key 對應到一個 lucide 圖示
+export const SUBJECT_ICONS = [
+	'book',
+	'calculator',
+	'sigma',
+	'flask',
+	'atom',
+	'dna',
+	'leaf',
+	'globe',
+	'languages',
+	'pen',
+	'code',
+	'cpu',
+	'database',
+	'network',
+	'chart',
+	'landmark',
+	'scale',
+	'briefcase',
+	'palette',
+	'music',
+	'dumbbell',
+	'heart',
+	'brain',
+	'microscope',
+] as const;
+export type SubjectIcon = (typeof SUBJECT_ICONS)[number];
+
 export const subjectSchema = z.object({
 	name: z.string().trim().min(1, '請輸入科目名稱').max(30, '科目名稱最多 30 個字'),
 	color: z.string().regex(/^#[0-9a-f]{6}$/i, '顏色格式錯誤'),
+	icon: z.enum(SUBJECT_ICONS, { error: '圖示不存在' }).nullish(),
 	weeklyGoalMinutes: goalMinutes('科目每週目標', GOAL_LIMITS.subjectWeekly),
 });
 export const subjectUpdateSchema = subjectSchema.partial().extend({ archived: z.boolean().optional() });
+
+/** 科目的新順序：必須剛好是本人全部科目的 id（後端再檢查是否屬於本人） */
+export const subjectOrderSchema = z.object({
+	ids: z
+		.array(id, { error: '科目清單不正確' })
+		.min(1, '科目清單不正確')
+		.max(200, '科目清單不正確')
+		.refine((ids) => new Set(ids).size === ids.length, '科目清單不正確'),
+});
 
 export const EVENT_KINDS = ['exam', 'deadline'] as const;
 export const eventSchema = z.object({

@@ -11,6 +11,7 @@ import type {
 	StatsResponse,
 	StudySession,
 	Subject,
+	SubjectOverview,
 	TaskItem,
 } from '../../shared/api-types';
 import { api, ApiError, qs } from './api';
@@ -50,6 +51,15 @@ export function useSubjects() {
 export function useSubjectMap() {
 	const { data } = useSubjects();
 	return new Map((data ?? []).map((s) => [s.id, s]));
+}
+
+/** 單科總覽；不是本人的科目會得到 ApiError（status 404） */
+export function useSubjectOverview(id: string | undefined) {
+	return useQuery({
+		queryKey: ['subject-overview', id],
+		queryFn: () => api.get<SubjectOverview>(`/subjects/${id}/overview`),
+		enabled: !!id,
+	});
 }
 
 export function useEvents(params: { from?: string; to?: string } = {}) {
@@ -127,11 +137,11 @@ function useApiMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, i
 	});
 }
 
-// 任務、考試、學習紀錄的變動都會影響儀表板與統計
-const OVERVIEW: QueryKey[] = [['dashboard'], ['stats']];
+// 任務、考試、學習紀錄的變動都會影響總覽、統計與單科總覽
+const OVERVIEW: QueryKey[] = [['dashboard'], ['stats'], ['subject-overview']];
 
-// 科目的名稱、顏色、目標、順序會出現在總覽（各科目標）與統計圖表
-const SUBJECT_KEYS: QueryKey[] = [['subjects'], ['dashboard'], ['stats']];
+// 科目的名稱、顏色、圖示、目標、順序會出現在總覽（各科目標）、統計圖表與單科總覽
+const SUBJECT_KEYS: QueryKey[] = [['subjects'], ['dashboard'], ['stats'], ['subject-overview']];
 
 export type SubjectInput = z.input<typeof subjectSchema>;
 export type SubjectUpdateInput = z.input<typeof subjectUpdateSchema> & { id: string };
@@ -140,7 +150,40 @@ export const useCreateSubject = () =>
 export const useUpdateSubject = () =>
 	useApiMutation(({ id, ...v }: SubjectUpdateInput) => api.patch<{ subject: Subject }>(`/subjects/${id}`, v), SUBJECT_KEYS);
 export const useDeleteSubject = () =>
-	useApiMutation((id: string) => api.del(`/subjects/${id}`), [['subjects'], ['events'], ['tasks'], ['notes'], ...OVERVIEW], '已刪除科目');
+	useApiMutation(
+		(id: string) => api.del(`/subjects/${id}`),
+		[['subjects'], ['events'], ['tasks'], ['notes'], ['sessions'], ...OVERVIEW],
+		'已刪除科目',
+	);
+
+/**
+ * 調整科目順序：傳入本人「全部」科目的 id（新順序）。
+ * 樂觀更新：按下就先換掉 ['subjects'] 快取的順序，失敗時還原並顯示錯誤。
+ */
+export const useReorderSubjects = () => {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (ids: string[]) => api.put<{ subjects: Subject[] }>('/subjects/order', { ids }),
+		onMutate: async (ids) => {
+			await qc.cancelQueries({ queryKey: ['subjects'] });
+			const prev = qc.getQueryData<Subject[]>(['subjects']);
+			if (prev) {
+				const byId = new Map(prev.map((s) => [s.id, s]));
+				const next = ids.flatMap((id, sortOrder) => {
+					const s = byId.get(id);
+					return s ? [{ ...s, sortOrder }] : [];
+				});
+				qc.setQueryData<Subject[]>(['subjects'], next);
+			}
+			return { prev };
+		},
+		onError: (e, _ids, ctx) => {
+			if (ctx?.prev) qc.setQueryData(['subjects'], ctx.prev);
+			toast.error(e instanceof Error ? e.message : '發生錯誤');
+		},
+		onSettled: () => SUBJECT_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey })),
+	});
+};
 
 export type EventInput = {
 	kind: 'exam' | 'deadline';
@@ -206,7 +249,7 @@ export type NoteInput = {
 	scheduleReview?: boolean;
 	mastered?: boolean;
 };
-const NOTE_KEYS: QueryKey[] = [['notes'], ['note'], ['dashboard'], ['stats']];
+const NOTE_KEYS: QueryKey[] = [['notes'], ['note'], ['dashboard'], ['stats'], ['subject-overview']];
 export const useCreateNote = () => useApiMutation((v: NoteInput) => api.post<{ note: NoteItem }>('/notes', v), NOTE_KEYS);
 export const useUpdateNote = () =>
 	useApiMutation(({ id, ...v }: Partial<NoteInput> & { id: string }) => api.patch<{ note: NoteItem }>(`/notes/${id}`, v), NOTE_KEYS);
