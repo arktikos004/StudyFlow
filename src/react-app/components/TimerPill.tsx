@@ -26,7 +26,7 @@ export function TimerPill() {
 		<button
 			onClick={() => navigate('/timer')}
 			className={cn(
-				'inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold pointer-coarse:h-9',
+				'inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold pointer-coarse:h-11',
 				s.phase === 'break' ? 'bg-success-soft text-success' : 'bg-accent-soft text-accent-ink',
 			)}
 		>
