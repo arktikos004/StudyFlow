@@ -227,6 +227,16 @@ export const noteUpdateSchema = z.object({
 });
 export const reviewSchema = z.object({ result: z.enum(['remembered', 'forgot']) });
 
+/** GET /api/search?q=：全站搜尋的關鍵字（前端輸入框的 maxLength 也用這個） */
+export const SEARCH_QUERY_MAX = 50;
+export const searchQuerySchema = z.object({
+	q: z
+		.string({ error: '請輸入搜尋關鍵字' })
+		.trim()
+		.min(1, '請輸入搜尋關鍵字')
+		.max(SEARCH_QUERY_MAX, `搜尋關鍵字最多 ${SEARCH_QUERY_MAX} 個字`),
+});
+
 /** GET /api/export/calendar.ics?tasks=1：是否把有期限的任務也匯出成全天事件 */
 export const calendarExportQuerySchema = z.object({ tasks: z.enum(['0', '1'], { error: '參數格式錯誤' }).optional() });
 

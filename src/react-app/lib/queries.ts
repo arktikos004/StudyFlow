@@ -20,6 +20,7 @@ import type {
 	NoteItem,
 	PublicAttachment,
 	PublicUser,
+	SearchResponse,
 	StatsResponse,
 	StudySession,
 	Subject,
@@ -136,6 +137,20 @@ export function useDashboard() {
 /** 頁首摘要：今天到期、逾期、待複習數與下一場考試 */
 export function useSummary() {
 	return useQuery({ queryKey: ['summary'], queryFn: () => api.get<SummaryResponse>('/summary'), staleTime: 30_000 });
+}
+
+/**
+ * 全站搜尋。q 去掉前後空白後是空的就不查（data 為 undefined，顯示快捷動作）；
+ * 輸入中保留上一次的結果，避免清單閃爍。輸入框請設 maxLength={SEARCH_QUERY_MAX}，防抖由呼叫端處理。
+ */
+export function useSearch(q: string) {
+	const term = q.trim();
+	return useQuery({
+		queryKey: ['search', term],
+		queryFn: () => api.get<SearchResponse>(`/search${qs({ q: term })}`),
+		enabled: term.length > 0,
+		placeholderData: (prev) => (term ? prev : undefined),
+	});
 }
 
 // ---- 修改 ----

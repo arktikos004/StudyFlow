@@ -9,6 +9,7 @@ import { dashboardRoutes } from './routes/dashboard';
 import { eventRoutes } from './routes/events';
 import { exportRoutes } from './routes/export';
 import { noteRoutes } from './routes/notes';
+import { searchRoutes } from './routes/search';
 import { statsRoutes } from './routes/stats';
 import { studySessionRoutes } from './routes/study-sessions';
 import { subjectRoutes } from './routes/subjects';
@@ -39,7 +40,8 @@ app
 	.route('/api/stats', statsRoutes)
 	.route('/api/dashboard', dashboardRoutes)
 	.route('/api/summary', summaryRoutes)
-	.route('/api/export', exportRoutes);
+	.route('/api/export', exportRoutes)
+	.route('/api/search', searchRoutes);
 
 app.notFound((c) => c.json({ error: '找不到此 API' }, 404));
 

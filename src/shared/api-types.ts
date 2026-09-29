@@ -69,6 +69,18 @@ export type SummaryResponse = {
 	nextExam: { id: string; title: string; date: string; time: string | null; subjectId: string | null } | null;
 };
 
+/** GET /api/search?q=：每類最多 5 筆，只含本人的資料 */
+export type SearchResponse = {
+	/** 比對標題與說明；未完成的排前面，其次是最近更新的 */
+	tasks: Pick<Task, 'id' | 'title' | 'subjectId' | 'dueDate' | 'status'>[];
+	/** 比對標題、地點、備註；今天以後的依日期排前面，其次是最近過去的 */
+	events: Pick<StudyEvent, 'id' | 'title' | 'date' | 'kind' | 'subjectId'>[];
+	/** 比對標題、內容、題目；釘選的排前面，其次是最近更新的 */
+	notes: Pick<Note, 'id' | 'title' | 'kind' | 'subjectId'>[];
+	/** 比對名稱；未封存的排前面，其次依科目順序 */
+	subjects: Pick<Subject, 'id' | 'name' | 'color' | 'icon'>[];
+};
+
 export type StatsResponse = {
 	range: { from: string; to: string; days: number };
 	totals: {
