@@ -1,15 +1,26 @@
 // 以 'YYYY-MM-DD' 字串表示的「日曆日期」工具，前後端共用。
 // 日期運算一律在 UTC 正午進行，避免夏令時間或時區造成跨日誤差。
 
-// 建立 Intl.DateTimeFormat 很花 CPU，統計與匯出會逐筆換算，所以每個時區只建立一次
+// 建立 Intl.DateTimeFormat 很花 CPU，統計與匯出會逐筆換算，所以快取起來重複使用。
+// 時區字串來自使用者資料（大小寫不同也是不同的 key），快取一定要有上限，否則會一直佔用 isolate 的記憶體：
+// 用 Map 的插入順序做 LRU，用到的移到最後，滿了就刪掉最前面（最久沒用）的那一個。
+const MAX_FORMATTERS = 64;
 const formatters = new Map<string, Intl.DateTimeFormat>();
 function cached(key: string, create: () => Intl.DateTimeFormat) {
 	let f = formatters.get(key);
-	if (!f) {
+	if (f) {
+		formatters.delete(key);
+	} else {
 		f = create();
-		formatters.set(key, f);
+		if (formatters.size >= MAX_FORMATTERS) formatters.delete(formatters.keys().next().value!);
 	}
+	formatters.set(key, f);
 	return f;
+}
+
+/** 目前快取的 formatter 數量（測試與監控用） */
+export function formatterCacheSize() {
+	return formatters.size;
 }
 
 // en-CA 的日期格式剛好是 YYYY-MM-DD

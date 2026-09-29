@@ -49,6 +49,8 @@ export const updateProfileSchema = z.object({
 				return false;
 			}
 		}, '時區格式錯誤')
+		// 時區名稱不分大小寫：存成標準寫法（asia/taipei → Asia/Taipei），同一個時區只會有一種字串
+		.transform((tz) => new Intl.DateTimeFormat('en-US', { timeZone: tz }).resolvedOptions().timeZone)
 		.optional(),
 	dailyGoalMinutes: goalMinutes('每日目標', GOAL_LIMITS.daily),
 	weeklyGoalMinutes: goalMinutes('每週目標', GOAL_LIMITS.weekly),

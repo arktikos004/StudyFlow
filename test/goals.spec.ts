@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { addDays, weekStart } from '../src/shared/dates';
 import { createClient, logSession, noonClient, registeredClient, type Client } from './helpers';
@@ -46,6 +47,24 @@ describe('每日／每週讀書目標（GOAL-1）', () => {
 		expect((await c.patch('/api/auth/me', { dailyGoalMinutes: 10, weeklyGoalMinutes: 5040 })).status).toBe(200);
 		expect((await c.patch('/api/auth/me', { dailyGoalMinutes: 720, weeklyGoalMinutes: 60 })).status).toBe(200);
 		expect((await c.get('/api/auth/me')).data.user).toMatchObject({ dailyGoalMinutes: 720, weeklyGoalMinutes: 60 });
+	});
+});
+
+describe('個人資料：時區名稱正規化', () => {
+	it('大小寫不同的時區名稱寫入後，存下的是標準名稱', async () => {
+		const c = await registeredClient();
+		const res = await c.patch('/api/auth/me', { timezone: 'asia/TAIPEI' });
+		expect(res.status).toBe(200);
+		expect(res.data.user.timezone).toBe('Asia/Taipei');
+
+		expect((await c.patch('/api/auth/me', { timezone: 'AMERICA/new_york' })).data.user.timezone).toBe('America/New_York');
+		expect((await c.get('/api/auth/me')).data.user.timezone).toBe('America/New_York');
+		const row = await env.DB.prepare('SELECT timezone FROM users WHERE id = ?').bind(c.user.id).first<{ timezone: string }>();
+		expect(row!.timezone).toBe('America/New_York');
+
+		const bad = await c.patch('/api/auth/me', { timezone: 'asia/nowhere' });
+		expect(bad.status).toBe(400);
+		expect(bad.data.error).toBe('時區格式錯誤');
 	});
 });
 
