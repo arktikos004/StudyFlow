@@ -617,16 +617,23 @@ export function ProgressBar(props: ProgressProps & { size?: 'sm' | 'md' }) {
 	);
 }
 
-/** 進度環（role="progressbar"），children 放在圓心（例如數字或圖示）。 */
-export function ProgressRing(props: ProgressProps & { size?: number; stroke?: number; children?: ReactNode }) {
-	const { value, max = 100, tone = 'accent', color, size = 40, stroke = 4, className, children } = props;
+/** 進度環（role="progressbar"），children 放在圓心（例如數字或圖示）。trackColor 可在底色與軌道相同時改用別的顏色。 */
+export function ProgressRing(props: ProgressProps & { size?: number; stroke?: number; trackColor?: string; children?: ReactNode }) {
+	const { value, max = 100, tone = 'accent', color, size = 40, stroke = 4, trackColor, className, children } = props;
 	const ratio = max > 0 ? clamp01(value / max) : 0;
 	const r = (size - stroke) / 2;
 	const c = 2 * Math.PI * r;
 	return (
 		<div {...progressAria(props)} className={cn('relative inline-grid shrink-0 place-items-center', className)} style={{ width: size, height: size }}>
 			<svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 size-full -rotate-90" aria-hidden>
-				<circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} stroke={color ? tintTrack(color) : `var(--${tone}-soft)`} />
+				<circle
+					cx={size / 2}
+					cy={size / 2}
+					r={r}
+					fill="none"
+					strokeWidth={stroke}
+					stroke={trackColor ?? (color ? tintTrack(color) : `var(--${tone}-soft)`)}
+				/>
 				<circle
 					cx={size / 2}
 					cy={size / 2}

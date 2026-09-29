@@ -49,7 +49,14 @@ export function TimerNavIcon({ icon: Icon, active }: { icon: LucideIcon; active:
 	const progress = target ? el / target : (el % 3_600_000) / 3_600_000;
 	return (
 		<span aria-hidden>
-			<ProgressRing value={progress * 100} tone={s.phase === 'break' ? 'success' : 'accent'} size={26} stroke={2.5}>
+			<ProgressRing
+				value={progress * 100}
+				tone={s.phase === 'break' ? 'success' : 'accent'}
+				// 目前頁面的膠囊底就是 accent-soft，軌道改用 card 才看得出來
+				trackColor={active ? 'var(--card)' : undefined}
+				size={26}
+				stroke={2.5}
+			>
 				<Icon className="size-3.5" strokeWidth={2.25} />
 			</ProgressRing>
 		</span>
