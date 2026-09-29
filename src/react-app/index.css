@@ -1,0 +1,174 @@
+@import 'tailwindcss';
+
+/* 深色模式由 <html data-theme="dark"> 控制（跟隨系統或使用者手動切換） */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+:root {
+	color-scheme: light;
+	--page: #f6f6f3;
+	--card: #fcfcfb;
+	--subtle: #efeee9;
+	--line: #e1e0d9;
+	--line-strong: #c3c2b7;
+	--ink: #0b0b0b;
+	--ink-2: #52514e;
+	--ink-3: #75736d;
+	--accent: #2a78d6;
+	--accent-hover: #256abf;
+	--accent-ink: #1c5cab;
+	--accent-soft: #e3eefb;
+	--on-accent: #ffffff;
+	--danger: #d03b3b;
+	--danger-soft: #fbe9e9;
+	--success: #006300;
+	--success-soft: #e3f3e3;
+	--warning: #8a5a00;
+	--warning-soft: #fdf1d6;
+	--chart-grid: #e1e0d9;
+	--chart-axis: #c3c2b7;
+	--chart-rest: #c3c2b7;
+	--shadow: 0 1px 2px rgb(11 11 11 / 0.04), 0 2px 8px rgb(11 11 11 / 0.04);
+}
+
+[data-theme='dark'] {
+	color-scheme: dark;
+	--page: #0d0d0d;
+	--card: #1a1a19;
+	--subtle: #252524;
+	--line: #2c2c2a;
+	--line-strong: #383835;
+	--ink: #ffffff;
+	--ink-2: #c3c2b7;
+	--ink-3: #99978f;
+	--accent: #3987e5;
+	--accent-hover: #5598e7;
+	--accent-ink: #86b6ef;
+	--accent-soft: #16263a;
+	--on-accent: #ffffff;
+	--danger: #e66767;
+	--danger-soft: #3a1c1c;
+	--success: #0ca30c;
+	--success-soft: #143014;
+	--warning: #fab219;
+	--warning-soft: #3a2e10;
+	--chart-grid: #2c2c2a;
+	--chart-axis: #383835;
+	--chart-rest: #6b6a64;
+	--shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+}
+
+@theme inline {
+	--color-page: var(--page);
+	--color-card: var(--card);
+	--color-subtle: var(--subtle);
+	--color-line: var(--line);
+	--color-line-strong: var(--line-strong);
+	--color-ink: var(--ink);
+	--color-ink-2: var(--ink-2);
+	--color-ink-3: var(--ink-3);
+	--color-accent: var(--accent);
+	--color-accent-hover: var(--accent-hover);
+	--color-accent-ink: var(--accent-ink);
+	--color-accent-soft: var(--accent-soft);
+	--color-on-accent: var(--on-accent);
+	--color-danger: var(--danger);
+	--color-danger-soft: var(--danger-soft);
+	--color-success: var(--success);
+	--color-success-soft: var(--success-soft);
+	--color-warning: var(--warning);
+	--color-warning-soft: var(--warning-soft);
+	--shadow-card: var(--shadow);
+	--font-sans: system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Segoe UI', sans-serif;
+}
+
+@layer base {
+	html {
+		-webkit-text-size-adjust: 100%;
+		-webkit-tap-highlight-color: transparent;
+	}
+	body {
+		@apply bg-page text-ink font-sans antialiased;
+		min-height: 100dvh;
+	}
+	:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+	button,
+	[role='button'] {
+		cursor: pointer;
+	}
+	button:disabled {
+		cursor: not-allowed;
+	}
+	dialog {
+		color: inherit;
+	}
+	dialog::backdrop {
+		background: rgb(0 0 0 / 0.45);
+	}
+}
+
+/* Markdown 筆記內容 */
+.prose-note {
+	line-height: 1.75;
+	overflow-wrap: anywhere;
+}
+.prose-note > * + * {
+	margin-top: 0.75em;
+}
+.prose-note h1,
+.prose-note h2,
+.prose-note h3 {
+	font-weight: 600;
+	line-height: 1.4;
+}
+.prose-note h1 {
+	font-size: 1.25rem;
+}
+.prose-note h2 {
+	font-size: 1.125rem;
+}
+.prose-note ul {
+	list-style: disc;
+	padding-left: 1.5em;
+}
+.prose-note ol {
+	list-style: decimal;
+	padding-left: 1.5em;
+}
+.prose-note code {
+	background: var(--subtle);
+	border-radius: 4px;
+	padding: 0.1em 0.35em;
+	font-size: 0.9em;
+}
+.prose-note pre {
+	background: var(--subtle);
+	border-radius: 8px;
+	padding: 0.75rem 1rem;
+	overflow-x: auto;
+}
+.prose-note pre code {
+	background: none;
+	padding: 0;
+}
+.prose-note blockquote {
+	border-left: 3px solid var(--line-strong);
+	padding-left: 1em;
+	color: var(--ink-2);
+}
+.prose-note a {
+	color: var(--accent-ink);
+	text-decoration: underline;
+}
+.prose-note table {
+	border-collapse: collapse;
+	display: block;
+	overflow-x: auto;
+}
+.prose-note th,
+.prose-note td {
+	border: 1px solid var(--line);
+	padding: 0.35em 0.6em;
+}
