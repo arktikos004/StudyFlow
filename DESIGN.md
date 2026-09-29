@@ -30,7 +30,7 @@
 
 ## 2. 色彩 tokens
 
-`index.css` 的 `:root` 和 `[data-theme='dark']` 定義 tokens，再透過 `@theme inline` 提供給 Tailwind 使用。
+`index.css` 的 `:root, [data-theme='light']` 和 `[data-theme='dark']` 定義 tokens，再透過 `@theme inline` 提供給 Tailwind 使用（`bg-page`、`text-ink-2`、`border-line-field`、`bg-heat-3`、`bg-backdrop`…，表格裡每個 token 都有對應的 `--color-*`）。
 
 | token | 淺色 | 深色 | 用途 |
 |---|---|---|---|
@@ -53,7 +53,7 @@
 | warning／soft | #935a11／#fff0d2 | #eebb58／#3b2b07 | 今天到期、待複習 |
 | mark | #f8ef96 | #574e0e | 螢光筆黃：只用於 `::selection` 和搜尋結果 |
 | chart-rest | #c1bdb5 | #6c727e | 圖表中的「未完成」等其餘項目 |
-| heat-1…4 | #cfdeff #98b7f8 #5f87e7 #2f58c8 | #233459 #345197 #537bd9 #8caffe | 熱度圖（heat-0 = subtle） |
+| heat-1…4 | accent 以 24／45／70／100% 混入 card | accent 以 10／40／72% 混入 accent-soft；heat-4 = accent 與 accent-ink 各半 | 熱度圖（heat-0 = subtle），跟著主題色；藍筆時為淺 #c7d5f2 #9ab2e9 #6689dc #2d53ca、深 #263660 #415890 #607ec7 #8eaffc |
 | backdrop | rgb(22 29 49 / .4) | rgb(0 0 0 / .6) | 對話框背景遮罩 |
 
 - **元件只能使用 token。**
@@ -64,8 +64,42 @@
   - `accent-color` 和 `caret-color` 用 accent。
   - `scrollbar-color` 用 line-strong。
   - `theme-color` meta 用 page。
-- **主題色（SUB-4）**：`data-accent` 提供 6 組經過驗證的強調色，每一組都要有淺色與深色版本的 `accent*` 與 `on-accent`。在 `public/theme-init.js` 裡於第一次繪製前套用。
-- **Sprint 1 相容規則**：舊的 token 名稱都要保留，可以用別名代替。例如 `--chart-grid`、`--chart-axis`、`--chart-rest`、`--shadow`。
+- **主題色（SUB-4）**：`<html data-accent>` 提供 6 組經過驗證的強調色，每一組都有淺色與深色版本的 `accent`、`accent-hover`、`accent-ink`、`accent-soft`、`on-accent`。
+  - 選擇存在 localStorage 的 `studyflow:accent`，`public/theme-init.js` 在第一次繪製前套用（同時套用 `data-theme` 與 `theme-color`），不會閃爍。
+  - 程式介面在 `lib/theme.ts`：`ACCENTS`（id、zh-TW 名稱、`preview.light／dark`）、`AccentId`、`useAccent()`、`setAccent(id)`。新增色組時 `theme-init.js` 的清單要同步。
+  - heat-*、圖表的 accent 系列、計時環、焦點框都直接用 accent token，換色組時一起變。
+
+  | id | 名稱 | 淺色 accent／hover／ink／soft／on | 深色 accent／hover／ink／soft／on |
+  |---|---|---|---|
+  | blue（預設） | 藍筆 | #2d53ca #2345b4 #284ab2 #e5edff #ffffff | #7da1f9 #96b6ff #9fbdff #1d2c51 #080e21 |
+  | lake | 湖水青 | #006c82 #005d70 #005d71 #d8f2fa #ffffff | #38afcc #64c0d9 #78c7dd #003440 #001218 |
+  | green | 墨綠 | #00614f #005242 #005847 #d8f4eb #ffffff | #51ad95 #72bda8 #87c9b5 #08362c #01140e |
+  | grape | 葡萄紫 | #7e46bd #6e3aa9 #6c39a4 #f0e8ff #ffffff | #b48feb #c5a5f5 #caaef5 #35244b #130a1e |
+  | berry | 莓果 | #a8328a #952679 #912776 #fce5f3 #ffffff | #db84bf #e89ccf #eaa6d3 #431f38 #1a0815 |
+  | graphite | 鉛筆 | #5a616e #4d545f #4e5560 #eaedf2 #ffffff | #9ba2ad #afb4be #b5bbc3 #2a2e35 #0b0f17 |
+
+  - **對比（實際計算，WCAG）**，6 組中的最低值：
+
+    | 組合 | 淺色 | 深色 | 門檻 |
+    |---|---|---|---|
+    | on-accent／accent | 6.00（葡萄紫） | 7.01（墨綠） | 4.5 |
+    | on-accent／accent-hover | 7.39 | 8.63 | 4.5 |
+    | on-accent／按下（accent 混 12% 黑） | 7.76 | 5.04 | 4.5 |
+    | on-accent／danger、success 填色 | 6.08、5.89 | 6.90、8.96 | 4.5 |
+    | accent-ink／card、page、subtle | 7.30、6.93、6.42 | 9.08、9.90、8.13 | 4.5 |
+    | accent-ink／accent-soft（badge、導覽） | 6.40 | 7.02 | 4.5 |
+    | accent／page、card（焦點框） | 5.55、5.86 | 7.07、6.49 | 3 |
+    | accent／accent-soft（進度條填色與軌道） | 5.06 | 4.93 | 3 |
+    | heat-4／card | 5.86 | 7.77 | 3 |
+
+  - **語意撞色（OKLab ΔE×100）**：莓果和 danger 14.2／11.0；墨綠和 success 7.7／9.2（計時環的專注與休息階段靠文字標籤區分）。
+  - **不收錄琥珀橘**：和 warning（ΔE 4.7）、danger（ΔE 8.6）幾乎同色，主要按鈕與「今天到期」會分不出來，所以改收錄中性的「鉛筆」。紅、橘、黃系一律不做主題色。
+- **局部預覽**：任何元素都可以加 `data-theme="light|dark"` 或 `data-accent="…"`，只影響該區塊的 tokens（例如設定頁的深淺色對照、色組色票）。
+  - 權重：只給 `data-accent`（0,1,0）< 祖先組合（0,2,0）< 同一個元素同時給兩者（0,3,0），所以預覽時盡量把兩個屬性放在同一個元素上。
+  - Tailwind 的 `dark:` 變體仍以 `<html>` 為準；局部預覽請用 tokens，不要用 `dark:`。
+  - heat-* 只在有 `data-theme` 的元素上重新計算；只加 `data-accent` 的色票不會改變熱度圖色階。
+- **Sprint 1 相容規則**：舊的 token 名稱都要保留，可以用別名代替。
+  - `--chart-grid` = line、`--chart-axis` = line-strong、`--chart-rest` 保留原值、`--shadow` = `--elevation-sm`、工具類 `shadow-card` = `shadow-sm`。
 
 ## 3. 科目色
 
@@ -77,7 +111,7 @@
     - 其他顏色把 L 0.43–0.77 線性對應到 0.55–0.67，C 夾在 0.10–0.16。
   - tint：`color-mix(in oklab, mark 14%（深色 22%）, var(--card))`。
   - ring：mark 35% 疊在透明上。
-  - onMark：`#fff` 或 ink，選對比較高的那個。
+  - onMark：`#fff` 或深色文字，選對比較高的那個；深色模式的深色文字用 `#0c0f18`（深色的 page 色）。
 - **文字永遠不用科目色。** chip 是 ink 色的字配上科目 tint 底色，全部 48 色在淺色下都 ≥ 12.9:1，深色下 ≥ 11.2:1。
 - **推薦色**：色盲友善，順序固定，對應的名稱依序是藍、橘、青綠、琥珀、粉紅、綠、靛紫、紅。
 
@@ -97,9 +131,13 @@
   - 觸發條件：
     - C < 0.10（太灰）。
     - 和圖表上相鄰的科目太像：ΔE < 15，或色盲模擬下 ΔE < 8。
-    - 和任何一個科目 ΔE < 8（幾乎一樣）。
-  - 提醒旁附「改用建議色」。
+      - 色盲只判定 protan 與 deutan；tritan 只計算、不列入判定，和 dataviz 驗證器的判定方式一致（推薦色的琥珀↔粉紅在 tritan 下只有 5.8）。
+    - 和任何一個科目幾乎一樣：淺色 ΔE < 8，或兩色的**深色 mark** ΔE < 5（深色也要判定）。
+  - 推薦色彼此之間不提醒「幾乎一樣」（它們是驗證過的一組）；但兩個科目用了同一個推薦色時仍然提醒。
+  - 提醒旁附「改用建議色」；建議色必須在淺色與深色兩種模式下都通過以上檢查。
+- **色格排版**：桌面 10 × 4、每格 32px；觸控裝置或窄容器改成兩塊 5 × 4、每格 44px。
 - **驗證**：色盤有改動時，必須用 dataviz skill 的 `validate_palette.js` 驗證淺色與深色兩種模式。
+- **待評估（Sprint 2）：是否放寬深色的 DARK_BAND**。目前深色把 L 0.43–0.77 壓進 0.55–0.67，同色相的 4 個色調在深色只差 ΔE 3–5，所以深色的色格實際上只剩約 10 種可分辨的顏色。這個 Sprint 不改 `src/shared/color.ts`（屬於 s1/color）。
 
 ## 4. 字型與排版
 
