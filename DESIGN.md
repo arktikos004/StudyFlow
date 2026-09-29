@@ -142,24 +142,25 @@
 ## 4. 字型與排版
 
 - **文字**：`system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Segoe UI', sans-serif`。
-- **數字**：`--font-num` 是 `'Archivo Variable'` 加上文字的字型堆疊。
-  - 套件：`@fontsource-variable/archivo`，引入 `standard.css`（字重加字寬）。
+- **數字**：`--font-num` 是 `'Archivo Variable'` 加上文字的字型堆疊（中文等其他字元落回文字字型）。工具類是 `font-num`。
+  - 套件：`@fontsource-variable/archivo`，在 `main.tsx` 引入 `standard.css`（字重 100–900、字寬 62–125%）。自架，符合 CSP `font-src 'self'`；workbox 也快取 woff2。
   - 一律使用 `tabular-nums lining-nums`；計時和倒數加上 `font-stretch: semi-condensed`。
-  - 要實際量「1111」和「0000」的寬度是否相同。不同就代表不支援 tnum，改用系統字型。
+  - **tnum 實測結論（Sprint 1）：支援。** fontTools 讀 GSUB 有 `tnum`（`.tf` 字形，所有數字等寬）；Chrome 實測 `tabular-nums` 時「1111」和「0000」在字重 400／600／700、字寬 100%／87.5% 下都等寬（例如 600／100% 都是 92.64px@40px），不加 tnum 時不等寬（400：83.42 vs 91.64）。
+  - 圖表軸線的數字由 `index.css` 統一套用數字字型與等寬數字，不必逐一設定。
 - **字重**：只用 400、600、700。微軟正黑體會把 500 顯示成 400。
 - **字級**：
 
-| 用途 | 大小 / 行高 | 字重 |
-|---|---|---|
-| num-xl（計時） | clamp(3.5rem, 15vw, 5.5rem) / 1 | |
-| num-lg（倒數、統計） | 1.75rem / 1.1 | |
-| h1 | 1.5rem / 1.3（手機 1.375rem） | 700 |
-| h2 | 1.125rem | 600 |
-| h3 | 1rem | 600 |
-| body | 1rem / 1.6 | |
-| dense | .9375rem | |
-| meta | .8125rem | |
-| caption | .75rem（最小，不能再小） | |
+| 用途 | 大小 / 行高 | 字重 | 工具類 |
+|---|---|---|---|
+| num-xl（計時） | clamp(3.5rem, 15vw, 5.5rem) / 1 | 600 | `text-num-xl` |
+| num-lg（倒數、統計） | 1.75rem / 1.1 | 600 | `text-num-lg` |
+| h1 | 1.5rem / 1.3（手機 1.375rem） | 700 | `text-h1` |
+| h2 | 1.125rem / 1.4 | 600 | `text-h2` |
+| h3 | 1rem / 1.5 | 600 | `text-h3` |
+| body | 1rem / 1.6 | | `text-base` |
+| dense | .9375rem / 1.55 | | `text-dense` |
+| meta | .8125rem / 1.5 | | `text-meta` |
+| caption | .75rem / 1.5（最小，不能再小） | | `text-caption`（= `text-xs`） |
 
 - **字距**：中文字距為 0，不可為負；32px 以上的數字用 −0.02em。
 - **長文**：最寬 38em，行高 1.75。
@@ -188,6 +189,8 @@
 
   巢狀時，內層圓角 = 外層圓角 − 內距。
 - **層次**：邊框表示結構，陰影表示高度（帶 ink 色調、分層）。
+  - 原始值是 `--elevation-sm／md／lg`，工具類是 `shadow-sm／md／lg`；`shadow-card` 是 `shadow-sm` 的別名。
+  - 深色模式靠較亮的表面表示高度（例如 Segmented 選中的項目用 line 色底）。
 
   | 陰影 | 淺色 | 深色 |
   |---|---|---|
@@ -208,15 +211,18 @@
   | 120ms | 按壓、hover |
   | 180ms | 切換、核取方塊、分段按鈕 |
   | 240ms | popover、toast |
-  | 320ms | bottom sheet／對話框進場（離場 200ms） |
+  | 320ms | bottom sheet／對話框進場（離場不做動畫：立即關閉，內容同時卸載） |
   | 600ms | 唯一刻意設計的時刻：專注完成 |
 
+  時長也有 token：`--dur-press` 120、`--dur-toggle` 180、`--dur-pop` 240、`--dur-sheet` 320、`--dur-moment` 600；Tailwind 直接寫 `duration-120`、`duration-180`。
+- **動畫工具類**：`animate-fade-in`（120ms）、`animate-pop-in`（240ms，popover）、`animate-complete`（600ms，只給「專注完成」用）。
+- **對話框**：只有進場動畫（`@starting-style`＋`transition-behavior: allow-discrete`）：手機由下滑入、sm 以上輕微放大淡入；關閉時立即消失，因為內容同時卸載。
 - **只動畫 transform、opacity、顏色。**
   - 不用 `transition: all`。
-  - 不動畫 width、height、top、left。
+  - 不動畫 width、height、top、left；進度條用 translateX，不動畫寬度。
 - **`prefers-reduced-motion`**：
-  - 拿掉位移和縮放。
-  - 保留 120ms 以內的淡入淡出與顏色變化。
+  - 拿掉位移和縮放（按下的 1px 下沉、Switch 滑動、對話框滑入都拿掉）。
+  - 保留 120ms 以內的淡入淡出與顏色變化；`animate-pop-in`／`animate-complete` 自動改成只淡入。
 
 ## 7. 元件
 
