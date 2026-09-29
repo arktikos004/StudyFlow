@@ -1,7 +1,15 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { z } from 'zod';
-import type { subjectSchema, subjectUpdateSchema, taskSchema, taskUpdateSchema, updateProfileSchema } from '../../shared/schemas';
+import type {
+	studySessionSchema,
+	studySessionUpdateSchema,
+	subjectSchema,
+	subjectUpdateSchema,
+	taskSchema,
+	taskUpdateSchema,
+	updateProfileSchema,
+} from '../../shared/schemas';
 import type {
 	DashboardResponse,
 	EventItem,
@@ -218,23 +226,31 @@ export const useUpdateTask = () =>
 export const useDeleteTask = () =>
 	useApiMutation((id: string) => api.del(`/tasks/${id}`), [['tasks'], ['events'], ...OVERVIEW], '已刪除任務');
 
-export type SessionInput = {
-	mode: 'pomodoro' | 'stopwatch' | 'manual';
-	startedAt: number;
-	endedAt: number;
-	durationSec?: number;
-	subjectId?: string | null;
-	taskId?: string | null;
-	note?: string | null;
-};
+export type SessionInput = z.input<typeof studySessionSchema>;
+/** 只送要改的欄位；沒給 durationSec 但改了起訖時間時，後端會依起訖時間重新計算 */
+export type SessionUpdateInput = z.input<typeof studySessionUpdateSchema> & { id: string };
+/**
+ * 學習紀錄的新增、修改、刪除會影響：紀錄列表、任務投入時間、總覽、統計、頁首摘要、成就、單科總覽。
+ * 計時器自己送出紀錄時（lib/timer.ts）也要 invalidate 這一組。
+ */
+export const SESSION_KEYS: QueryKey[] = [
+	['sessions'],
+	['tasks'],
+	['dashboard'],
+	['stats'],
+	['summary'],
+	['achievements'],
+	['subject-overview'],
+];
 export const useCreateSession = () =>
+	useApiMutation((v: SessionInput) => api.post<{ session: StudySession }>('/study-sessions', v), SESSION_KEYS, '已記錄學習時間');
+export const useUpdateSession = () =>
 	useApiMutation(
-		(v: SessionInput) => api.post<{ session: StudySession }>('/study-sessions', v),
-		[['sessions'], ...OVERVIEW],
-		'已記錄學習時間',
+		({ id, ...v }: SessionUpdateInput) => api.patch<{ session: StudySession }>(`/study-sessions/${id}`, v),
+		SESSION_KEYS,
+		'已更新紀錄',
 	);
-export const useDeleteSession = () =>
-	useApiMutation((id: string) => api.del(`/study-sessions/${id}`), [['sessions'], ...OVERVIEW], '已刪除紀錄');
+export const useDeleteSession = () => useApiMutation((id: string) => api.del(`/study-sessions/${id}`), SESSION_KEYS, '已刪除紀錄');
 
 export type NoteInput = {
 	kind: 'note' | 'mistake';

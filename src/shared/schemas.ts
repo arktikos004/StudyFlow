@@ -166,24 +166,32 @@ export const taskUpdateSchema = z.object({
 
 const MAX_SESSION_MS = 24 * 60 * 60 * 1000;
 export const STUDY_MODES = ['pomodoro', 'stopwatch', 'manual'] as const;
-export const studySessionSchema = z
-	.object({
-		mode: z.enum(STUDY_MODES),
-		startedAt: z.number().int().positive(),
-		endedAt: z.number().int().positive(),
-		// 有暫停時，實際專注秒數會小於起訖時間差
-		durationSec: z.number().int().min(1).optional(),
-		subjectId: id.nullish(),
-		taskId: id.nullish(),
-		note: optionalText(500),
-	})
-	.refine((s) => s.endedAt > s.startedAt, { message: '結束時間必須晚於開始時間', path: ['endedAt'] })
-	.refine((s) => s.endedAt - s.startedAt <= MAX_SESSION_MS, { message: '單次學習不可超過 24 小時', path: ['endedAt'] })
-	.refine((s) => s.durationSec === undefined || s.durationSec * 1000 <= s.endedAt - s.startedAt + 1000, {
-		message: '學習秒數不可超過起訖時間',
-		path: ['durationSec'],
-	})
-	.refine((s) => s.endedAt <= Date.now() + 5 * 60 * 1000, { message: '不能記錄未來的時間', path: ['endedAt'] });
+/** 學習紀錄的欄位（不含跨欄位檢查）；Zod 4 不能對加了 refine 的 schema 呼叫 .partial()，所以分開 */
+export const studySessionBase = z.object({
+	mode: z.enum(STUDY_MODES),
+	startedAt: z.number().int().positive(),
+	endedAt: z.number().int().positive(),
+	// 有暫停時，實際專注秒數會小於起訖時間差
+	durationSec: z.number().int().min(1).optional(),
+	subjectId: id.nullish(),
+	taskId: id.nullish(),
+	note: optionalText(500),
+});
+
+/** 起訖時間與秒數的檢查，新增與編輯共用（編輯時先和原紀錄合併成整筆再檢查） */
+const withSessionChecks = (schema: typeof studySessionBase) =>
+	schema
+		.refine((s) => s.endedAt > s.startedAt, { message: '結束時間必須晚於開始時間', path: ['endedAt'] })
+		.refine((s) => s.endedAt - s.startedAt <= MAX_SESSION_MS, { message: '單次學習不可超過 24 小時', path: ['endedAt'] })
+		.refine((s) => s.durationSec === undefined || s.durationSec * 1000 <= s.endedAt - s.startedAt + 1000, {
+			message: '學習秒數不可超過起訖時間',
+			path: ['durationSec'],
+		})
+		.refine((s) => s.endedAt <= Date.now() + 5 * 60 * 1000, { message: '不能記錄未來的時間', path: ['endedAt'] });
+
+export const studySessionSchema = withSessionChecks(studySessionBase);
+/** PATCH 只驗證個別欄位；跨欄位規則由後端和原紀錄合併後，用 studySessionSchema 檢查 */
+export const studySessionUpdateSchema = studySessionBase.partial();
 
 export const NOTE_KINDS = ['note', 'mistake'] as const;
 const noteFields = {
