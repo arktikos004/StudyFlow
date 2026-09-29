@@ -3,7 +3,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { api } from './api';
 import { formatMinutes } from './format';
-import type { SessionInput } from './queries';
+import { SESSION_KEYS, type SessionInput } from './queries';
 
 // 計時器狀態存在 localStorage，並以「開始時間戳」計算經過時間：
 // 重新整理、切換分頁、手機鎖屏都不會讓計時中斷或變慢。
@@ -300,9 +300,8 @@ export function useTimerEngine() {
 	const qc = useQueryClient();
 	useEffect(() => {
 		const onSaved = (r: SessionInput) => {
-			qc.invalidateQueries({ queryKey: ['sessions'] });
-			qc.invalidateQueries({ queryKey: ['dashboard'] });
-			qc.invalidateQueries({ queryKey: ['stats'] });
+			// 和手動新增、編輯紀錄同一組：紀錄列表、任務投入時間、總覽、統計、頁首摘要、成就、單科總覽
+			SESSION_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
 			toast.success(`已記錄 ${formatMinutes((r.durationSec ?? 0) / 60)} 的學習時間`);
 		};
 		let busy = false;
