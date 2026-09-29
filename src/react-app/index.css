@@ -369,6 +369,225 @@
 }
 
 @layer components {
+	/* ---- Button（元件預設值放在 components layer，頁面傳入的 className 工具類一定蓋得過） ---- */
+	.sf-btn {
+		position: relative;
+		display: inline-flex;
+		flex-shrink: 0;
+		align-items: center;
+		justify-content: center;
+		gap: 0.375rem;
+		height: 2.5rem;
+		padding-inline: 1rem;
+		border: 1px solid transparent;
+		border-radius: var(--radius-lg);
+		font-size: 0.9375rem;
+		line-height: 1.25rem;
+		font-weight: 400;
+		white-space: nowrap;
+		user-select: none;
+		transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+		transition-duration: var(--dur-press);
+		transition-timing-function: var(--ease-out);
+	}
+	.sf-btn-sm {
+		height: 2rem;
+		padding-inline: 0.75rem;
+		font-size: 0.875rem;
+	}
+	.sf-btn-lg {
+		height: 3rem;
+		padding-inline: 1.25rem;
+		font-size: 1rem;
+	}
+	.sf-btn-icon {
+		width: 2.25rem;
+		height: 2.25rem;
+		padding-inline: 0;
+	}
+	/* 觸控裝置：目標至少 44px（sm 保持外觀，用 ::after 擴大可點範圍） */
+	@media (pointer: coarse) {
+		.sf-btn {
+			min-height: 2.75rem;
+		}
+		.sf-btn-sm {
+			min-height: 2.25rem;
+		}
+		.sf-btn-sm::after {
+			content: '';
+			position: absolute;
+			inset: -0.25rem 0;
+		}
+		.sf-btn-icon {
+			width: 2.75rem;
+			height: 2.75rem;
+		}
+	}
+	.sf-btn-primary {
+		background-color: var(--accent);
+		color: var(--on-accent);
+		font-weight: 600;
+	}
+	.sf-btn-secondary {
+		background-color: var(--card);
+		border-color: var(--line-strong);
+		color: var(--ink);
+	}
+	.sf-btn-ghost {
+		color: var(--ink-2);
+	}
+	.sf-btn-danger {
+		background-color: var(--danger);
+		color: var(--on-accent);
+		font-weight: 600;
+	}
+	.sf-btn-soft {
+		background-color: var(--accent-soft);
+		color: var(--accent-ink);
+	}
+	@media (hover: hover) {
+		.sf-btn-primary:hover:not(:disabled) {
+			background-color: var(--accent-hover);
+		}
+		.sf-btn-secondary:hover:not(:disabled),
+		.sf-btn-ghost:hover:not(:disabled) {
+			background-color: var(--subtle);
+			color: var(--ink);
+		}
+		.sf-btn-danger:hover:not(:disabled) {
+			background-color: color-mix(in oklab, var(--danger) 90%, transparent);
+		}
+		.sf-btn-soft:hover:not(:disabled) {
+			background-color: color-mix(in oklab, var(--accent-soft) 90%, var(--accent));
+		}
+	}
+	/* 按下：加深填色，並下沉 1px（reduced motion 時只保留顏色） */
+	.sf-btn-primary:active:not(:disabled) {
+		background-color: color-mix(in oklab, var(--accent) 88%, black);
+	}
+	.sf-btn-secondary:active:not(:disabled),
+	.sf-btn-ghost:active:not(:disabled) {
+		background-color: var(--line);
+		color: var(--ink);
+	}
+	.sf-btn-danger:active:not(:disabled) {
+		background-color: color-mix(in oklab, var(--danger) 88%, black);
+	}
+	.sf-btn-soft:active:not(:disabled) {
+		background-color: color-mix(in oklab, var(--accent-soft) 82%, var(--accent));
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.sf-btn:active:not(:disabled) {
+			transform: translateY(1px);
+		}
+	}
+	.sf-btn:disabled:not([aria-busy='true']) {
+		opacity: 0.5;
+	}
+	.sf-btn[aria-busy='true'] {
+		cursor: progress;
+	}
+
+	/* ---- 表單欄位：Input／Select／Textarea ---- */
+	.sf-field {
+		width: 100%;
+		border: 1px solid var(--line-field);
+		border-radius: var(--radius-lg);
+		background-color: var(--page);
+		padding-inline: 0.75rem;
+		color: var(--ink);
+		/* 手機 16px（避免 iOS 自動放大），sm 以上 15px */
+		font-size: 1rem;
+		transition-property: border-color, box-shadow, background-color;
+		transition-duration: var(--dur-press);
+		transition-timing-function: var(--ease-out);
+	}
+	@media (width >= 40rem) {
+		.sf-field {
+			font-size: 0.9375rem;
+		}
+	}
+	.sf-field::placeholder {
+		color: var(--ink-3);
+	}
+	@media (hover: hover) {
+		.sf-field:hover:not(:disabled, :focus) {
+			border-color: var(--ink-3);
+		}
+	}
+	.sf-field:focus {
+		outline: none;
+		border-color: var(--accent);
+		box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent);
+	}
+	.sf-field[aria-invalid='true'] {
+		border-color: var(--danger);
+	}
+	.sf-field[aria-invalid='true']:focus {
+		box-shadow: 0 0 0 3px color-mix(in oklab, var(--danger) 20%, transparent);
+	}
+	.sf-field:disabled {
+		cursor: not-allowed;
+		border-color: var(--line);
+		background-color: var(--subtle);
+		color: var(--ink-2);
+	}
+	.sf-field:is([type='number'], [type='date'], [type='time'], [type='datetime-local']) {
+		font-variant-numeric: tabular-nums;
+	}
+	.sf-input,
+	.sf-select {
+		height: 2.5rem;
+	}
+	@media (pointer: coarse) {
+		.sf-input,
+		.sf-select {
+			min-height: 2.75rem;
+		}
+	}
+	.sf-select {
+		appearance: none;
+		padding-right: 2.25rem;
+		text-overflow: ellipsis;
+	}
+	.sf-textarea {
+		min-height: 6rem;
+		padding-block: 0.5rem;
+		line-height: 1.625;
+		resize: vertical;
+	}
+
+	/* ---- Dialog：只在打開時播放進場動畫；關閉時立即消失（內容同時卸載） ---- */
+	.sf-dialog[open] {
+		transition-property: opacity, transform, overlay, display;
+		transition-duration: var(--dur-sheet);
+		transition-timing-function: var(--ease-out);
+		transition-behavior: allow-discrete;
+	}
+	.sf-dialog[open]::backdrop {
+		transition-property: opacity, overlay, display;
+		transition-duration: var(--dur-sheet);
+		transition-timing-function: var(--ease-out);
+		transition-behavior: allow-discrete;
+	}
+	@starting-style {
+		.sf-dialog[open] {
+			opacity: 0;
+			transform: translateY(100%);
+		}
+		.sf-dialog[open]::backdrop {
+			opacity: 0;
+		}
+	}
+	@media (width >= 40rem) {
+		@starting-style {
+			.sf-dialog[open] {
+				opacity: 0;
+				transform: translateY(0.5rem) scale(0.98);
+			}
+		}
+	}
+
 	/* ---- 圖表：軸線數字用數字字型、等寬 ---- */
 	.recharts-cartesian-axis-tick-value {
 		font-family: var(--font-num);
@@ -381,6 +600,16 @@
 	:root {
 		--animate-pop-in: sf-fade-in 120ms var(--ease-out) both;
 		--animate-complete: sf-fade-in 120ms var(--ease-out) both;
+	}
+	.sf-dialog[open],
+	.sf-dialog[open]::backdrop {
+		transition-duration: 120ms;
+	}
+	@starting-style {
+		.sf-dialog[open] {
+			opacity: 0;
+			transform: none;
+		}
 	}
 	html {
 		scroll-behavior: auto;
