@@ -206,7 +206,7 @@ function RecommendedRow({ value, onChange, usedBy, label }: SwatchGroupProps) {
 						role="radio"
 						aria-checked={on}
 						aria-label={users ? `${c.name}，已用於${quote(users)}` : c.name}
-						title={users ? `已用於${quote(users)}` : c.name}
+						title={users ? `${c.name}，已用於${quote(users)}` : c.name}
 						tabIndex={i === tabStop ? 0 : -1}
 						onClick={() => onChange(c.hex)}
 						onKeyDown={(e) => onKeyDown(e, i)}
@@ -505,37 +505,45 @@ function SatValSquare({ hsv, onChange }: { hsv: Hsv; onChange: (next: Hsv) => vo
 	);
 }
 
-/** 預覽：固定用淺色與深色各算一次 tone（不受目前主題影響），加上和相鄰科目疊在一起的迷你長條 */
+/**
+ * 預覽：目前所選顏色的名稱（色盤顏色用「藍（明）」，自訂色用「自訂 #RRGGBB」），
+ * 以及固定用淺色與深色各算一次 tone（不受目前主題影響）的 chip 和與相鄰科目疊在一起的迷你長條
+ */
 function Preview({ hex, name, before, after }: { hex: string; name: string; before?: PickerSubject; after?: PickerSubject }) {
 	const around = [before, after].filter((s): s is PickerSubject => s !== undefined).map((s) => s.name);
 	const description = `預覽：「${name}」在淺色與深色模式的標籤${around.length ? `，以及和${quote(around)}並排的長條` : ''}`;
 	return (
-		<div role="img" aria-label={description} className="grid max-w-[22.25rem] grid-cols-2 gap-2">
-			{MODES.map((mode) => {
-				const dark = mode === 'dark';
-				const surface = TONE_SURFACES[mode];
-				const segments = [
-					before && { key: 'before', weight: 3, mark: subjectTone(before.color, dark).mark },
-					{ key: 'self', weight: 4, mark: subjectTone(hex, dark).mark },
-					after && { key: 'after', weight: 3, mark: subjectTone(after.color, dark).mark },
-				].filter((x) => !!x);
-				return (
-					<div key={mode} className="min-w-0">
-						<p className="mb-1 flex items-center gap-1 text-xs text-ink-2">
-							{dark ? <Moon className="size-3.5" aria-hidden /> : <Sun className="size-3.5" aria-hidden />}
-							{dark ? '深色' : '淺色'}
-						</p>
-						<div className="space-y-2.5 rounded-lg border border-line p-2.5" style={{ background: surface.card }}>
-							<SubjectChip name={name} tone={subjectTone(hex, dark, surface.card)} style={{ color: surface.ink }} />
-							<div className="flex h-2.5 gap-0.5 overflow-hidden rounded-sm">
-								{segments.map((seg) => (
-									<span key={seg.key} style={{ flex: seg.weight, background: seg.mark }} />
-								))}
+		<div className="max-w-[22.25rem] space-y-1.5">
+			<p className="text-sm text-ink-2">
+				目前的顏色：<span className="font-semibold text-ink">{colorLabel(hex)}</span>
+			</p>
+			<div role="img" aria-label={description} className="grid grid-cols-2 gap-2">
+				{MODES.map((mode) => {
+					const dark = mode === 'dark';
+					const surface = TONE_SURFACES[mode];
+					const segments = [
+						before && { key: 'before', weight: 3, mark: subjectTone(before.color, dark).mark },
+						{ key: 'self', weight: 4, mark: subjectTone(hex, dark).mark },
+						after && { key: 'after', weight: 3, mark: subjectTone(after.color, dark).mark },
+					].filter((x) => !!x);
+					return (
+						<div key={mode} className="min-w-0">
+							<p className="mb-1 flex items-center gap-1 text-xs text-ink-2">
+								{dark ? <Moon className="size-3.5" aria-hidden /> : <Sun className="size-3.5" aria-hidden />}
+								{dark ? '深色' : '淺色'}
+							</p>
+							<div className="space-y-2.5 rounded-lg border border-line p-2.5" style={{ background: surface.card }}>
+								<SubjectChip name={name} tone={subjectTone(hex, dark, surface.card)} style={{ color: surface.ink }} />
+								<div className="flex h-2.5 gap-0.5 overflow-hidden rounded-sm">
+									{segments.map((seg) => (
+										<span key={seg.key} style={{ flex: seg.weight, background: seg.mark }} />
+									))}
+								</div>
 							</div>
 						</div>
-					</div>
-				);
-			})}
+					);
+				})}
+			</div>
 		</div>
 	);
 }
