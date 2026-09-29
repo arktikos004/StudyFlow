@@ -1,42 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query';
-import {
-	CalendarDays,
-	ChartColumn,
-	Ellipsis,
-	GraduationCap,
-	LayoutDashboard,
-	ListChecks,
-	LogOut,
-	NotebookPen,
-	Settings,
-	Timer as TimerIcon,
-	WifiOff,
-	type LucideIcon,
-} from 'lucide-react';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { ChevronRight, Ellipsis, LogOut, WifiOff } from 'lucide-react';
+import { useState, useSyncExternalStore } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { api } from '../lib/api';
-import { formatDuration } from '../lib/format';
 import { useUser } from '../lib/queries';
-import { elapsedMs, targetMs, useNow, useTimerEngine, useTimerState } from '../lib/timer';
+import { useTimerEngine } from '../lib/timer';
 import { Logo } from './Logo';
-import { cn, Dialog } from './ui';
-
-type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean };
-
-const NAV: NavItem[] = [
-	{ to: '/', label: '總覽', icon: LayoutDashboard, end: true },
-	{ to: '/calendar', label: '月曆', icon: CalendarDays },
-	{ to: '/events', label: '考試與截止', icon: GraduationCap },
-	{ to: '/tasks', label: '學習任務', icon: ListChecks },
-	{ to: '/timer', label: '學習計時', icon: TimerIcon },
-	{ to: '/notes', label: '筆記與錯題', icon: NotebookPen },
-	{ to: '/stats', label: '學習統計', icon: ChartColumn },
-	{ to: '/settings', label: '設定', icon: Settings },
-];
-
-// 手機底部只放最常用的四個，其餘收進「更多」
-const MOBILE_MAIN = ['/', '/tasks', '/timer', '/notes'];
+import { MOBILE_MAIN, NAV, NAV_GROUPS, type NavItem } from './nav';
+import { TimerNavIcon, TimerPill } from './TimerPill';
+import { Button, cn, Dialog } from './ui';
 
 function useOnline() {
 	return useSyncExternalStore(
@@ -63,37 +35,48 @@ function useLogout() {
 	};
 }
 
-/** 計時中時在頁首顯示剩餘時間，點一下回到計時頁 */
-function TimerPill() {
-	const s = useTimerState();
-	const now = useNow(s.running);
-	const navigate = useNavigate();
-	const active = s.phase !== 'idle';
-
-	const target = targetMs(s);
-	const el = elapsedMs(s, now);
-	const shown = target ? Math.max(0, target - el) : el;
-	const label = s.phase === 'break' ? '休息' : '專注';
-
-	useEffect(() => {
-		document.title = active ? `${formatDuration(shown / 1000)} ${label}中 · StudyFlow` : 'StudyFlow 學習管理';
-	}, [active, shown, label]);
-
-	if (!active) return null;
+/** 側欄的一項：目前頁面用 accent-soft 底、字重 600、較粗的圖示 */
+function SideLink({ item }: { item: NavItem }) {
 	return (
-		<button
-			onClick={() => navigate('/timer')}
-			className={cn(
-				'inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium tabular-nums',
-				s.phase === 'break' ? 'bg-success-soft text-success' : 'bg-accent-soft text-accent-ink',
-			)}
+		<NavLink
+			to={item.to}
+			end={item.end}
+			className={({ isActive }) =>
+				cn(
+					'flex h-10 items-center gap-3 rounded-lg px-3 text-dense transition-colors duration-120 ease-out pointer-coarse:h-11',
+					isActive ? 'bg-accent-soft font-semibold text-accent-ink' : 'text-ink-2 hover:bg-subtle hover:text-ink',
+				)
+			}
 		>
-			<TimerIcon className="size-4" aria-hidden />
-			{label} {formatDuration(shown / 1000)}
-			{!s.running && <span className="text-xs opacity-80">（暫停）</span>}
-		</button>
+			{({ isActive }) => (
+				<>
+					<item.icon className="size-[18px] shrink-0" strokeWidth={isActive ? 2.25 : 1.75} aria-hidden />
+					{item.label}
+				</>
+			)}
+		</NavLink>
 	);
 }
+
+/** 手機底部導覽的一格：實心底，目前頁面在圖示後面加上膠囊底 */
+function TabItem({ icon: Icon, label, active, timer }: { icon: NavItem['icon']; label: string; active: boolean; timer?: boolean }) {
+	return (
+		<>
+			<span
+				className={cn(
+					'flex h-8 w-14 items-center justify-center rounded-full transition-colors duration-180 ease-out',
+					active && 'bg-accent-soft text-accent-ink',
+				)}
+			>
+				{timer ? <TimerNavIcon icon={Icon} active={active} /> : <Icon className="size-[22px]" strokeWidth={active ? 2.25 : 1.75} aria-hidden />}
+			</span>
+			{label}
+		</>
+	);
+}
+
+const tabClass = (active: boolean) =>
+	cn('flex h-16 w-full flex-col items-center justify-center gap-1 text-xs', active ? 'font-semibold text-ink' : 'text-ink-2');
 
 export function Layout() {
 	useTimerEngine();
@@ -108,51 +91,55 @@ export function Layout() {
 
 	return (
 		<div className="min-h-dvh md:flex">
-			{/* 桌面版側邊欄 */}
-			<aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-card md:flex">
-				<div className="px-5 pt-5 pb-4">
+			{/* 第一個可聚焦的元素：跳過導覽 */}
+			<a
+				href="#main-content"
+				className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-card focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-accent-ink focus:shadow-lg"
+			>
+				跳到主要內容
+			</a>
+
+			{/* 桌面版側邊欄：page 色底，靠空白分組 */}
+			<aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col bg-page md:flex">
+				<div className="px-5 pt-5 pb-6">
 					<Logo />
 				</div>
-				<nav className="flex-1 space-y-0.5 overflow-y-auto px-3" aria-label="主選單">
-					{NAV.map((n) => (
-						<NavLink
-							key={n.to}
-							to={n.to}
-							end={n.end}
-							className={({ isActive }) =>
-								cn(
-									'flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
-									isActive ? 'bg-accent-soft text-accent-ink' : 'text-ink-2 hover:bg-subtle hover:text-ink',
-								)
-							}
-						>
-							<n.icon className="size-[18px]" aria-hidden />
-							{n.label}
-						</NavLink>
+				<nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label="主選單">
+					{NAV_GROUPS.map((group, i) => (
+						<ul key={i} className={cn('space-y-0.5', i > 0 && 'mt-5')}>
+							{group.map((n) => (
+								<li key={n.to}>
+									<SideLink item={n} />
+								</li>
+							))}
+						</ul>
 					))}
 				</nav>
-				<div className="border-t border-line p-3">
-					<div className="mb-1 truncate px-3 text-sm font-medium">{user.displayName}</div>
-					<div className="mb-2 truncate px-3 text-xs text-ink-3">{user.email}</div>
+				<div className="px-3 pt-2 pb-4">
+					<div className="px-3 pb-2">
+						<div className="truncate text-sm font-semibold">{user.displayName}</div>
+						<div className="truncate text-meta text-ink-3">{user.email}</div>
+					</div>
 					<button
+						type="button"
 						onClick={logout}
-						className="flex h-9 w-full items-center gap-3 rounded-lg px-3 text-sm text-ink-2 hover:bg-subtle hover:text-ink"
+						className="flex h-10 w-full items-center gap-3 rounded-lg px-3 text-dense text-ink-2 transition-colors duration-120 ease-out hover:bg-subtle hover:text-ink pointer-coarse:h-11"
 					>
-						<LogOut className="size-4" aria-hidden />
+						<LogOut className="size-[18px]" strokeWidth={1.75} aria-hidden />
 						登出
 					</button>
 				</div>
 			</aside>
 
 			<div className="flex min-w-0 flex-1 flex-col">
-				{/* 頁首：手機顯示 Logo；計時中顯示剩餘時間 */}
-				<header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-line bg-page/90 px-4 backdrop-blur pt-[env(safe-area-inset-top)] box-content md:border-none md:bg-transparent md:backdrop-blur-none md:px-8">
+				{/* 頁首：手機顯示 Logo；離線提示；計時中顯示剩餘時間 */}
+				<header className="sticky top-0 z-20 box-content flex h-14 items-center justify-between gap-3 border-b border-line bg-page px-4 pt-[env(safe-area-inset-top)] md:border-none md:px-8">
 					<div className="md:hidden">
 						<Logo />
 					</div>
 					<div className="ml-auto flex items-center gap-2">
 						{!online && (
-							<span className="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2.5 py-1 text-xs font-medium text-warning">
+							<span role="status" className="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2.5 py-1 text-xs font-semibold text-warning">
 								<WifiOff className="size-3.5" aria-hidden />
 								離線中
 							</span>
@@ -161,72 +148,64 @@ export function Layout() {
 					</div>
 				</header>
 
-				<main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-28 md:px-8 md:pb-10">
+				<main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-28 outline-none md:px-8 md:pb-10">
 					<Outlet />
 				</main>
 			</div>
 
-			{/* 手機版底部導覽 */}
-			<nav
-				className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
-				aria-label="主選單"
-			>
-				{NAV.filter((n) => MOBILE_MAIN.includes(n.to)).map((n) => (
-					<NavLink
-						key={n.to}
-						to={n.to}
-						end={n.end}
-						className={({ isActive }) =>
-							cn(
-								'flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium',
-								isActive ? 'text-accent-ink' : 'text-ink-3',
-							)
-						}
-					>
-						<n.icon className="size-[22px]" aria-hidden />
-						{n.label.replace('學習', '').replace('與錯題', '')}
-					</NavLink>
-				))}
-				<button
-					onClick={() => setMoreOpen(true)}
-					className={cn(
-						'flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium',
-						moreActive ? 'text-accent-ink' : 'text-ink-3',
-					)}
-				>
-					<Ellipsis className="size-[22px]" aria-hidden />
-					更多
-				</button>
+			{/* 手機版底部導覽：實心底，目前頁面加上膠囊底 */}
+			<nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] md:hidden" aria-label="主選單">
+				<ul className="grid grid-cols-5">
+					{NAV.filter((n) => MOBILE_MAIN.includes(n.to)).map((n) => (
+						<li key={n.to}>
+							<NavLink to={n.to} end={n.end} className={({ isActive }) => tabClass(isActive)}>
+								{({ isActive }) => <TabItem icon={n.icon} label={n.short ?? n.label} active={isActive} timer={n.to === '/timer'} />}
+							</NavLink>
+						</li>
+					))}
+					<li>
+						<button type="button" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" className={tabClass(moreActive)}>
+							<TabItem icon={Ellipsis} label="更多" active={moreActive} />
+						</button>
+					</li>
+				</ul>
 			</nav>
 
 			<Dialog open={moreOpen} onClose={() => setMoreOpen(false)} title="更多功能">
-				<div className="grid grid-cols-2 gap-2">
+				<ul className="-mx-2 space-y-0.5">
 					{moreItems.map((n) => (
-						<NavLink
-							key={n.to}
-							to={n.to}
-							onClick={() => setMoreOpen(false)}
-							className={({ isActive }) =>
-								cn(
-									'flex h-20 flex-col items-center justify-center gap-2 rounded-xl border text-sm font-medium',
-									isActive ? 'border-accent bg-accent-soft text-accent-ink' : 'border-line text-ink-2',
-								)
-							}
-						>
-							<n.icon className="size-6" aria-hidden />
-							{n.label}
-						</NavLink>
+						<li key={n.to}>
+							<NavLink
+								to={n.to}
+								end={n.end}
+								onClick={() => setMoreOpen(false)}
+								className={({ isActive }) =>
+									cn(
+										'flex h-12 items-center gap-3 rounded-lg px-3 text-dense',
+										isActive ? 'bg-accent-soft font-semibold text-accent-ink' : 'text-ink hover:bg-subtle',
+									)
+								}
+							>
+								{({ isActive }) => (
+									<>
+										<n.icon className="size-5 shrink-0" strokeWidth={isActive ? 2.25 : 1.75} aria-hidden />
+										<span className="flex-1">{n.label}</span>
+										<ChevronRight className="size-4 text-ink-3" aria-hidden />
+									</>
+								)}
+							</NavLink>
+						</li>
 					))}
-				</div>
-				<div className="mt-4 flex items-center justify-between border-t border-line pt-4">
+				</ul>
+				<div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-4">
 					<div className="min-w-0">
-						<div className="truncate text-sm font-medium">{user.displayName}</div>
-						<div className="truncate text-xs text-ink-3">{user.email}</div>
+						<div className="truncate text-sm font-semibold">{user.displayName}</div>
+						<div className="truncate text-meta text-ink-3">{user.email}</div>
 					</div>
-					<button onClick={logout} className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm text-danger hover:bg-danger-soft">
+					<Button variant="ghost" onClick={logout}>
 						<LogOut className="size-4" aria-hidden />
 						登出
-					</button>
+					</Button>
 				</div>
 			</Dialog>
 		</div>

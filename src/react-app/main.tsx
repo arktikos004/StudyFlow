@@ -25,6 +25,8 @@ const TimerPage = lazy(() => import('./pages/Timer').then((m) => ({ default: m.T
 const NotesPage = lazy(() => import('./pages/Notes').then((m) => ({ default: m.NotesPage })));
 const StatsPage = lazy(() => import('./pages/Stats').then((m) => ({ default: m.StatsPage })));
 const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
+const SubjectPage = lazy(() => import('./pages/Subject').then((m) => ({ default: m.SubjectPage })));
+const AchievementsPage = lazy(() => import('./pages/Achievements').then((m) => ({ default: m.AchievementsPage })));
 
 const page = (node: ReactNode) => <Suspense fallback={<PageLoader />}>{node}</Suspense>;
 
@@ -84,6 +86,8 @@ const router = createBrowserRouter([
 			{ path: 'notes', element: page(<NotesPage />) },
 			{ path: 'stats', element: page(<StatsPage />) },
 			{ path: 'settings', element: page(<SettingsPage />) },
+			{ path: 'subjects/:id', element: page(<SubjectPage />) },
+			{ path: 'achievements', element: page(<AchievementsPage />) },
 			{ path: '*', element: <NotFound /> },
 		],
 	},
