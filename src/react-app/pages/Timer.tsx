@@ -1,4 +1,18 @@
-import { ChevronLeft, ChevronRight, Coffee, Pause, Pencil, Play, Plus, RotateCcw, SkipForward, Square, Trash2 } from 'lucide-react';
+import {
+	ChevronLeft,
+	ChevronRight,
+	Coffee,
+	Pause,
+	Pencil,
+	Play,
+	Plus,
+	RotateCcw,
+	SkipForward,
+	SlidersHorizontal,
+	Square,
+	Timer as TimerIcon,
+	Trash2,
+} from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import type { StudySession } from '../../shared/api-types';
@@ -14,7 +28,9 @@ import {
 	ErrorNote,
 	Field,
 	Input,
+	PageHeader,
 	PageLoader,
+	ProgressRing,
 	Segmented,
 	Select,
 	Switch,
@@ -22,8 +38,7 @@ import {
 } from '../components/ui';
 import { formatDuration, formatMinutes, MODE_LABEL } from '../lib/format';
 import { useDeleteSession, useStudySessions, useSubjectMap, useTasks, useUser } from '../lib/queries';
-import { formatClockRange, relativeDateLabel } from '../lib/timer-format';
-import { useDeepLink } from '../lib/timer-queries';
+import { useSubjectTone } from '../lib/subject-color';
 import {
 	breakMinutes,
 	elapsedMs,
@@ -38,6 +53,8 @@ import {
 	type TimerMode,
 	type TimerState,
 } from '../lib/timer';
+import { formatClockRange, relativeDateLabel } from '../lib/timer-format';
+import { useDeepLink } from '../lib/timer-queries';
 
 /** 常用的分鐘數；也可以直接輸入 LIMITS 範圍內的任何整數 */
 const PRESETS: Partial<Record<NumericOption, number[]>> = {
@@ -46,11 +63,13 @@ const PRESETS: Partial<Record<NumericOption, number[]>> = {
 	longBreakMin: [10, 15, 20, 30],
 };
 
+// ---- 番茄鐘設定（TMR-1） ----
+
 /**
  * 一個數字設定：常用值（Segmented）加上自訂輸入。
  * 輸入合法時立即套用；超出範圍時顯示錯誤，計時器繼續用上一個合法的值。
  */
-function OptionField({ option, value }: { option: NumericOption; value: number }) {
+function OptionField({ option, value, hint }: { option: NumericOption; value: number; hint?: string }) {
 	const { label, unit, min, max } = LIMITS[option];
 	const presets = PRESETS[option];
 	const [draft, setDraft] = useState(String(value));
@@ -64,15 +83,20 @@ function OptionField({ option, value }: { option: NumericOption; value: number }
 	const commit = (v: number) => timer.setOptions({ [option]: v });
 
 	return (
-		<Field label={label} error={error}>
+		<Field
+			label={label}
+			error={error}
+			hint={hint}
+			className="sm:grid sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:items-center sm:gap-x-4 sm:[&>p]:col-start-2"
+		>
 			{(id, aria) => (
 				<div className="flex flex-wrap items-center gap-2">
 					{presets && (
 						<Segmented
-							label={`${label}常用值`}
+							label={`${label}常用值（${unit}）`}
 							value={String(value)}
 							onChange={(v) => commit(Number(v))}
-							options={presets.map((m) => ({ value: String(m), label: `${m}` }))}
+							options={presets.map((m) => ({ value: String(m), label: <span className="font-num tabular-nums">{m}</span> }))}
 						/>
 					)}
 					<div className="relative w-28">
@@ -101,89 +125,83 @@ function OptionField({ option, value }: { option: NumericOption; value: number }
 	);
 }
 
-/** 番茄鐘設定：專注、短休息、長休息、長休息間隔、自動開始（TMR-1） */
+/** 番茄鐘設定：平常只顯示一行摘要，按「調整」展開（專注空間保持安靜） */
 function PomodoroSettings({ s }: { s: TimerState }) {
+	const [open, setOpen] = useState(false);
+	const id = useId();
 	const focusHint = useId();
 	return (
-		<section aria-labelledby="pomodoro-settings" className="mt-8 border-t border-line pt-6">
-			<h2 id="pomodoro-settings" className="mb-4 text-h3 font-semibold">
-				番茄鐘設定
-			</h2>
-			<div className="grid gap-5 sm:grid-cols-2">
-				<OptionField option="focusMin" value={s.focusMin} />
-				<OptionField option="breakMin" value={s.breakMin} />
-				<OptionField option="longBreakMin" value={s.longBreakMin} />
-				<OptionField option="longBreakEvery" value={s.longBreakEvery} />
+		<section aria-labelledby={`${id}-title`} className="w-full max-w-xl border-t border-line pt-5">
+			<div className="flex items-center justify-between gap-3">
+				<div className="min-w-0">
+					<h2 id={`${id}-title`} className="text-h3 font-semibold">
+						番茄鐘設定
+					</h2>
+					<p className="text-meta text-pretty text-ink-3">
+						專注 {s.focusMin} 分，短休息 {s.breakMin} 分，每 {s.longBreakEvery} 輪長休息 {s.longBreakMin} 分
+					</p>
+				</div>
+				<Button variant="ghost" aria-expanded={open} aria-controls={`${id}-panel`} onClick={() => setOpen(!open)}>
+					<SlidersHorizontal className="size-4" aria-hidden />
+					{open ? '收起' : '調整'}
+				</Button>
 			</div>
-			<div className="mt-4 flex flex-col gap-1">
-				<Switch checked={s.autoStartBreak} onChange={(autoStartBreak) => timer.setOptions({ autoStartBreak })} label="專注結束後自動開始休息" />
-				<Switch
-					checked={s.autoStartFocus}
-					onChange={(autoStartFocus) => timer.setOptions({ autoStartFocus })}
-					label="休息結束後自動開始下一輪專注"
-					aria-describedby={focusHint}
-				/>
-				<p id={focusHint} className="text-meta text-ink-3">
-					離開超過 1 分鐘（例如電腦睡眠）時不會自動開始，也不會補記不在時的番茄
-				</p>
+			<div id={`${id}-panel`} hidden={!open} className="mt-5">
+				<div className="flex flex-col gap-5">
+					<OptionField option="focusMin" value={s.focusMin} />
+					<OptionField option="breakMin" value={s.breakMin} />
+					<OptionField option="longBreakMin" value={s.longBreakMin} />
+					<OptionField option="longBreakEvery" value={s.longBreakEvery} hint={`每完成 ${s.longBreakEvery} 個番茄，長休息一次`} />
+				</div>
+				<div className="mt-4 flex flex-col">
+					<Switch checked={s.autoStartBreak} onChange={(autoStartBreak) => timer.setOptions({ autoStartBreak })} label="專注結束後自動開始休息" />
+					<Switch
+						checked={s.autoStartFocus}
+						onChange={(autoStartFocus) => timer.setOptions({ autoStartFocus })}
+						label="休息結束後自動開始下一輪專注"
+						aria-describedby={focusHint}
+					/>
+					<p id={focusHint} className="pl-[3.25rem] text-meta text-ink-3">
+						離開超過 1 分鐘（例如電腦睡眠）時不會自動開始，也不會補記不在時的番茄
+					</p>
+				</div>
 			</div>
 		</section>
 	);
 }
 
-/** 第 k／N 輪：這一組已完成的番茄用實心圓點，正在進行的那一輪用外框 */
+/** 第 k／N 輪：這一組已完成的番茄是實心圓點，正在進行的那一輪是外框 */
 function RoundDots({ s, today }: { s: TimerState; today: string }) {
 	const { done, round, of, filled } = roundInfo(s, today);
 	return (
-		<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-2">
-			<span className="flex items-center gap-1.5" aria-hidden>
+		<div className="flex flex-col items-center gap-2">
+			<span className="flex items-center gap-2" aria-hidden>
 				{Array.from({ length: of }, (_, i) => (
 					<span
 						key={i}
 						className={cn(
-							'size-2.5 rounded-full',
-							i < filled ? 'bg-accent' : i === round - 1 && s.phase !== 'break' ? 'ring-2 ring-accent ring-inset' : 'ring-1 ring-line-strong ring-inset',
+							'size-3 rounded-full transition-colors duration-180 ease-out',
+							i < filled
+								? 'bg-accent'
+								: i === round - 1 && s.phase !== 'break'
+									? 'ring-2 ring-accent ring-inset'
+									: 'ring-[1.5px] ring-line-strong ring-inset',
 						)}
 					/>
 				))}
 			</span>
-			<span>
-				第 <span className="font-num tabular-nums">{round}</span>／<span className="font-num tabular-nums">{of}</span> 輪
-			</span>
-			<span className="text-ink-3">
-				今天完成 <span className="font-num tabular-nums">{done}</span> 個番茄
-			</span>
+			<p className="text-sm text-ink-2">
+				第 <span className="font-num tabular-nums">{round}</span>／<span className="font-num tabular-nums">{of}</span> 輪，今天完成{' '}
+				<span className="font-num tabular-nums">{done}</span> 個番茄
+			</p>
 		</div>
 	);
 }
 
-function Ring({ progress, phase, children }: { progress: number; phase: 'idle' | 'focus' | 'break'; children: React.ReactNode }) {
-	const r = 120;
-	const c = 2 * Math.PI * r;
-	return (
-		<div className="relative mx-auto aspect-square w-full max-w-[280px]">
-			<svg viewBox="0 0 280 280" className="size-full -rotate-90" aria-hidden>
-				<circle cx="140" cy="140" r={r} fill="none" stroke="var(--subtle)" strokeWidth="12" />
-				<circle
-					cx="140"
-					cy="140"
-					r={r}
-					fill="none"
-					stroke={phase === 'break' ? 'var(--success)' : 'var(--accent)'}
-					strokeWidth="12"
-					strokeLinecap="round"
-					strokeDasharray={c}
-					strokeDashoffset={c * (1 - Math.min(1, progress))}
-					style={{ transition: 'stroke-dashoffset 0.3s linear' }}
-				/>
-			</svg>
-			<div className="absolute inset-0 flex flex-col items-center justify-center">{children}</div>
-		</div>
-	);
-}
+// ---- 學習紀錄（TMR-2） ----
 
 /**
- * 學習紀錄列表（TMR-2）：可以切換日期，每筆都能編輯（整列）與刪除。
+ * 學習紀錄列表：可以切換日期，每筆都能編輯（整列）與刪除。
  * 時間依 user.timezone 顯示。
  */
 function SessionLog({
@@ -308,15 +326,21 @@ function SessionLog({
 	);
 }
 
+// ---- 頁面 ----
+
 export function TimerPage() {
 	const user = useUser();
 	const s = useTimerState();
 	const now = useNow(s.running);
 	const today = todayOf(user.timezone);
+	const subjectMap = useSubjectMap();
+	const toneOf = useSubjectTone();
 	const { data: tasks = [] } = useTasks();
+	const { data: todaySessions = [] } = useStudySessions({ from: today, to: today });
 	const [confirm, confirmDialog] = useConfirm();
 	const [logDate, setLogDate] = useState(today);
 	const [dialog, setDialog] = useState<{ session?: StudySession } | null>(null);
+	const digitsLabel = useId();
 
 	// 深連結：?new=1 開啟補登、?date=YYYY-MM-DD 切換紀錄日期、?open=<id> 開啟那天的某筆紀錄
 	const link = useDeepLink(['new', 'open', 'date']);
@@ -336,15 +360,66 @@ export function TimerPage() {
 		if (found) setDialog({ session: found });
 	}
 
+	// 專注完成的那一刻（唯一刻意設計的動畫）：完成數改變時重播一次
+	const completionKey = `${s.cyclesDate}|${s.cycles}`;
+	const [seenCompletion, setSeenCompletion] = useState(completionKey);
+	const [celebrations, setCelebrations] = useState(0);
+	if (completionKey !== seenCompletion) {
+		setSeenCompletion(completionKey);
+		if (s.cycles > 0) setCelebrations((n) => n + 1);
+	}
+
+	const pomodoro = s.mode === 'pomodoro';
 	const active = s.phase !== 'idle';
+	const isBreak = s.phase === 'break';
+	const waitingBreak = isBreak && !s.running;
+	const paused = s.phase === 'focus' && !s.running;
+	const breakName = s.breakKind === 'long' ? '長休息' : '短休息';
 	const target = targetMs(s);
 	const el = active ? elapsedMs(s, now) : 0;
-	const display = s.mode === 'pomodoro' ? Math.max(0, (target ?? 0) - el) : el;
-	const progress = s.mode === 'pomodoro' && target ? el / target : (el % 3_600_000) / 3_600_000;
-	const isBreak = s.phase === 'break';
-	const breakName = s.breakKind === 'long' ? '長休息' : '短休息';
-	const waitingBreak = isBreak && !s.running;
-	const openTasks = tasks.filter((t) => t.status !== 'done' && (!s.subjectId || t.subjectId === s.subjectId));
+	const shownMs = pomodoro ? Math.max(0, (target ?? 0) - el) : el;
+	const progress = !active ? 0 : pomodoro && target ? el / target : (el % 3_600_000) / 3_600_000;
+	const round = roundInfo(s, today);
+	const subject = s.subjectId ? subjectMap.get(s.subjectId) : undefined;
+	const todayMinutes = todaySessions.reduce((sum, x) => sum + x.durationSec, 0) / 60;
+	const openTasks = tasks.filter((t) => t.id === s.taskId || (t.status !== 'done' && (!s.subjectId || t.subjectId === s.subjectId)));
+
+	// 計時環：科目色疊在 tint 軌道；沒有科目用 accent；休息用 success；暫停用 ink-3
+	const ring = isBreak
+		? { tone: 'success' as const }
+		: paused
+			? { color: 'var(--ink-3)' }
+			: subject
+				? { color: toneOf(subject.color).mark }
+				: { tone: 'accent' as const };
+
+	const phase = isBreak
+		? { Icon: Coffee, text: waitingBreak ? `準備${breakName}` : breakName, className: 'text-success' }
+		: paused
+			? { Icon: Pause, text: '已暫停', className: 'text-ink-2' }
+			: { Icon: TimerIcon, text: active ? (pomodoro ? '專注中' : '計時中') : pomodoro ? '準備專注' : '碼錶', className: 'text-ink-2' };
+
+	// 狀態區（polite）：階段改變時報讀；數字本身是 role="timer"，不會每秒報讀
+	const status = isBreak
+		? `專注完成，${waitingBreak ? '準備' : ''}${breakName} ${breakMinutes(s)} 分鐘`
+		: paused
+			? '已暫停'
+			: s.phase === 'focus'
+				? pomodoro
+					? `專注中，第 ${round.round}／${round.of} 輪，共 ${s.focusMin} 分鐘`
+					: '碼錶計時中'
+				: pomodoro
+					? `準備專注，${s.focusMin} 分鐘`
+					: '碼錶已停止';
+
+	const elapsedMin = Math.floor(el / 60_000);
+	const valueText = !active
+		? '尚未開始'
+		: isBreak
+			? `${breakName}剩 ${Math.ceil(shownMs / 60_000)} 分鐘`
+			: pomodoro
+				? `已專注 ${elapsedMin} 分鐘，共 ${s.focusMin} 分鐘`
+				: `已計時 ${elapsedMin} 分鐘`;
 
 	const finish = () => {
 		if (!timer.finish()) toast('不到 1 分鐘，這次就不記錄了');
@@ -356,28 +431,123 @@ export function TimerPage() {
 
 	return (
 		<div>
-			<div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-				<Card className="p-5 sm:p-8">
-					<div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-						<Segmented<TimerMode>
-							label="計時模式"
-							value={s.mode}
-							onChange={(mode) => !active && timer.configure({ mode })}
-							options={[
-								{ value: 'pomodoro', label: '番茄鐘' },
-								{ value: 'stopwatch', label: '碼錶' },
-							]}
-						/>
-						{s.mode === 'pomodoro' && <RoundDots s={s} today={today} />}
-					</div>
+			<PageHeader
+				title="學習計時"
+				description={
+					todayMinutes > 0 || round.done > 0
+						? `今天已讀 ${formatMinutes(todayMinutes)}，完成 ${round.done} 個番茄`
+						: '今天還沒有學習紀錄'
+				}
+			/>
+			<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
+				{/* 專注空間：沒有卡片外框，只有計時環與操作 */}
+				<section aria-label="計時器" className="flex min-w-0 flex-col items-center gap-6">
+					<Segmented<TimerMode>
+						label="計時模式"
+						value={s.mode}
+						onChange={(mode) => timer.configure({ mode })}
+						options={[
+							{ value: 'pomodoro', label: '番茄鐘', disabled: active && !pomodoro },
+							{ value: 'stopwatch', label: '碼錶', disabled: active && pomodoro },
+						]}
+					/>
 
-					<div className="mb-6 grid gap-3 sm:grid-cols-2">
+					<div
+						key={celebrations}
+						className={cn('relative aspect-square w-[min(78vw,20rem)]', celebrations > 0 && 'animate-complete')}
+					>
+						<ProgressRing
+							value={progress * 100}
+							label="本輪進度"
+							valueText={valueText}
+							size={320}
+							stroke={12}
+							className="size-full!"
+							{...ring}
+						/>
+						<div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-center">
+							<span id={digitsLabel} className={cn('flex items-center gap-1.5 text-sm font-semibold', phase.className)}>
+								<phase.Icon className="size-4" aria-hidden />
+								{phase.text}
+							</span>
+							<span
+								role="timer"
+								aria-labelledby={digitsLabel}
+								className={cn(
+									'font-num leading-none font-semibold tracking-[-0.02em] tabular-nums lining-nums [font-stretch:semi-condensed]',
+									shownMs >= 3_600_000 ? 'text-[clamp(2.5rem,11vw,4rem)]' : 'text-num-xl',
+								)}
+							>
+								{formatDuration(shownMs / 1000)}
+							</span>
+							<span className="text-meta text-ink-3">
+								{pomodoro ? (isBreak ? `${breakName} ${breakMinutes(s)} 分鐘` : `專注 ${s.focusMin} 分鐘`) : '每小時繞一圈'}
+							</span>
+						</div>
+					</div>
+					<p role="status" className="sr-only">
+						{status}
+					</p>
+
+					{pomodoro && <RoundDots s={s} today={today} />}
+
+					<div className="flex flex-wrap justify-center gap-3">
+						{!active && (
+							<Button variant="primary" size="lg" className="min-w-44" onClick={timer.start}>
+								<Play className="size-5" aria-hidden />
+								開始{pomodoro ? '專注' : '計時'}
+							</Button>
+						)}
+						{s.phase === 'focus' && (
+							<>
+								{s.running ? (
+									<Button size="lg" className="min-w-28" onClick={timer.pause}>
+										<Pause className="size-5" aria-hidden />
+										暫停
+									</Button>
+								) : (
+									<Button variant="primary" size="lg" className="min-w-28" onClick={timer.resume}>
+										<Play className="size-5" aria-hidden />
+										繼續
+									</Button>
+								)}
+								<Button size="lg" onClick={finish}>
+									<Square className="size-4" aria-hidden />
+									結束並儲存
+								</Button>
+								<Button variant="ghost" size="lg" onClick={discard}>
+									<RotateCcw className="size-4" aria-hidden />
+									放棄
+								</Button>
+							</>
+						)}
+						{waitingBreak && (
+							<Button variant="primary" size="lg" className="min-w-44" onClick={timer.resume}>
+								<Play className="size-5" aria-hidden />
+								開始{breakName}
+							</Button>
+						)}
+						{isBreak && (
+							<Button size="lg" onClick={timer.skipBreak}>
+								<SkipForward className="size-5" aria-hidden />
+								跳過休息
+							</Button>
+						)}
+					</div>
+					{isBreak && (
+						<p className="flex items-center gap-2 text-sm text-ink-2">
+							<Coffee className="size-4" aria-hidden />
+							站起來走走、喝杯水，讓眼睛休息一下
+						</p>
+					)}
+
+					<div className="grid w-full max-w-xl gap-4 sm:grid-cols-2">
 						<Field label="科目">
 							{(id) => <SubjectSelect id={id} value={s.subjectId} onChange={(subjectId) => timer.configure({ subjectId, taskId: null })} />}
 						</Field>
-						<Field label="正在進行的任務">
-							{(id) => (
-								<Select id={id} value={s.taskId ?? ''} onChange={(e) => timer.configure({ taskId: e.target.value || null })}>
+						<Field label="任務（選填）">
+							{(id, aria) => (
+								<Select id={id} {...aria} value={s.taskId ?? ''} onChange={(e) => timer.configure({ taskId: e.target.value || null })}>
 									<option value="">不指定</option>
 									{openTasks.map((t) => (
 										<option key={t.id} value={t.id}>
@@ -389,82 +559,8 @@ export function TimerPage() {
 						</Field>
 					</div>
 
-					<Ring progress={active ? progress : 0} phase={s.phase}>
-						<span className={cn('text-sm font-medium', s.phase === 'break' ? 'text-success' : 'text-ink-2')}>
-							{s.phase === 'idle'
-								? s.mode === 'pomodoro'
-									? '準備專注'
-									: '碼錶'
-								: isBreak
-									? waitingBreak
-										? `準備${breakName}`
-										: breakName
-									: s.running
-										? '專注中'
-										: '已暫停'}
-						</span>
-						<span className="mt-1 text-6xl font-semibold tracking-tight tabular-nums sm:text-7xl" aria-live="off">
-							{formatDuration((active ? display : s.mode === 'pomodoro' ? s.focusMin * 60_000 : 0) / 1000)}
-						</span>
-						{s.mode === 'pomodoro' && s.phase !== 'idle' && (
-							<span className="mt-1 text-xs text-ink-3">
-								{s.phase === 'focus' ? `共 ${s.focusMin} 分鐘` : `${breakName} ${breakMinutes(s)} 分鐘`}
-							</span>
-						)}
-					</Ring>
-
-					<div className="mt-8 flex flex-wrap justify-center gap-3">
-						{!active && (
-							<Button variant="primary" className="h-12 min-w-40 text-base" onClick={timer.start}>
-								<Play className="size-5" aria-hidden />
-								開始{s.mode === 'pomodoro' ? '專注' : '計時'}
-							</Button>
-						)}
-						{s.phase === 'focus' && (
-							<>
-								{s.running ? (
-									<Button className="h-12 min-w-28 text-base" onClick={timer.pause}>
-										<Pause className="size-5" aria-hidden />
-										暫停
-									</Button>
-								) : (
-									<Button variant="primary" className="h-12 min-w-28 text-base" onClick={timer.resume}>
-										<Play className="size-5" aria-hidden />
-										繼續
-									</Button>
-								)}
-								<Button className="h-12 text-base" onClick={finish}>
-									<Square className="size-4" aria-hidden />
-									結束並儲存
-								</Button>
-								<Button variant="ghost" className="h-12" onClick={discard}>
-									<RotateCcw className="size-4" aria-hidden />
-									放棄
-								</Button>
-							</>
-						)}
-						{waitingBreak && (
-							<Button variant="primary" className="h-12 min-w-40 text-base" onClick={timer.resume}>
-								<Play className="size-5" aria-hidden />
-								開始{breakName}
-							</Button>
-						)}
-						{isBreak && (
-							<Button className="h-12 text-base" onClick={timer.skipBreak}>
-								<SkipForward className="size-5" aria-hidden />
-								跳過休息
-							</Button>
-						)}
-					</div>
-
-					{s.mode === 'pomodoro' && !active && <PomodoroSettings s={s} />}
-					{isBreak && (
-						<p className="mt-6 flex items-center justify-center gap-2 text-sm text-ink-2">
-							<Coffee className="size-4" aria-hidden />
-							站起來走走、喝杯水，讓眼睛休息一下
-						</p>
-					)}
-				</Card>
+					{pomodoro && !active && <PomodoroSettings s={s} />}
+				</section>
 
 				<SessionLog
 					date={logDate}
