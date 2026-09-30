@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router';
 import type { EventItem, Task } from '../../shared/api-types';
 import { StatStrip, type StatItem } from '../components/charts';
 import { NextExamCard } from '../components/dashboard/exams';
+import { GoalsCard } from '../components/dashboard/goals';
 import { Duration, Unit } from '../components/dashboard/parts';
 import { TodayTasksCard } from '../components/dashboard/tasks';
 import { UpcomingCard } from '../components/dashboard/upcoming';
@@ -129,6 +130,7 @@ export function DashboardPage() {
 						onOpen={(task) => setTaskDialog({ task })}
 						onNew={() => setTaskDialog({})}
 					/>
+					<GoalsCard goals={data.goals} todayMinutes={data.todayMinutes} weekMinutes={data.weekMinutes} />
 				</div>
 				<div className="min-w-0 space-y-6 lg:col-span-2">
 					{nextExam && <NextExamCard event={nextExam} today={data.today} timeZone={user.timezone} onAddTask={addPrepTask} />}

@@ -36,6 +36,21 @@ export function daysIntoWeek(today: string): number {
 	return diffDays(weekStart(today), today) + 1;
 }
 
+/**
+ * 各科每週目標，落後最多的排在最前面（GOAL-2）：
+ * 1. 完成比例由低到高（達成的都算 100%，排在最後）
+ * 2. 比例相同時，還差的分鐘數多的在前
+ * 3. 再相同就維持原本的科目順序
+ */
+export function sortByLag<T extends { goalMinutes: number; minutes: number }>(goals: readonly T[]): T[] {
+	const ratio = (g: T) => (g.goalMinutes > 0 ? Math.min(1, g.minutes / g.goalMinutes) : 1);
+	const left = (g: T) => Math.max(0, g.goalMinutes - g.minutes);
+	return goals
+		.map((g, i) => ({ g, i }))
+		.sort((a, b) => ratio(a.g) - ratio(b.g) || left(b.g) - left(a.g) || a.i - b.i)
+		.map(({ g }) => g);
+}
+
 /** 分鐘數拆成數字與單位，和 formatMinutes 的文字一致：45 分鐘／1 小時 20 分／2 小時 */
 export function minuteParts(min: number): { value: number; unit: string }[] {
 	const m = Math.round(min);
