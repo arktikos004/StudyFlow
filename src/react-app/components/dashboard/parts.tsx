@@ -8,7 +8,9 @@ import { cn } from '../ui';
 
 /**
  * 文字連結加 ChevronRight（CardHeader 的動作、「設定目標」等），連結後面不加「→」。
- * 外觀不變，點擊範圍用 ::after 往上下擴大到 44px。
+ * 外觀不變，點擊範圍用 ::after 擴大到 44px 高：往上 16px、往下 8px。
+ * 往下只擴大 8px：CardHeader 下方只有 pb-2，擴大範圍不能蓋到卡片第一列的按鈕（例如今日任務的 ▶）；
+ * 上方是卡片的 pt-4／標題文字，沒有其他可以點的元素。
  */
 export function MoreLink({
 	to,
@@ -26,7 +28,7 @@ export function MoreLink({
 			to={to}
 			aria-label={ariaLabel}
 			className={cn(
-				"relative inline-flex shrink-0 items-center gap-0.5 rounded-sm text-sm whitespace-nowrap text-accent-ink after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] hover:underline",
+				"relative inline-flex shrink-0 items-center gap-0.5 rounded-sm text-sm whitespace-nowrap text-accent-ink after:absolute after:-inset-x-1 after:-top-4 after:-bottom-2 after:content-[''] hover:underline",
 				className,
 			)}
 		>
