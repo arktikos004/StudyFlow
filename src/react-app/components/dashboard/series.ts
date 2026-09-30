@@ -1,14 +1,16 @@
 import type { Subject } from '../../../shared/api-types';
-import type { SeriesDef } from '../charts';
 
-// 統計頁每日堆疊圖的系列（DESIGN.md §3「堆疊圖：超過 8 個科目時，多的併入其他」、dataviz 的 8 色上限）
+// 統計頁每日堆疊圖的系列（DESIGN.md §3「堆疊圖：超過 8 個科目時，多的併入其他」、dataviz 的 8 色上限）。
+// 純函式，不依賴 React 或瀏覽器：test/stats-series.spec.ts 直接測試。
 
 export const NONE_KEY = 'none';
 export const OTHER_KEY = '__other';
-/** 堆疊圖最多幾個系列（含「其他」） */
+/** 圖上最多幾種顏色（系列數，含「未分類」與「其他」） */
 export const MAX_STACK_SERIES = 8;
 
-type Daily = { date: string; minutes: number; bySubject: Record<string, number> };
+/** 和 charts.tsx 的 SeriesDef 同形狀（這裡不 import charts.tsx，保持純函式、測試環境也能用） */
+export type StackSeries = { key: string; label: string; color: string };
+export type DailyMinutes = { date: string; minutes: number; bySubject: Record<string, number> };
 
 /**
  * 區間內有學習時間的系列，依科目順序排列；顏色跟著科目走，不因排名或篩選改變。
@@ -16,9 +18,9 @@ type Daily = { date: string; minutes: number; bySubject: Record<string, number> 
  */
 export function buildSeries(
 	used: Iterable<string>,
-	subjects: readonly Subject[],
+	subjects: readonly Pick<Subject, 'id' | 'name' | 'color'>[],
 	colorOf: (hex: string | null | undefined) => string,
-): SeriesDef[] {
+): StackSeries[] {
 	const keys = new Set(used);
 	const known = subjects.filter((s) => keys.has(s.id)).map((s) => ({ key: s.id, label: s.name, color: colorOf(s.color) }));
 	const knownIds = new Set(known.map((s) => s.key));
@@ -30,21 +32,22 @@ export function buildSeries(
 }
 
 /**
- * 科目超過 8 個時：依區間的分鐘數取前 7 個科目（同分時照科目順序），其餘科目與「未分類」併入「其他」。
+ * 系列（科目加上有分鐘數的「未分類」）超過 8 個時：依區間的分鐘數取前 7 個科目（同分時照科目順序），
+ * 其餘科目與「未分類」一起併入「其他」，所以圖上最多 8 種顏色。
  * 留下來的科目維持原本的順序與顏色，「其他」用中性色、疊在最上面。
  * 回傳圖表用的系列與每日資料，以及併入「其他」的系列（給圖例說明用）；表格檢視請用原本完整的資料。
  */
 export function foldSeries(
-	series: SeriesDef[],
+	series: readonly StackSeries[],
 	totals: ReadonlyMap<string, number>,
-	daily: readonly Daily[],
+	daily: readonly DailyMinutes[],
 	otherColor: string,
-): { series: SeriesDef[]; daily: Daily[]; others: SeriesDef[] } {
-	const subjects = series.filter((s) => s.key !== NONE_KEY);
-	if (subjects.length <= MAX_STACK_SERIES) return { series, daily: [...daily], others: [] };
+): { series: StackSeries[]; daily: DailyMinutes[]; others: StackSeries[] } {
+	if (series.length <= MAX_STACK_SERIES) return { series: [...series], daily: [...daily], others: [] };
 
 	const keep = new Set(
-		subjects
+		series
+			.filter((s) => s.key !== NONE_KEY)
 			.map((s, i) => ({ key: s.key, i, minutes: totals.get(s.key) ?? 0 }))
 			.sort((a, b) => b.minutes - a.minutes || a.i - b.i)
 			.slice(0, MAX_STACK_SERIES - 1)
