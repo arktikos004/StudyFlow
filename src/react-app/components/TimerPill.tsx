@@ -15,24 +15,28 @@ export function TimerPill() {
 	const target = targetMs(s);
 	const el = elapsedMs(s, now);
 	const shown = target ? Math.max(0, target - el) : el;
-	const label = s.phase === 'break' ? '休息' : '專注';
+	const isBreak = s.phase === 'break';
+	const label = isBreak ? (s.breakKind === 'long' ? '長休息' : '休息') : '專注';
+	// 休息不能暫停；沒在跑的休息是「自動開始休息」關閉時，等使用者按開始
+	const status = s.running ? `${label}中` : isBreak ? `準備${label}` : `${label}暫停`;
 
 	useEffect(() => {
-		document.title = active ? `${formatDuration(shown / 1000)} ${label}中 · StudyFlow` : 'StudyFlow 學習管理';
-	}, [active, shown, label]);
+		document.title = active ? `${formatDuration(shown / 1000)} ${status}｜StudyFlow` : 'StudyFlow 學習管理';
+	}, [active, shown, status]);
 
 	if (!active) return null;
 	return (
 		<button
+			type="button"
 			onClick={() => navigate('/timer')}
 			className={cn(
 				'inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold pointer-coarse:h-11',
-				s.phase === 'break' ? 'bg-success-soft text-success' : 'bg-accent-soft text-accent-ink',
+				isBreak ? 'bg-success-soft text-success' : 'bg-accent-soft text-accent-ink',
 			)}
 		>
 			<TimerIcon className="size-4" aria-hidden />
 			{label} <span className="font-num tabular-nums">{formatDuration(shown / 1000)}</span>
-			{!s.running && <span className="text-xs font-normal">（暫停）</span>}
+			{!s.running && <span className="text-xs font-normal">（{isBreak ? '待開始' : '暫停'}）</span>}
 		</button>
 	);
 }

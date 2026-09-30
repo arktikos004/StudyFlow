@@ -1,15 +1,143 @@
 import { Coffee, Pause, Play, Plus, RotateCcw, SkipForward, Square, Trash2 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { startOfLocalDay, today as todayOf } from '../../shared/dates';
 import { SubjectSelect, SubjectTag } from '../components/subjects';
-import { Button, Card, CardHeader, cn, Dialog, EmptyState, Field, Input, Segmented, Select, useConfirm } from '../components/ui';
+import { Button, Card, CardHeader, cn, Dialog, EmptyState, Field, Input, Segmented, Select, Switch, useConfirm } from '../components/ui';
 import { formatDuration, formatMinutes, formatTime, MODE_LABEL } from '../lib/format';
 import { useCreateSession, useDeleteSession, useStudySessions, useTasks, useUser } from '../lib/queries';
-import { elapsedMs, targetMs, timer, useNow, useTimerState, type TimerMode } from '../lib/timer';
+import {
+	breakMinutes,
+	elapsedMs,
+	LIMITS,
+	optionError,
+	roundInfo,
+	targetMs,
+	timer,
+	useNow,
+	useTimerState,
+	type NumericOption,
+	type TimerMode,
+	type TimerState,
+} from '../lib/timer';
 
-const FOCUS_PRESETS = [15, 25, 45, 50];
-const BREAK_PRESETS = [5, 10, 15];
+/** 常用的分鐘數；也可以直接輸入 LIMITS 範圍內的任何整數 */
+const PRESETS: Partial<Record<NumericOption, number[]>> = {
+	focusMin: [15, 25, 45, 50],
+	breakMin: [5, 10, 15],
+	longBreakMin: [10, 15, 20, 30],
+};
+
+/**
+ * 一個數字設定：常用值（Segmented）加上自訂輸入。
+ * 輸入合法時立即套用；超出範圍時顯示錯誤，計時器繼續用上一個合法的值。
+ */
+function OptionField({ option, value }: { option: NumericOption; value: number }) {
+	const { label, unit, min, max } = LIMITS[option];
+	const presets = PRESETS[option];
+	const [draft, setDraft] = useState(String(value));
+	// 用常用值或其他分頁改了設定：輸入框跟著更新
+	const [synced, setSynced] = useState(value);
+	if (synced !== value) {
+		setSynced(value);
+		setDraft(String(value));
+	}
+	const error = optionError(option, draft);
+	const commit = (v: number) => timer.setOptions({ [option]: v });
+
+	return (
+		<Field label={label} error={error}>
+			{(id, aria) => (
+				<div className="flex flex-wrap items-center gap-2">
+					{presets && (
+						<Segmented
+							label={`${label}常用值`}
+							value={String(value)}
+							onChange={(v) => commit(Number(v))}
+							options={presets.map((m) => ({ value: String(m), label: `${m}` }))}
+						/>
+					)}
+					<div className="relative w-28">
+						<Input
+							id={id}
+							{...aria}
+							type="number"
+							inputMode="numeric"
+							min={min}
+							max={max}
+							step={1}
+							value={draft}
+							onChange={(e) => {
+								setDraft(e.target.value);
+								if (!optionError(option, e.target.value)) commit(Number(e.target.value));
+							}}
+							className="pr-12"
+						/>
+						<span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-meta text-ink-3" aria-hidden>
+							{unit}
+						</span>
+					</div>
+				</div>
+			)}
+		</Field>
+	);
+}
+
+/** 番茄鐘設定：專注、短休息、長休息、長休息間隔、自動開始（TMR-1） */
+function PomodoroSettings({ s }: { s: TimerState }) {
+	const focusHint = useId();
+	return (
+		<section aria-labelledby="pomodoro-settings" className="mt-8 border-t border-line pt-6">
+			<h2 id="pomodoro-settings" className="mb-4 text-h3 font-semibold">
+				番茄鐘設定
+			</h2>
+			<div className="grid gap-5 sm:grid-cols-2">
+				<OptionField option="focusMin" value={s.focusMin} />
+				<OptionField option="breakMin" value={s.breakMin} />
+				<OptionField option="longBreakMin" value={s.longBreakMin} />
+				<OptionField option="longBreakEvery" value={s.longBreakEvery} />
+			</div>
+			<div className="mt-4 flex flex-col gap-1">
+				<Switch checked={s.autoStartBreak} onChange={(autoStartBreak) => timer.setOptions({ autoStartBreak })} label="專注結束後自動開始休息" />
+				<Switch
+					checked={s.autoStartFocus}
+					onChange={(autoStartFocus) => timer.setOptions({ autoStartFocus })}
+					label="休息結束後自動開始下一輪專注"
+					aria-describedby={focusHint}
+				/>
+				<p id={focusHint} className="text-meta text-ink-3">
+					離開超過 1 分鐘（例如電腦睡眠）時不會自動開始，也不會補記不在時的番茄
+				</p>
+			</div>
+		</section>
+	);
+}
+
+/** 第 k／N 輪：這一組已完成的番茄用實心圓點，正在進行的那一輪用外框 */
+function RoundDots({ s, today }: { s: TimerState; today: string }) {
+	const { done, round, of, filled } = roundInfo(s, today);
+	return (
+		<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-2">
+			<span className="flex items-center gap-1.5" aria-hidden>
+				{Array.from({ length: of }, (_, i) => (
+					<span
+						key={i}
+						className={cn(
+							'size-2.5 rounded-full',
+							i < filled ? 'bg-accent' : i === round - 1 && s.phase !== 'break' ? 'ring-2 ring-accent ring-inset' : 'ring-1 ring-line-strong ring-inset',
+						)}
+					/>
+				))}
+			</span>
+			<span>
+				第 <span className="font-num tabular-nums">{round}</span>／<span className="font-num tabular-nums">{of}</span> 輪
+			</span>
+			<span className="text-ink-3">
+				今天完成 <span className="font-num tabular-nums">{done}</span> 個番茄
+			</span>
+		</div>
+	);
+}
 
 function Ring({ progress, phase, children }: { progress: number; phase: 'idle' | 'focus' | 'break'; children: React.ReactNode }) {
 	const r = 120;
@@ -167,7 +295,9 @@ export function TimerPage() {
 	const display = s.mode === 'pomodoro' ? Math.max(0, (target ?? 0) - el) : el;
 	const progress = s.mode === 'pomodoro' && target ? el / target : (el % 3_600_000) / 3_600_000;
 	const todayTotal = sessions.reduce((sum, x) => sum + x.durationSec, 0) / 60;
-	const cycles = s.cyclesDate === new Date().toDateString() ? s.cycles : 0;
+	const isBreak = s.phase === 'break';
+	const breakName = s.breakKind === 'long' ? '長休息' : '短休息';
+	const waitingBreak = isBreak && !s.running;
 	const openTasks = tasks.filter((t) => t.status !== 'done' && (!s.subjectId || t.subjectId === s.subjectId));
 
 	const finish = () => {
@@ -192,7 +322,7 @@ export function TimerPage() {
 								{ value: 'stopwatch', label: '碼錶' },
 							]}
 						/>
-						{s.mode === 'pomodoro' && <span className="text-sm text-ink-2">今天完成 {cycles} 個番茄 🍅</span>}
+						{s.mode === 'pomodoro' && <RoundDots s={s} today={today} />}
 					</div>
 
 					<div className="mb-6 grid gap-3 sm:grid-cols-2">
@@ -219,8 +349,10 @@ export function TimerPage() {
 								? s.mode === 'pomodoro'
 									? '準備專注'
 									: '碼錶'
-								: s.phase === 'break'
-									? '休息時間'
+								: isBreak
+									? waitingBreak
+										? `準備${breakName}`
+										: breakName
 									: s.running
 										? '專注中'
 										: '已暫停'}
@@ -229,7 +361,9 @@ export function TimerPage() {
 							{formatDuration((active ? display : s.mode === 'pomodoro' ? s.focusMin * 60_000 : 0) / 1000)}
 						</span>
 						{s.mode === 'pomodoro' && s.phase !== 'idle' && (
-							<span className="mt-1 text-xs text-ink-3">{s.phase === 'focus' ? `共 ${s.focusMin} 分鐘` : `休息 ${s.breakMin} 分鐘`}</span>
+							<span className="mt-1 text-xs text-ink-3">
+								{s.phase === 'focus' ? `共 ${s.focusMin} 分鐘` : `${breakName} ${breakMinutes(s)} 分鐘`}
+							</span>
 						)}
 					</Ring>
 
@@ -263,7 +397,13 @@ export function TimerPage() {
 								</Button>
 							</>
 						)}
-						{s.phase === 'break' && (
+						{waitingBreak && (
+							<Button variant="primary" className="h-12 min-w-40 text-base" onClick={timer.resume}>
+								<Play className="size-5" aria-hidden />
+								開始{breakName}
+							</Button>
+						)}
+						{isBreak && (
 							<Button className="h-12 text-base" onClick={timer.skipBreak}>
 								<SkipForward className="size-5" aria-hidden />
 								跳過休息
@@ -271,29 +411,8 @@ export function TimerPage() {
 						)}
 					</div>
 
-					{s.mode === 'pomodoro' && !active && (
-						<div className="mt-8 grid gap-4 border-t border-line pt-6 sm:grid-cols-2">
-							<div>
-								<p className="mb-2 text-sm font-medium text-ink-2">專注時間</p>
-								<Segmented
-									label="專注分鐘數"
-									value={String(s.focusMin)}
-									onChange={(v) => timer.configure({ focusMin: Number(v) })}
-									options={FOCUS_PRESETS.map((m) => ({ value: String(m), label: `${m}分` }))}
-								/>
-							</div>
-							<div>
-								<p className="mb-2 text-sm font-medium text-ink-2">休息時間</p>
-								<Segmented
-									label="休息分鐘數"
-									value={String(s.breakMin)}
-									onChange={(v) => timer.configure({ breakMin: Number(v) })}
-									options={BREAK_PRESETS.map((m) => ({ value: String(m), label: `${m}分` }))}
-								/>
-							</div>
-						</div>
-					)}
-					{s.phase === 'break' && (
+					{s.mode === 'pomodoro' && !active && <PomodoroSettings s={s} />}
+					{isBreak && (
 						<p className="mt-6 flex items-center justify-center gap-2 text-sm text-ink-2">
 							<Coffee className="size-4" aria-hidden />
 							站起來走走、喝杯水，讓眼睛休息一下
