@@ -1,184 +1,151 @@
-import { Brain, CalendarDays, Clock, Flame, GraduationCap, ListChecks, Play, Plus } from 'lucide-react';
+import { Brain, CalendarDays, ChevronRight, Clock, Flame, Play, Plus, RotateCw, Timer } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import type { Task } from '../../shared/api-types';
-import { MiniDailyBars, StatTile } from '../components/charts';
-import { EventDialog, TaskDialog } from '../components/forms';
-import { SubjectTag } from '../components/subjects';
-import { TaskCheckbox } from '../components/TaskItem';
-import { Badge, Button, Card, CardHeader, EmptyState, ErrorNote, PageLoader } from '../components/ui';
-import { dDay, EVENT_KIND_LABEL, formatDate, formatMinutes, relativeDay } from '../lib/format';
-import { useDashboard, useUser } from '../lib/queries';
+import type { EventItem, Task } from '../../shared/api-types';
+import { StatStrip, type StatItem } from '../components/charts';
+import { NextExamCard } from '../components/dashboard/exams';
+import { GoalsCard } from '../components/dashboard/goals';
+import { useFocusTask } from '../components/dashboard/hooks';
+import { Duration, Unit } from '../components/dashboard/parts';
+import { TodayTasksCard } from '../components/dashboard/tasks';
+import { UpcomingCard } from '../components/dashboard/upcoming';
+import { WeekCard } from '../components/dashboard/week';
+import { EventDialog, TaskDialog, type TaskDefaults } from '../components/forms';
+import { Button, ErrorNote, PageLoader } from '../components/ui';
+import { daysIntoWeek, greetingFor } from '../lib/dashboard-format';
+import { formatDate, formatMinutes } from '../lib/format';
+import { useDashboard, useSubjects, useUser } from '../lib/queries';
+import { useTimerState } from '../lib/timer';
 
-function greeting() {
-	const h = new Date().getHours();
-	if (h < 5) return '夜深了';
-	if (h < 12) return '早安';
-	if (h < 18) return '午安';
-	return '晚安';
-}
+/** 任務對話框：編輯既有任務，或帶預設值新增（例如某場考試的準備任務） */
+type TaskDialogState = { task?: Task; defaults?: TaskDefaults } | null;
 
 export function DashboardPage() {
 	const user = useUser();
 	const navigate = useNavigate();
-	const { data, isPending, error } = useDashboard();
+	const { data, isPending, error, refetch, isRefetching } = useDashboard();
+	// 等科目也到齊再畫，科目 chip 與顏色不會晚一步才出現
+	const subjects = useSubjects();
+	const timerActive = useTimerState().phase !== 'idle';
+	const [startFocus, focusConfirm, focusingTaskId] = useFocusTask();
 	const [eventOpen, setEventOpen] = useState(false);
-	const [taskOpen, setTaskOpen] = useState(false);
-	const [editTask, setEditTask] = useState<Task>();
+	const [taskDialog, setTaskDialog] = useState<TaskDialogState>(null);
 
-	if (isPending) return <PageLoader />;
-	if (error) return <ErrorNote error={error} />;
+	if (isPending || subjects.isPending) return <PageLoader />;
+	if (error)
+		return (
+			<div className="space-y-3">
+				<ErrorNote error={error} />
+				<Button onClick={() => refetch()} loading={isRefetching}>
+					<RotateCw className="size-4" aria-hidden />
+					重新載入
+				</Button>
+			</div>
+		);
+
+	const nextExam = data.upcomingEvents.find((e) => e.kind === 'exam');
+	const upcoming = data.upcomingEvents.filter((e) => e !== nextExam);
+	const yesterday = data.last7.at(-2);
+
+	const stats: StatItem[] = [
+		{
+			key: 'today',
+			label: '今天',
+			icon: <Clock aria-hidden />,
+			value: <Duration minutes={data.todayMinutes} />,
+			sub: yesterday && (yesterday.minutes > 0 ? `昨天 ${formatMinutes(yesterday.minutes)}` : '昨天沒有紀錄'),
+		},
+		{
+			key: 'week',
+			label: '本週',
+			icon: <CalendarDays aria-hidden />,
+			value: <Duration minutes={data.weekMinutes} />,
+			sub: `平均每天 ${formatMinutes(data.weekMinutes / daysIntoWeek(data.today))}`,
+		},
+		{
+			key: 'streak',
+			label: '連續學習',
+			icon: <Flame aria-hidden />,
+			value: (
+				<>
+					{data.streak}
+					<Unit>天</Unit>
+				</>
+			),
+			sub: data.streak === 0 ? '今天讀書就能開始累積' : data.todayMinutes > 0 ? '已包含今天' : '今天讀書就能延續',
+		},
+	];
+
+	const addPrepTask = (e: EventItem) => setTaskDialog({ defaults: { eventId: e.id, subjectId: e.subjectId } });
 
 	return (
-		<div className="space-y-5">
-			<header className="flex flex-wrap items-end justify-between gap-3">
-				<div>
-					<p className="text-sm text-ink-2">{formatDate(data.today, true)}</p>
-					<h1 className="mt-0.5 text-2xl font-bold tracking-tight">
-						{greeting()}，{user.displayName}
+		<div>
+			{/* 焦點：日期、問候語、開始專注 */}
+			<header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-8">
+				<div className="min-w-0">
+					<p className="text-meta text-ink-2">
+						<time dateTime={data.today}>{formatDate(data.today, true)}</time>
+					</p>
+					<h1 className="mt-1 text-[1.375rem] leading-[1.3] font-bold text-balance sm:text-h1">
+						{greetingFor(user.timezone)}，{user.displayName}
 					</h1>
 				</div>
-				<div className="flex gap-2">
-					<Button onClick={() => setTaskOpen(true)}>
-						<Plus className="size-4" aria-hidden />
-						任務
+				<div className="flex w-full gap-2 sm:w-auto">
+					<Button size="lg" onClick={() => setTaskDialog({})}>
+						<Plus className="size-5" aria-hidden />
+						新增任務
 					</Button>
-					<Button variant="primary" onClick={() => navigate('/timer')}>
-						<Play className="size-4" aria-hidden />
-						開始專注
+					<Button size="lg" variant="primary" className="flex-1 sm:flex-none" onClick={() => navigate('/timer')}>
+						{timerActive ? <Timer className="size-5" aria-hidden /> : <Play className="size-5" aria-hidden />}
+						{timerActive ? '回到計時' : '開始專注'}
 					</Button>
 				</div>
 			</header>
 
-			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-				<StatTile label="今天" icon={<Clock className="size-4" aria-hidden />} value={formatMinutes(data.todayMinutes)} sub="學習時間" />
-				<StatTile
-					label="本週"
-					icon={<CalendarDays className="size-4" aria-hidden />}
-					value={formatMinutes(data.weekMinutes)}
-					sub="週一起算"
-				/>
-				<StatTile
-					label="連續學習"
-					icon={<Flame className="size-4" aria-hidden />}
-					value={`${data.streak} 天`}
-					sub={data.streak ? '保持下去！' : '今天開始累積吧'}
-				/>
-				<Link to="/notes?view=review" className="block rounded-xl transition-transform hover:-translate-y-0.5">
-					<StatTile
-						label="待複習錯題"
-						icon={<Brain className="size-4" aria-hidden />}
-						value={`${data.reviewDueCount} 題`}
-						sub={data.reviewDueCount ? '點這裡開始複習 →' : '今天都複習完了'}
-					/>
-				</Link>
-			</div>
-
-			<div className="grid gap-5 lg:grid-cols-5">
-				<Card className="lg:col-span-3">
-					<CardHeader
-						title="今天要處理的任務"
-						icon={<ListChecks className="size-[18px] text-ink-3" aria-hidden />}
-						action={
-							<Link to="/tasks" className="text-sm text-accent-ink hover:underline">
-								全部 {data.openTaskCount} 項 →
-							</Link>
-						}
-					/>
-					{data.focusTasks.length ? (
-						<ul className="divide-y divide-line px-2 pb-2">
-							{data.focusTasks.map((t) => (
-								<li key={t.id} className="flex items-center gap-3 rounded-lg px-2 py-2.5">
-									<TaskCheckbox task={t} />
-									<button className="min-w-0 flex-1 text-left" onClick={() => setEditTask(t)}>
-										<div className="truncate text-[15px]">{t.title}</div>
-										<div className="mt-0.5 flex items-center gap-2">
-											<SubjectTag subjectId={t.subjectId} />
-											{t.dueDate && t.dueDate < data.today && <Badge tone="danger">逾期 {formatDate(t.dueDate)}</Badge>}
-											{t.dueDate === data.today && <Badge tone="warning">今天到期</Badge>}
-											{t.status === 'doing' && <Badge tone="accent">進行中</Badge>}
-										</div>
-									</button>
-								</li>
-							))}
-						</ul>
-					) : (
-						<EmptyState
-							icon={<ListChecks />}
-							title="今天沒有到期的任務"
-							description="可以提前處理之後的任務，或安排新的學習計畫。"
-							action={
-								<Button size="sm" onClick={() => setTaskOpen(true)}>
-									<Plus className="size-4" aria-hidden />
-									新增任務
-								</Button>
-							}
-						/>
-					)}
-				</Card>
-
-				<Card className="lg:col-span-2">
-					<CardHeader
-						title="即將到來"
-						icon={<GraduationCap className="size-[18px] text-ink-3" aria-hidden />}
-						action={
-							<Button size="sm" variant="ghost" onClick={() => setEventOpen(true)} aria-label="新增考試或截止日">
-								<Plus className="size-4" aria-hidden />
-							</Button>
-						}
-					/>
-					{data.upcomingEvents.length ? (
-						<ul className="space-y-1 px-2 pb-3">
-							{data.upcomingEvents.map((e) => {
-								const rel = relativeDay(e.date, data.today);
-								return (
-									<li key={e.id}>
-										<Link to="/events" className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-subtle">
-											<div
-												className={
-													rel.days <= 3
-														? 'w-14 shrink-0 rounded-lg bg-danger-soft py-1.5 text-center text-sm font-semibold text-danger'
-														: 'w-14 shrink-0 rounded-lg bg-subtle py-1.5 text-center text-sm font-semibold text-ink-2'
-												}
-											>
-												{dDay(e.date, data.today)}
-											</div>
-											<div className="min-w-0 flex-1">
-												<div className="truncate text-[15px]">{e.title}</div>
-												<div className="mt-0.5 flex items-center gap-2 text-xs text-ink-3">
-													<span>
-														{EVENT_KIND_LABEL[e.kind]} · {formatDate(e.date)} {e.time ?? ''}
-													</span>
-													<SubjectTag subjectId={e.subjectId} />
-												</div>
-											</div>
-										</Link>
-									</li>
-								);
-							})}
-						</ul>
-					) : (
-						<EmptyState icon={<GraduationCap />} title="近期沒有考試或截止日" description="新增考試日期，系統會幫你倒數。" />
-					)}
-				</Card>
-			</div>
-
-			<Card>
-				<CardHeader
-					title="近 7 天學習時間"
-					action={
-						<Link to="/stats" className="text-sm text-accent-ink hover:underline">
-							詳細統計 →
+			<StatStrip
+				items={stats}
+				footer={
+					data.reviewDueCount > 0 && (
+						<Link
+							to="/notes?view=review"
+							className="flex min-h-12 items-center gap-3 px-4 py-2.5 text-dense transition-colors duration-120 ease-out hover:bg-subtle focus-visible:-outline-offset-2 sm:px-5"
+						>
+							<Brain className="size-[18px] shrink-0 text-warning" aria-hidden />
+							<span className="min-w-0 flex-1 text-ink">
+								<span className="font-num font-semibold tabular-nums">{data.reviewDueCount}</span> 題錯題待複習
+							</span>
+							<span className="inline-flex shrink-0 items-center gap-0.5 font-semibold text-accent-ink">
+								開始複習
+								<ChevronRight className="size-4" aria-hidden />
+							</span>
 						</Link>
-					}
-				/>
-				<div className="px-3 pb-3 sm:px-4">
-					<MiniDailyBars data={data.last7} today={data.today} />
+					)
+				}
+			/>
+
+			<div className="mt-6 grid grid-cols-1 items-start gap-6 md:mt-8 lg:grid-cols-5">
+				<div className="min-w-0 space-y-6 lg:col-span-3">
+					<TodayTasksCard
+						tasks={data.focusTasks}
+						today={data.today}
+						openCount={data.openTaskCount}
+						onOpen={(task) => setTaskDialog({ task })}
+						onNew={() => setTaskDialog({})}
+						onFocus={startFocus}
+						focusingTaskId={focusingTaskId}
+					/>
+					<GoalsCard goals={data.goals} todayMinutes={data.todayMinutes} weekMinutes={data.weekMinutes} />
 				</div>
-			</Card>
+				<div className="min-w-0 space-y-6 lg:col-span-2">
+					{nextExam && <NextExamCard event={nextExam} today={data.today} timeZone={user.timezone} onAddTask={addPrepTask} />}
+					<UpcomingCard events={upcoming} today={data.today} hasNextExam={!!nextExam} onNew={() => setEventOpen(true)} />
+					<WeekCard days={data.last7} today={data.today} />
+				</div>
+			</div>
 
 			<EventDialog open={eventOpen} onClose={() => setEventOpen(false)} />
-			<TaskDialog open={taskOpen || !!editTask} task={editTask} onClose={() => (setTaskOpen(false), setEditTask(undefined))} />
+			<TaskDialog open={!!taskDialog} task={taskDialog?.task} defaults={taskDialog?.defaults} onClose={() => setTaskDialog(null)} />
+			{focusConfirm}
 		</div>
 	);
 }
