@@ -127,10 +127,10 @@ export function StatStrip({ items, className, footer }: { items: StatItem[]; cla
 	);
 }
 
-/** 圖表／表格切換：每張圖都有表格檢視（dataviz）。文字寫出按下去會切到哪一種 */
+/** 圖表／表格切換：每張圖都有表格檢視（dataviz）。aria-pressed 表示目前是表格檢視；文字與 aria-label 寫出按下去會切到哪一種 */
 export function TableToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 	return (
-		<Button size="sm" variant="ghost" onClick={onToggle} aria-label={on ? '改用圖表檢視' : '改用表格檢視'}>
+		<Button size="sm" variant="ghost" onClick={onToggle} aria-pressed={on} aria-label={on ? '改用圖表檢視' : '改用表格檢視'}>
 			{on ? <ChartColumn className="size-4" aria-hidden /> : <Table2 className="size-4" aria-hidden />}
 			{on ? '圖表' : '表格'}
 		</Button>
