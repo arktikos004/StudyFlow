@@ -19,6 +19,12 @@ export function parseGoalInput(raw: string): number | string | null {
 /** 把已儲存的目標（分鐘或 null）轉成輸入框的字串 */
 export const goalToInput = (minutes: number | null | undefined) => (minutes == null ? '' : String(minutes));
 
+/** 分鐘數拆成小時與分鐘（四捨五入到整分），給「2 小時 30 分」這種數字與單位分開排版的地方 */
+export function splitMinutes(min: number): { hours: number; minutes: number } {
+	const m = Math.max(0, Math.round(min));
+	return { hours: Math.floor(m / 60), minutes: m % 60 };
+}
+
 /** 各科每週目標的加總（GOAL-2）：封存的科目不列入（同總覽）；exceptId 的科目也不算，由呼叫端加上編輯中的值 */
 export function sumSubjectGoals(subjects: readonly Pick<Subject, 'id' | 'archived' | 'weeklyGoalMinutes'>[], exceptId?: string): number {
 	return subjects.reduce((sum, s) => (s.id === exceptId || s.archived ? sum : sum + (s.weeklyGoalMinutes ?? 0)), 0);
