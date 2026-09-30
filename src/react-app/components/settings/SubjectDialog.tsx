@@ -3,7 +3,6 @@ import { toast } from 'sonner';
 import type { Subject } from '../../../shared/api-types';
 import { GOAL_LIMITS, subjectSchema, type SubjectIcon } from '../../../shared/schemas';
 import { ApiError } from '../../lib/api';
-import { formatMinutes } from '../../lib/format';
 import { useCreateSubject, useDeleteSubject, useUpdateSubject, useUser, type SubjectInput } from '../../lib/queries';
 import { nextSubjectColor, useSubjectTone } from '../../lib/subject-color';
 import { isSubjectIcon, subjectIcon } from '../../lib/subject-icons';
@@ -11,6 +10,7 @@ import { goalToInput, parseGoalInput, sumSubjectGoals } from '../../lib/subjects
 import { ColorPicker } from '../ColorPicker';
 import { DialogFooter } from '../forms/shared';
 import { Dialog, Field, Input, Switch, useConfirm } from '../ui';
+import { GoalField } from './GoalField';
 import { GoalSumWarning } from './GoalSumWarning';
 import { IconPicker } from './IconPicker';
 
@@ -26,8 +26,6 @@ function fieldErrors(issues: readonly { path: readonly PropertyKey[]; message: s
 	}
 	return out;
 }
-
-const { min: GOAL_MIN, max: GOAL_MAX } = GOAL_LIMITS.subjectWeekly;
 
 function SubjectForm({
 	formId,
@@ -106,31 +104,17 @@ function SubjectForm({
 			</Field>
 
 			<div className="space-y-2">
-				<Field
+				<GoalField
 					label="每週目標"
-					hint={`${goalMinutes ? `約 ${formatMinutes(goalMinutes)}；` : ''}${GOAL_MIN}–${GOAL_MAX} 分鐘，留空代表不設定`}
+					value={goal}
+					onChange={(v) => {
+						setGoal(v);
+						setErrors((prev) => ({ ...prev, weeklyGoalMinutes: undefined }));
+					}}
 					error={errors.weeklyGoalMinutes}
-				>
-					{(id, aria) => (
-						<div className="flex items-center gap-2">
-							<Input
-								ref={goalRef}
-								id={id}
-								{...aria}
-								inputMode="numeric"
-								autoComplete="off"
-								value={goal}
-								onChange={(e) => {
-									setGoal(e.target.value);
-									setErrors((prev) => ({ ...prev, weeklyGoalMinutes: undefined }));
-								}}
-								placeholder="不設定"
-								className="w-32 tabular-nums"
-							/>
-							<span className="text-sm text-ink-2">分鐘</span>
-						</div>
-					)}
-				</Field>
+					limits={GOAL_LIMITS.subjectWeekly}
+					inputRef={goalRef}
+				/>
 				<GoalSumWarning total={goalTotal} weekly={user.weeklyGoalMinutes} />
 			</div>
 
