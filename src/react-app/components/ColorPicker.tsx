@@ -34,6 +34,8 @@ type ColorPickerProps = {
 	selfId?: string;
 	/** 預覽 chip 上的名稱；省略時用 selfId 對應的科目名稱 */
 	name?: string;
+	/** 預覽 chip 上的圖示（SUBJECT_ICONS 的 key）；省略代表不顯示 */
+	icon?: string | null;
 	/** 選色器的名稱，用在各個 radiogroup 的 aria-label */
 	label?: string;
 };
@@ -50,7 +52,7 @@ function neighborsOf(subjects: readonly PickerSubject[], selfId?: string): { bef
 	return { before: subjects[i - 1], after: subjects[i + 1] };
 }
 
-export function ColorPicker({ value, onChange, subjects, selfId, name, label = '科目顏色' }: ColorPickerProps) {
+export function ColorPicker({ value, onChange, subjects, selfId, name, icon, label = '科目顏色' }: ColorPickerProps) {
 	const current = parseHex(value) ?? RECOMMENDED[0].hex;
 	const toneOf = useSubjectTone();
 	const baseId = useId();
@@ -135,7 +137,7 @@ export function ColorPicker({ value, onChange, subjects, selfId, name, label = '
 				{customOpen && <CustomColor value={current} onChange={onChange} />}
 			</div>
 
-			<Preview hex={current} name={previewName} before={before} after={after} />
+			<Preview hex={current} name={previewName} icon={icon} before={before} after={after} />
 
 			<div role="status" aria-live="polite">
 				{warnings.length > 0 && (
@@ -509,7 +511,19 @@ function SatValSquare({ hsv, onChange }: { hsv: Hsv; onChange: (next: Hsv) => vo
  * 預覽：目前所選顏色的名稱（色盤顏色用「藍（明）」，自訂色用「自訂 #RRGGBB」），
  * 以及固定用淺色與深色各算一次 tone（不受目前主題影響）的 chip 和與相鄰科目疊在一起的迷你長條
  */
-function Preview({ hex, name, before, after }: { hex: string; name: string; before?: PickerSubject; after?: PickerSubject }) {
+function Preview({
+	hex,
+	name,
+	icon,
+	before,
+	after,
+}: {
+	hex: string;
+	name: string;
+	icon?: string | null;
+	before?: PickerSubject;
+	after?: PickerSubject;
+}) {
 	const around = [before, after].filter((s): s is PickerSubject => s !== undefined).map((s) => s.name);
 	const description = `預覽：「${name}」在淺色與深色模式的標籤${around.length ? `，以及和${quote(around)}並排的長條` : ''}`;
 	return (
@@ -533,7 +547,7 @@ function Preview({ hex, name, before, after }: { hex: string; name: string; befo
 								{dark ? '深色' : '淺色'}
 							</p>
 							<div className="space-y-2.5 rounded-lg border border-line p-2.5" style={{ background: surface.card }}>
-								<SubjectChip name={name} tone={subjectTone(hex, dark, surface.card)} style={{ color: surface.ink }} />
+								<SubjectChip name={name} icon={icon} tone={subjectTone(hex, dark, surface.card)} style={{ color: surface.ink }} />
 								<div className="flex h-2.5 gap-0.5 overflow-hidden rounded-sm">
 									{segments.map((seg) => (
 										<span key={seg.key} style={{ flex: seg.weight, background: seg.mark }} />
