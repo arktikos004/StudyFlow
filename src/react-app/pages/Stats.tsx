@@ -1,5 +1,6 @@
-import { Brain, CalendarCheck, CircleAlert, CircleCheck, Clock, Flame, RotateCw, Target, TrendingUp } from 'lucide-react';
+import { Brain, CalendarCheck, CircleAlert, CircleCheck, Clock, Flame, Play, RotateCw, Target, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import {
 	DailyStackedBars,
 	Heatmap,
@@ -23,6 +24,7 @@ const th = 'px-3 py-2 text-left font-semibold whitespace-nowrap text-ink-2';
 const td = 'px-3 py-1.5 font-num whitespace-nowrap tabular-nums';
 
 export function StatsPage() {
+	const navigate = useNavigate();
 	const [range, setRange] = useState<Range>('30');
 	const { data, isPending, error, isPlaceholderData, refetch, isRefetching } = useStats(Number(range) as 7 | 30 | 90);
 	// 等科目資料也到齊再畫，否則科目名稱會暫時顯示成「已刪除的科目」
@@ -146,7 +148,12 @@ export function StatsPage() {
 								icon={<Clock />}
 								title="這段期間還沒有學習紀錄"
 								description="用學習計時或手動補登後，就會出現在這裡。"
-								action={<MoreLink to="/timer">開始專注</MoreLink>}
+								action={
+									<Button size="sm" onClick={() => navigate('/timer')}>
+										<Play className="size-4" aria-hidden />
+										開始專注
+									</Button>
+								}
 							/>
 						) : dailyTable ? (
 							// 表格檢視維持完整：每一科（含併入「其他」的科目與未分類）各一欄
