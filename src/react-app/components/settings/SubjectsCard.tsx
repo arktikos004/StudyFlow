@@ -3,6 +3,7 @@ import { Archive, ArrowDown, ArrowUp, BookOpen, ChevronRight, Pencil, Plus } fro
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { Subject } from '../../../shared/api-types';
+import { formatMinutes } from '../../lib/format';
 import { useReorderSubjects, useSubjects } from '../../lib/queries';
 import { SubjectTag } from '../subjects';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorNote, Spinner } from '../ui';
@@ -37,6 +38,9 @@ function SubjectRow({
 			>
 				<span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
 					<SubjectTag subjectId={subject.id} />
+					{subject.weeklyGoalMinutes != null && (
+						<span className="text-meta text-ink-3">每週目標 {formatMinutes(subject.weeklyGoalMinutes)}</span>
+					)}
 					{subject.archived && <Badge icon={<Archive aria-hidden />}>已封存</Badge>}
 				</span>
 				<span className="sr-only">，查看科目總覽</span>

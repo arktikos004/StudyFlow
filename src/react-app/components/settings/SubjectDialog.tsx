@@ -1,17 +1,20 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import type { Subject } from '../../../shared/api-types';
-import { subjectSchema, type SubjectIcon } from '../../../shared/schemas';
+import { GOAL_LIMITS, subjectSchema, type SubjectIcon } from '../../../shared/schemas';
 import { ApiError } from '../../lib/api';
-import { useCreateSubject, useDeleteSubject, useUpdateSubject, type SubjectInput } from '../../lib/queries';
+import { formatMinutes } from '../../lib/format';
+import { useCreateSubject, useDeleteSubject, useUpdateSubject, useUser, type SubjectInput } from '../../lib/queries';
 import { nextSubjectColor, useSubjectTone } from '../../lib/subject-color';
 import { isSubjectIcon, subjectIcon } from '../../lib/subject-icons';
+import { goalToInput, parseGoalInput, sumSubjectGoals } from '../../lib/subjects-format';
 import { ColorPicker } from '../ColorPicker';
 import { DialogFooter } from '../forms/shared';
 import { Dialog, Field, Input, Switch, useConfirm } from '../ui';
+import { GoalSumWarning } from './GoalSumWarning';
 import { IconPicker } from './IconPicker';
 
-type FormErrors = { name?: string };
+type FormErrors = { name?: string; weeklyGoalMinutes?: string };
 
 /** 驗證錯誤依欄位分開，每個欄位只顯示第一則 */
 function fieldErrors(issues: readonly { path: readonly PropertyKey[]; message: string }[]): FormErrors {
@@ -19,9 +22,12 @@ function fieldErrors(issues: readonly { path: readonly PropertyKey[]; message: s
 	for (const issue of issues) {
 		const key = issue.path[0];
 		if (key === 'name') out.name ??= issue.message;
+		if (key === 'weeklyGoalMinutes') out.weeklyGoalMinutes ??= issue.message;
 	}
 	return out;
 }
+
+const { min: GOAL_MIN, max: GOAL_MAX } = GOAL_LIMITS.subjectWeekly;
 
 function SubjectForm({
 	formId,
@@ -35,8 +41,10 @@ function SubjectForm({
 	/** 失敗時 reject（錯誤已由 toast 顯示；同名科目另外顯示在名稱欄位） */
 	onSave: (input: SubjectInput, archived?: boolean) => Promise<void>;
 }) {
+	const user = useUser();
 	const toneOf = useSubjectTone();
 	const nameRef = useRef<HTMLInputElement>(null);
+	const goalRef = useRef<HTMLInputElement>(null);
 	const iconLabelId = useId();
 	const colorLabelId = useId();
 	const archiveHintId = useId();
@@ -46,15 +54,23 @@ function SubjectForm({
 	const [picked, setPicked] = useState<string | null>(subject?.color ?? null);
 	const color = picked ?? nextSubjectColor(subjects.map((s) => s.color));
 	const [archived, setArchived] = useState(subject?.archived ?? false);
+	// 每週目標（GOAL-2）：留空代表不設定
+	const [goal, setGoal] = useState(goalToInput(subject?.weeklyGoalMinutes));
 	const [errors, setErrors] = useState<FormErrors>({});
+
+	const goalValue = parseGoalInput(goal);
+	const goalMinutes = typeof goalValue === 'number' && Number.isInteger(goalValue) && goalValue > 0 ? goalValue : null;
+	// 加總只在這一科有目標、而且沒有封存時才提醒（封存的科目不列入各科目標）
+	const goalTotal = goalMinutes && !archived ? sumSubjectGoals(subjects, subject?.id) + goalMinutes : 0;
 
 	const onSubmit = async (e: FormEvent) => {
 		e.preventDefault();
-		const parsed = subjectSchema.safeParse({ name, color, icon });
+		const parsed = subjectSchema.safeParse({ name, color, icon, weeklyGoalMinutes: goalValue });
 		if (!parsed.success) {
 			const next = fieldErrors(parsed.error.issues);
 			setErrors(next);
 			if (next.name) nameRef.current?.focus();
+			else if (next.weeklyGoalMinutes) goalRef.current?.focus();
 			return;
 		}
 		setErrors({});
@@ -77,7 +93,10 @@ function SubjectForm({
 						id={id}
 						{...aria}
 						value={name}
-						onChange={(e) => setName(e.target.value)}
+						onChange={(e) => {
+							setName(e.target.value);
+							setErrors((prev) => ({ ...prev, name: undefined }));
+						}}
 						maxLength={30}
 						placeholder="例如：計算機網路"
 						autoComplete="off"
@@ -85,6 +104,35 @@ function SubjectForm({
 					/>
 				)}
 			</Field>
+
+			<div className="space-y-2">
+				<Field
+					label="每週目標"
+					hint={`${goalMinutes ? `約 ${formatMinutes(goalMinutes)}；` : ''}${GOAL_MIN}–${GOAL_MAX} 分鐘，留空代表不設定`}
+					error={errors.weeklyGoalMinutes}
+				>
+					{(id, aria) => (
+						<div className="flex items-center gap-2">
+							<Input
+								ref={goalRef}
+								id={id}
+								{...aria}
+								inputMode="numeric"
+								autoComplete="off"
+								value={goal}
+								onChange={(e) => {
+									setGoal(e.target.value);
+									setErrors((prev) => ({ ...prev, weeklyGoalMinutes: undefined }));
+								}}
+								placeholder="不設定"
+								className="w-32 tabular-nums"
+							/>
+							<span className="text-sm text-ink-2">分鐘</span>
+						</div>
+					)}
+				</Field>
+				<GoalSumWarning total={goalTotal} weekly={user.weeklyGoalMinutes} />
+			</div>
 
 			<div className="space-y-2">
 				<div className="flex items-baseline gap-2">
