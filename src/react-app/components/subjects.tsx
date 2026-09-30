@@ -1,8 +1,10 @@
 import type { CSSProperties } from 'react';
+import { Link } from 'react-router';
 import type { Subject } from '../../shared/api-types';
 import type { SubjectTone } from '../../shared/color';
 import { useSubjectMap, useSubjects } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
+import { subjectIcon } from '../lib/subject-icons';
 import { cn, Select } from './ui';
 
 /** 科目色點：color 傳科目儲存的原始顏色（留空代表未分類），依目前主題經 subjectTone 換算 */
@@ -13,18 +15,28 @@ export function SubjectDot({ color, className }: { color?: string | null; classN
 	);
 }
 
+/** 科目圖示（SubjectTag 內部用）：跟著文字顏色（ink），不用科目色 */
+function TagIcon({ icon, className }: { icon: string | null | undefined; className?: string }) {
+	const def = subjectIcon(icon);
+	if (!def) return null;
+	return <def.Icon aria-hidden className={cn('shrink-0', className)} strokeWidth={2} />;
+}
+
 /**
- * 螢光筆 chip 的外觀（純顯示）：ink 文字、科目 tint 底、1px ring、8px 圓點，名稱太長時截斷並附 title。
- * SubjectTag 與選色器的預覽共用；tone 由呼叫端用 useSubjectTone 或 subjectTone 算好。
+ * 螢光筆 chip 的外觀（純顯示）：ink 文字、科目 tint 底、1px ring、8px 圓點，有圖示時接在圓點後面；
+ * 名稱太長時截斷並附 title。SubjectTag 與選色器的預覽共用；tone 由呼叫端用 useSubjectTone 或 subjectTone 算好。
  */
 export function SubjectChip({
 	name,
 	tone,
+	icon,
 	className,
 	style,
 }: {
 	name: string;
 	tone: SubjectTone;
+	/** SUBJECT_ICONS 的 key；null 或省略就不顯示圖示 */
+	icon?: string | null;
 	className?: string;
 	style?: CSSProperties;
 }) {
@@ -35,38 +47,76 @@ export function SubjectChip({
 			style={{ background: tone.tint, borderColor: tone.ring, ...style }}
 		>
 			<span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: tone.mark }} />
-			<span className="truncate">{name}</span>
+			<TagIcon icon={icon} className="-mx-0.5 size-3" />
+			<span className="truncate group-hover/subject-link:underline">{name}</span>
 		</span>
 	);
 }
 
 /**
- * 科目標籤。文字一律是 ink 色，科目色只用在底色、外框與圓點。
- * - chip（預設）：螢光筆 chip。
- * - compact：圓點加名稱，用在空間很擠的地方。
+ * 科目標籤。文字一律是 ink 色，科目色只用在底色、外框與圓點；科目圖示只透過這個元件顯示。
+ * - chip（預設）：螢光筆 chip（圓點＋圖示＋名稱）。
+ * - compact：圓點＋圖示＋名稱，用在空間很擠的地方。
+ * - icon：只有圖示方塊（科目色底、onMark 圖示；沒有圖示時顯示名稱的第一個字），裝飾用、aria-hidden，
+ *   名稱要由旁邊的文字提供（例如單科總覽頁的標題）。大小用 className 調整（預設 40px）。
+ *
+ * asLink：連到單科總覽 `/subjects/:id`（名稱加上「的科目總覽」給螢幕報讀器；觸控裝置點擊範圍 44px 高）。
+ * SubjectTag 常常放在按鈕或連結裡，所以預設不是連結；已經在互動元素裡時不要加 asLink。
  */
 export function SubjectTag({
 	subjectId,
 	className,
 	variant = 'chip',
+	asLink = false,
 }: {
 	subjectId: string | null | undefined;
 	className?: string;
-	variant?: 'chip' | 'compact';
+	variant?: 'chip' | 'compact' | 'icon';
+	asLink?: boolean;
 }) {
 	const map = useSubjectMap();
 	const toneOf = useSubjectTone();
 	const subject = subjectId ? map.get(subjectId) : undefined;
 	if (!subject) return null;
 	const tone = toneOf(subject.color);
-	if (variant === 'compact')
+
+	if (variant === 'icon')
 		return (
-			<span title={subject.name} className={cn('inline-flex min-w-0 items-center gap-1.5 text-xs text-ink-2', className)}>
-				<span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: tone.mark }} />
-				<span className="truncate">{subject.name}</span>
+			<span
+				aria-hidden
+				title={subject.name}
+				className={cn('grid size-10 shrink-0 place-items-center rounded-lg text-base font-semibold [&_svg]:size-5', className)}
+				style={{ background: tone.mark, color: tone.onMark }}
+			>
+				{subjectIcon(subject.icon) ? <TagIcon icon={subject.icon} /> : Array.from(subject.name)[0]}
 			</span>
 		);
-	return <SubjectChip name={subject.name} tone={tone} className={className} />;
+
+	const tag =
+		variant === 'compact' ? (
+			<span title={subject.name} className={cn('inline-flex min-w-0 items-center gap-1.5 text-xs text-ink-2', !asLink && className)}>
+				<span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: tone.mark }} />
+				<TagIcon icon={subject.icon} className="-mx-0.5 size-3" />
+				<span className="truncate group-hover/subject-link:underline">{subject.name}</span>
+			</span>
+		) : (
+			<SubjectChip name={subject.name} tone={tone} icon={subject.icon} className={asLink ? undefined : className} />
+		);
+	if (!asLink) return tag;
+	return (
+		<Link
+			to={`/subjects/${subject.id}`}
+			className={cn(
+				'group/subject-link relative inline-flex max-w-full min-w-0 rounded-sm',
+				// 觸控裝置：chip 只有 22px 高，用 ::after 把點擊範圍上下各延伸 11px（共 44px）
+				'pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-[11px]',
+				className,
+			)}
+		>
+			{tag}
+			<span className="sr-only">的科目總覽</span>
+		</Link>
+	);
 }
 
 export function SubjectSelect({
@@ -75,17 +125,22 @@ export function SubjectSelect({
 	onChange,
 	allowEmpty = true,
 	emptyLabel = '不指定科目',
+	...aria
 }: {
 	id?: string;
 	value: string | null | undefined;
 	onChange: (v: string | null) => void;
 	allowEmpty?: boolean;
 	emptyLabel?: string;
+	/** 由 Field 傳入（提示／錯誤訊息），或沒有可見標籤時用 aria-label 命名 */
+	'aria-describedby'?: string;
+	'aria-invalid'?: boolean | 'true' | 'false';
+	'aria-label'?: string;
 }) {
 	const { data: subjects = [] } = useSubjects();
 	const active = subjects.filter((s: Subject) => !s.archived || s.id === value);
 	return (
-		<Select id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value || null)}>
+		<Select id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value || null)} {...aria}>
 			{allowEmpty && <option value="">{emptyLabel}</option>}
 			{active.map((s) => (
 				<option key={s.id} value={s.id}>

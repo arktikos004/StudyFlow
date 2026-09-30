@@ -34,6 +34,8 @@ type ColorPickerProps = {
 	selfId?: string;
 	/** 預覽 chip 上的名稱；省略時用 selfId 對應的科目名稱 */
 	name?: string;
+	/** 預覽 chip 上的圖示（SUBJECT_ICONS 的 key）；省略代表不顯示 */
+	icon?: string | null;
 	/** 選色器的名稱，用在各個 radiogroup 的 aria-label */
 	label?: string;
 };
@@ -50,7 +52,7 @@ function neighborsOf(subjects: readonly PickerSubject[], selfId?: string): { bef
 	return { before: subjects[i - 1], after: subjects[i + 1] };
 }
 
-export function ColorPicker({ value, onChange, subjects, selfId, name, label = '科目顏色' }: ColorPickerProps) {
+export function ColorPicker({ value, onChange, subjects, selfId, name, icon, label = '科目顏色' }: ColorPickerProps) {
 	const current = parseHex(value) ?? RECOMMENDED[0].hex;
 	const toneOf = useSubjectTone();
 	const baseId = useId();
@@ -135,7 +137,7 @@ export function ColorPicker({ value, onChange, subjects, selfId, name, label = '
 				{customOpen && <CustomColor value={current} onChange={onChange} />}
 			</div>
 
-			<Preview hex={current} name={previewName} before={before} after={after} />
+			<Preview hex={current} name={previewName} icon={icon} before={before} after={after} />
 
 			<div role="status" aria-live="polite">
 				{warnings.length > 0 && (
@@ -253,10 +255,12 @@ function PaletteGrid({ value, onChange, usedBy, label }: SwatchGroupProps) {
 			role="radiogroup"
 			aria-label={`${label}：更多顏色`}
 			className={cn(
-				// 預設（觸控裝置或容器不夠寬）：兩塊 5 色相 × 4 色調上下排列，中間多 4px 的空行分隔
-				'grid grid-cols-[repeat(5,2.75rem)] grid-rows-[repeat(4,2.75rem)_0.25rem_repeat(4,2.75rem)] gap-1 [--grid-blocks:2]',
-				// 滑鼠等精確指標、而且容器放得下 10 格 × 44px（含間距 476px）：10 × 4 一整塊
-				'@min-[29.75rem]:pointer-fine:grid-cols-[repeat(10,2.75rem)] @min-[29.75rem]:pointer-fine:grid-rows-[repeat(4,2.75rem)] @min-[29.75rem]:pointer-fine:[--grid-blocks:1]',
+				// 預設（觸控裝置或容器不夠寬）：兩塊 5 色相 × 4 色調上下排列、每格 44px，中間多 4px 的空行分隔
+				'grid grid-cols-[repeat(5,var(--cell))] grid-rows-[repeat(4,var(--cell))_0.25rem_repeat(4,var(--cell))] gap-1 [--cell:2.75rem] [--grid-blocks:2]',
+				// 滑鼠等精確指標：一律 10 × 4 一整塊，格子依容器寬度介於 32–44px（扣掉 9 個 4px 間距後平分）；
+				// 容器放不下 10 格 × 32px（含間距 356px）時才維持兩塊
+				'@min-[22.25rem]:pointer-fine:grid-cols-[repeat(10,var(--cell))] @min-[22.25rem]:pointer-fine:grid-rows-[repeat(4,var(--cell))] @min-[22.25rem]:pointer-fine:[--grid-blocks:1]',
+				'@min-[22.25rem]:pointer-fine:[--cell:clamp(2rem,calc((100cqw_-_2.25rem)_/_10),2.75rem)]',
 			)}
 		>
 			{GRID_CELLS.map(({ hex, tone: t, hue: h }) => {
@@ -288,8 +292,8 @@ function PaletteGrid({ value, onChange, usedBy, label }: SwatchGroupProps) {
 						onClick={() => onChange(hex)}
 						onKeyDown={(e) => onKeyDown(e, t, h)}
 						className={cn(
-							'relative grid size-11 place-items-center rounded-sm',
-							'[grid-column:var(--c2)] [grid-row:var(--r2)] @min-[29.75rem]:pointer-fine:[grid-column:var(--c1)] @min-[29.75rem]:pointer-fine:[grid-row:var(--r1)]',
+							'relative grid size-(--cell) place-items-center rounded-sm',
+							'[grid-column:var(--c2)] [grid-row:var(--r2)] @min-[22.25rem]:pointer-fine:[grid-column:var(--c1)] @min-[22.25rem]:pointer-fine:[grid-row:var(--r1)]',
 							on && 'ring-2 ring-ink ring-offset-1 ring-offset-card',
 						)}
 						style={{ background: tone.mark, ...place } as CSSProperties}
@@ -306,7 +310,7 @@ function PaletteGrid({ value, onChange, usedBy, label }: SwatchGroupProps) {
 /** 兩塊排版時每一塊的色相數：第一塊紅到綠、第二塊青到桃紅 */
 const BLOCK_HUES = 5;
 
-/** DOM 順序跟著兩塊排版（手機與大多數寬度的畫面），讓瀏覽模式讀到的順序和畫面一致 */
+/** DOM 順序跟著兩塊排版（觸控裝置與窄容器），手機上用瀏覽模式讀到的順序和畫面一致；一整塊時方向鍵另外依畫面移動 */
 const GRID_CELLS = [0, 1].flatMap((block) =>
 	PALETTE.flatMap((row, tone) =>
 		row.slice(block * BLOCK_HUES, (block + 1) * BLOCK_HUES).map((hex, i) => ({ hex, tone, hue: block * BLOCK_HUES + i })),
@@ -509,7 +513,19 @@ function SatValSquare({ hsv, onChange }: { hsv: Hsv; onChange: (next: Hsv) => vo
  * 預覽：目前所選顏色的名稱（色盤顏色用「藍（明）」，自訂色用「自訂 #RRGGBB」），
  * 以及固定用淺色與深色各算一次 tone（不受目前主題影響）的 chip 和與相鄰科目疊在一起的迷你長條
  */
-function Preview({ hex, name, before, after }: { hex: string; name: string; before?: PickerSubject; after?: PickerSubject }) {
+function Preview({
+	hex,
+	name,
+	icon,
+	before,
+	after,
+}: {
+	hex: string;
+	name: string;
+	icon?: string | null;
+	before?: PickerSubject;
+	after?: PickerSubject;
+}) {
 	const around = [before, after].filter((s): s is PickerSubject => s !== undefined).map((s) => s.name);
 	const description = `預覽：「${name}」在淺色與深色模式的標籤${around.length ? `，以及和${quote(around)}並排的長條` : ''}`;
 	return (
@@ -533,7 +549,7 @@ function Preview({ hex, name, before, after }: { hex: string; name: string; befo
 								{dark ? '深色' : '淺色'}
 							</p>
 							<div className="space-y-2.5 rounded-lg border border-line p-2.5" style={{ background: surface.card }}>
-								<SubjectChip name={name} tone={subjectTone(hex, dark, surface.card)} style={{ color: surface.ink }} />
+								<SubjectChip name={name} icon={icon} tone={subjectTone(hex, dark, surface.card)} style={{ color: surface.ink }} />
 								<div className="flex h-2.5 gap-0.5 overflow-hidden rounded-sm">
 									{segments.map((seg) => (
 										<span key={seg.key} style={{ flex: seg.weight, background: seg.mark }} />
