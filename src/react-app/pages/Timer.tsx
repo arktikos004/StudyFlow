@@ -1,11 +1,29 @@
-import { Coffee, Pause, Play, Plus, RotateCcw, SkipForward, Square, Trash2 } from 'lucide-react';
-import { useId, useState, type FormEvent } from 'react';
+import { ChevronLeft, ChevronRight, Coffee, Pause, Pencil, Play, Plus, RotateCcw, SkipForward, Square, Trash2 } from 'lucide-react';
+import { useId, useState } from 'react';
 import { toast } from 'sonner';
-import { startOfLocalDay, today as todayOf } from '../../shared/dates';
+import type { StudySession } from '../../shared/api-types';
+import { addDays, today as todayOf } from '../../shared/dates';
+import { SessionDialog } from '../components/SessionDialog';
 import { SubjectSelect, SubjectTag } from '../components/subjects';
-import { Button, Card, CardHeader, cn, Dialog, EmptyState, Field, Input, Segmented, Select, Switch, useConfirm } from '../components/ui';
-import { formatDuration, formatMinutes, formatTime, MODE_LABEL } from '../lib/format';
-import { useCreateSession, useDeleteSession, useStudySessions, useTasks, useUser } from '../lib/queries';
+import {
+	Button,
+	Card,
+	CardHeader,
+	cn,
+	EmptyState,
+	ErrorNote,
+	Field,
+	Input,
+	PageLoader,
+	Segmented,
+	Select,
+	Switch,
+	useConfirm,
+} from '../components/ui';
+import { formatDuration, formatMinutes, MODE_LABEL } from '../lib/format';
+import { useDeleteSession, useStudySessions, useSubjectMap, useTasks, useUser } from '../lib/queries';
+import { formatClockRange, relativeDateLabel } from '../lib/timer-format';
+import { useDeepLink } from '../lib/timer-queries';
 import {
 	breakMinutes,
 	elapsedMs,
@@ -164,117 +182,129 @@ function Ring({ progress, phase, children }: { progress: number; phase: 'idle' |
 	);
 }
 
-function ManualForm({ onDone }: { onDone: () => void }) {
+/**
+ * 學習紀錄列表（TMR-2）：可以切換日期，每筆都能編輯（整列）與刪除。
+ * 時間依 user.timezone 顯示。
+ */
+function SessionLog({
+	date,
+	today,
+	onDateChange,
+	onEdit,
+	onCreate,
+}: {
+	date: string;
+	today: string;
+	onDateChange: (date: string) => void;
+	onEdit: (session: StudySession) => void;
+	onCreate: () => void;
+}) {
 	const user = useUser();
-	const create = useCreateSession();
-	const { data: tasks = [] } = useTasks();
-	const [form, setForm] = useState(() => {
-		// 預設：今天、一小時前開始、讀 60 分鐘
-		const start = new Date(Date.now() - 60 * 60_000);
-		const hhmm = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
-		return { date: todayOf(user.timezone), start: hhmm, minutes: '60', subjectId: null as string | null, taskId: '', note: '' };
-	});
-	const [error, setError] = useState<string>();
+	const tz = user.timezone;
+	const subjectMap = useSubjectMap();
+	const { data: sessions, isPending, error } = useStudySessions({ from: date, to: date });
+	const remove = useDeleteSession();
+	const [confirm, confirmDialog] = useConfirm();
+	const list = sessions ?? [];
+	const total = list.reduce((sum, x) => sum + x.durationSec, 0) / 60;
+	const dateLabel = relativeDateLabel(date, today);
 
-	const onSubmit = async (e: FormEvent) => {
-		e.preventDefault();
-		const minutes = Number(form.minutes);
-		if (!form.date || !form.start) return setError('請輸入日期與開始時間');
-		if (!Number.isFinite(minutes) || minutes < 1 || minutes > 720) return setError('時間長度請輸入 1–720 分鐘');
-		const [h, m] = form.start.split(':').map(Number);
-		const startedAt = startOfLocalDay(form.date, user.timezone) + (h * 60 + m) * 60_000;
-		const endedAt = startedAt + minutes * 60_000;
-		if (endedAt > Date.now()) return setError('結束時間不能晚於現在');
-		try {
-			await create.mutateAsync({
-				mode: 'manual',
-				startedAt,
-				endedAt,
-				subjectId: form.subjectId,
-				taskId: form.taskId || null,
-				note: form.note.trim() || null,
-			});
-			onDone();
-		} catch {
-			// toast 已顯示錯誤
-		}
+	const onDelete = async (x: StudySession) => {
+		const range = formatClockRange(x.startedAt, x.endedAt, tz);
+		if (await confirm({ title: '刪除這筆學習紀錄？', message: `${dateLabel} ${range}，${formatMinutes(x.durationSec / 60)}。刪除後無法復原。` }))
+			remove.mutate(x.id);
 	};
 
 	return (
-		<form id="manual-form" onSubmit={onSubmit} className="grid grid-cols-2 gap-4" noValidate>
-			<Field label="日期">
-				{(id) => <Input id={id} type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />}
-			</Field>
-			<Field label="開始時間">
-				{(id) => <Input id={id} type="time" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />}
-			</Field>
-			<Field label="讀了幾分鐘">
-				{(id) => (
-					<Input
-						id={id}
-						type="number"
-						inputMode="numeric"
-						min={1}
-						max={720}
-						value={form.minutes}
-						onChange={(e) => setForm({ ...form, minutes: e.target.value })}
-					/>
-				)}
-			</Field>
-			<Field label="科目">
-				{(id) => <SubjectSelect id={id} value={form.subjectId} onChange={(subjectId) => setForm({ ...form, subjectId })} />}
-			</Field>
-			<Field label="相關任務（選填）" className="col-span-2">
-				{(id) => (
-					<Select id={id} value={form.taskId} onChange={(e) => setForm({ ...form, taskId: e.target.value })}>
-						<option value="">不指定</option>
-						{tasks
-							.filter((t) => t.status !== 'done' && (!form.subjectId || t.subjectId === form.subjectId))
-							.map((t) => (
-								<option key={t.id} value={t.id}>
-									{t.title}
-								</option>
-							))}
-					</Select>
-				)}
-			</Field>
-			<Field label="備註（選填）" className="col-span-2">
-				{(id) => (
-					<Input
-						id={id}
-						value={form.note}
-						onChange={(e) => setForm({ ...form, note: e.target.value })}
-						maxLength={500}
-						placeholder="例如：在圖書館讀第 5 章"
-					/>
-				)}
-			</Field>
-			{error && (
-				<p className="col-span-2 text-sm text-danger" role="alert">
-					{error}
-				</p>
-			)}
-		</form>
-	);
-}
-
-function ManualDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-	return (
-		<Dialog
-			open={open}
-			onClose={onClose}
-			title="手動補登學習時間"
-			footer={
-				<>
-					<Button onClick={onClose}>取消</Button>
-					<Button variant="primary" type="submit" form="manual-form">
-						儲存
+		<Card className="self-start">
+			<CardHeader
+				title="學習紀錄"
+				action={
+					<Button size="sm" variant="ghost" onClick={onCreate}>
+						<Plus className="size-4" aria-hidden />
+						補登
 					</Button>
-				</>
-			}
-		>
-			<ManualForm onDone={onClose} />
-		</Dialog>
+				}
+			/>
+			<div className="flex items-center justify-between gap-2 px-4 pb-3 sm:px-5">
+				<div className="flex items-center gap-0.5">
+					<Button size="icon" variant="ghost" aria-label="前一天" onClick={() => onDateChange(addDays(date, -1))}>
+						<ChevronLeft className="size-5" />
+					</Button>
+					<p className="min-w-24 text-center text-dense font-semibold" aria-live="polite">
+						{dateLabel}
+					</p>
+					<Button size="icon" variant="ghost" aria-label="後一天" disabled={date >= today} onClick={() => onDateChange(addDays(date, 1))}>
+						<ChevronRight className="size-5" />
+					</Button>
+				</div>
+				{date !== today && (
+					<Button size="sm" variant="ghost" onClick={() => onDateChange(today)}>
+						回到今天
+					</Button>
+				)}
+			</div>
+			<div className="flex items-baseline gap-3 px-4 pb-3 sm:px-5">
+				<span className="font-num text-num-lg font-semibold tabular-nums">{formatMinutes(total)}</span>
+				<span className="text-meta text-ink-3">{list.length} 段學習</span>
+			</div>
+			{error ? (
+				<div className="px-4 pb-4 sm:px-5">
+					<ErrorNote error={error} />
+				</div>
+			) : isPending ? (
+				<PageLoader />
+			) : list.length === 0 ? (
+				<EmptyState
+					variant="inline"
+					className="border-t border-line"
+					title={date === today ? '今天還沒有紀錄' : '這天沒有學習紀錄'}
+					description={date === today ? '完成的專注時間會自動記錄在這裡' : '忘了計時可以補登'}
+					action={
+						date !== today && (
+							<Button size="sm" variant="ghost" onClick={onCreate}>
+								補登
+							</Button>
+						)
+					}
+				/>
+			) : (
+				<ul className="divide-y divide-line border-t border-line">
+					{list.map((x) => {
+						const range = formatClockRange(x.startedAt, x.endedAt, tz);
+						const subject = x.subjectId ? subjectMap.get(x.subjectId)?.name : undefined;
+						const minutes = formatMinutes(x.durationSec / 60);
+						return (
+							<li key={x.id} className="flex items-center pr-2 sm:pr-3">
+								<button
+									type="button"
+									onClick={() => onEdit(x)}
+									aria-label={`編輯紀錄：${range}，${MODE_LABEL[x.mode]}，${subject ?? '未分類'}，${minutes}`}
+									className="flex min-h-14 min-w-0 flex-1 items-center gap-3 py-2.5 pr-2 pl-4 text-left transition-colors duration-120 ease-out hover:bg-subtle sm:pl-5"
+								>
+									<span className="min-w-0 flex-1">
+										<span className="flex flex-wrap items-baseline gap-x-2 text-sm">
+											<span className="font-num font-semibold tabular-nums">{range}</span>
+											<span className="text-meta text-ink-3">{MODE_LABEL[x.mode]}</span>
+										</span>
+										<span className="mt-1 flex min-w-0 items-center gap-2">
+											{subject ? <SubjectTag subjectId={x.subjectId} /> : <span className="text-meta text-ink-3">未分類</span>}
+											{x.note && <span className="truncate text-meta text-ink-3">{x.note}</span>}
+										</span>
+									</span>
+									<span className="shrink-0 font-num text-sm text-ink-2 tabular-nums">{minutes}</span>
+									<Pencil className="size-4 shrink-0 text-ink-3" aria-hidden />
+								</button>
+								<Button size="icon" variant="ghost" aria-label={`刪除 ${range} 的紀錄`} onClick={() => onDelete(x)}>
+									<Trash2 className="size-4" />
+								</Button>
+							</li>
+						);
+					})}
+				</ul>
+			)}
+			{confirmDialog}
+		</Card>
 	);
 }
 
@@ -283,18 +313,34 @@ export function TimerPage() {
 	const s = useTimerState();
 	const now = useNow(s.running);
 	const today = todayOf(user.timezone);
-	const { data: sessions = [] } = useStudySessions({ from: today, to: today });
 	const { data: tasks = [] } = useTasks();
-	const deleteSession = useDeleteSession();
-	const [manualOpen, setManualOpen] = useState(false);
 	const [confirm, confirmDialog] = useConfirm();
+	const [logDate, setLogDate] = useState(today);
+	const [dialog, setDialog] = useState<{ session?: StudySession } | null>(null);
+
+	// 深連結：?new=1 開啟補登、?date=YYYY-MM-DD 切換紀錄日期、?open=<id> 開啟那天的某筆紀錄
+	const link = useDeepLink(['new', 'open', 'date']);
+	const [seenLink, setSeenLink] = useState(0);
+	const [pendingOpen, setPendingOpen] = useState<string | null>(null);
+	if (link.seq !== seenLink) {
+		setSeenLink(link.seq);
+		const d = link.values.date;
+		if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today) setLogDate(d);
+		if (link.values.new === '1') setDialog({});
+		if (link.values.open) setPendingOpen(link.values.open);
+	}
+	const { data: logSessions } = useStudySessions({ from: logDate, to: logDate });
+	if (pendingOpen && logSessions) {
+		setPendingOpen(null);
+		const found = logSessions.find((x) => x.id === pendingOpen);
+		if (found) setDialog({ session: found });
+	}
 
 	const active = s.phase !== 'idle';
 	const target = targetMs(s);
 	const el = active ? elapsedMs(s, now) : 0;
 	const display = s.mode === 'pomodoro' ? Math.max(0, (target ?? 0) - el) : el;
 	const progress = s.mode === 'pomodoro' && target ? el / target : (el % 3_600_000) / 3_600_000;
-	const todayTotal = sessions.reduce((sum, x) => sum + x.durationSec, 0) / 60;
 	const isBreak = s.phase === 'break';
 	const breakName = s.breakKind === 'long' ? '長休息' : '短休息';
 	const waitingBreak = isBreak && !s.running;
@@ -420,56 +466,15 @@ export function TimerPage() {
 					)}
 				</Card>
 
-				<Card className="self-start">
-					<CardHeader
-						title="今天的學習紀錄"
-						action={
-							<Button size="sm" variant="ghost" onClick={() => setManualOpen(true)}>
-								<Plus className="size-4" aria-hidden />
-								補登
-							</Button>
-						}
-					/>
-					<div className="px-4 pb-2 sm:px-5">
-						<p className="text-3xl font-semibold tracking-tight">{formatMinutes(todayTotal)}</p>
-						<p className="text-sm text-ink-3">{sessions.length} 段學習</p>
-					</div>
-					{sessions.length === 0 ? (
-						<EmptyState title="今天還沒有紀錄" description="按下開始，完成的專注時間會自動記錄在這裡。" />
-					) : (
-						<ul className="divide-y divide-line border-t border-line">
-							{sessions.map((x) => (
-								<li key={x.id} className="flex items-center gap-3 px-4 py-2.5 sm:px-5">
-									<div className="min-w-0 flex-1">
-										<div className="flex items-center gap-2 text-sm">
-											<span className="font-medium tabular-nums">
-												{formatTime(x.startedAt)}–{formatTime(x.endedAt)}
-											</span>
-											<span className="text-ink-3">{MODE_LABEL[x.mode]}</span>
-										</div>
-										<div className="mt-0.5 flex items-center gap-2">
-											<SubjectTag subjectId={x.subjectId} />
-											{x.note && <span className="truncate text-xs text-ink-3">{x.note}</span>}
-										</div>
-									</div>
-									<span className="text-sm text-ink-2 tabular-nums">{formatMinutes(x.durationSec / 60)}</span>
-									<Button
-										size="icon"
-										variant="ghost"
-										aria-label="刪除這筆紀錄"
-										onClick={async () => {
-											if (await confirm({ title: '刪除這筆學習紀錄？' })) deleteSession.mutate(x.id);
-										}}
-									>
-										<Trash2 className="size-4" />
-									</Button>
-								</li>
-							))}
-						</ul>
-					)}
-				</Card>
+				<SessionLog
+					date={logDate}
+					today={today}
+					onDateChange={setLogDate}
+					onEdit={(session) => setDialog({ session })}
+					onCreate={() => setDialog({})}
+				/>
 			</div>
-			<ManualDialog open={manualOpen} onClose={() => setManualOpen(false)} />
+			<SessionDialog open={!!dialog} session={dialog?.session} defaultDate={logDate} onClose={() => setDialog(null)} />
 			{confirmDialog}
 		</div>
 	);
