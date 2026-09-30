@@ -5,6 +5,8 @@ import { diffDays } from '../../../shared/dates';
 import { dDay, EVENT_KIND_LABEL, formatDate } from '../../lib/format';
 import { SubjectTag } from '../subjects';
 import { Button, Card, CardHeader, cn, EmptyState } from '../ui';
+import { PrepProgress } from './exams';
+import { useSubjectMark } from './hooks';
 
 /** D-3 這類倒數：3 天內用紅筆（文字本身就是倒數，不只靠顏色） */
 function DayChip({ date, today }: { date: string; today: string }) {
@@ -21,8 +23,9 @@ function DayChip({ date, today }: { date: string; today: string }) {
 	);
 }
 
-/** 總覽的「即將到來」：考試與截止日，點一下到考試頁開啟該項目 */
+/** 總覽的「即將到來」：考試與截止日、準備任務的完成數與進度條（DASH-1），點一下到考試頁開啟該項目 */
 export function UpcomingCard({ events, today, onNew, hasNextExam }: { events: EventItem[]; today: string; onNew: () => void; hasNextExam: boolean }) {
+	const markOf = useSubjectMark();
 	return (
 		<Card>
 			<CardHeader
@@ -40,17 +43,22 @@ export function UpcomingCard({ events, today, onNew, hasNextExam }: { events: Ev
 						<li key={e.id}>
 							<Link to={`/events?open=${e.id}`} className="flex items-start gap-3 rounded-lg px-2 py-2 transition-colors duration-120 ease-out hover:bg-subtle">
 								<DayChip date={e.date} today={today} />
-								<span className="min-w-0 flex-1">
-									<span className="block truncate text-dense text-ink">{e.title}</span>
-									<span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-ink-3">
+								<div className="min-w-0 flex-1">
+									<p className="truncate text-dense text-ink">{e.title}</p>
+									<div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-ink-3">
 										<span>{EVENT_KIND_LABEL[e.kind]}</span>
 										<span className="font-num tabular-nums">
 											{formatDate(e.date)}
 											{e.time && ` ${e.time}`}
 										</span>
 										<SubjectTag subjectId={e.subjectId} />
-									</span>
-								</span>
+									</div>
+									{e.taskTotal > 0 ? (
+										<PrepProgress event={e} color={markOf(e.subjectId)} size="sm" className="mt-2" />
+									) : (
+										e.kind === 'exam' && <p className="mt-1 text-meta text-ink-3">還沒有準備任務</p>
+									)}
+								</div>
 							</Link>
 						</li>
 					))}

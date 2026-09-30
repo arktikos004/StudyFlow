@@ -1,4 +1,4 @@
-import { CalendarClock, CircleAlert, CircleDot, ListChecks, Plus } from 'lucide-react';
+import { CalendarClock, CircleAlert, CircleDot, ListChecks, Play, Plus, Timer } from 'lucide-react';
 import type { Task } from '../../../shared/api-types';
 import { diffDays } from '../../../shared/dates';
 import { SubjectTag } from '../subjects';
@@ -30,13 +30,15 @@ function TaskBadges({ task, today }: { task: Task; today: string }) {
 	);
 }
 
-/** 總覽的「今天要處理」：到期、逾期或進行中的任務 */
+/** 總覽的「今天要處理」：到期、逾期或進行中的任務；每一列都有 ▶ 可以直接開始專注（DASH-1） */
 export function TodayTasksCard({
 	tasks,
 	today,
 	openCount,
 	onOpen,
 	onNew,
+	onFocus,
+	focusingTaskId,
 }: {
 	tasks: Task[];
 	today: string;
@@ -44,6 +46,9 @@ export function TodayTasksCard({
 	openCount: number;
 	onOpen: (task: Task) => void;
 	onNew: () => void;
+	onFocus: (task: Task) => void;
+	/** 正在計時的任務：按鈕改成「回到計時」 */
+	focusingTaskId: string | null;
 }) {
 	return (
 		<Card>
@@ -71,6 +76,15 @@ export function TodayTasksCard({
 									<TaskBadges task={t} today={today} />
 								</span>
 							</button>
+							{t.id === focusingTaskId ? (
+								<Button size="icon" variant="soft" onClick={() => onFocus(t)} aria-label={`回到計時：${t.title}`} title="正在專注，回到計時">
+									<Timer className="size-[18px]" aria-hidden />
+								</Button>
+							) : (
+								<Button size="icon" variant="ghost" className="text-accent-ink" onClick={() => onFocus(t)} aria-label={`開始專注：${t.title}`} title="開始專注">
+									<Play className="size-[18px]" aria-hidden />
+								</Button>
+							)}
 						</li>
 					))}
 				</ul>

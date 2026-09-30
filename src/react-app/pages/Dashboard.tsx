@@ -5,6 +5,7 @@ import type { EventItem, Task } from '../../shared/api-types';
 import { StatStrip, type StatItem } from '../components/charts';
 import { NextExamCard } from '../components/dashboard/exams';
 import { GoalsCard } from '../components/dashboard/goals';
+import { useFocusTask } from '../components/dashboard/hooks';
 import { Duration, Unit } from '../components/dashboard/parts';
 import { TodayTasksCard } from '../components/dashboard/tasks';
 import { UpcomingCard } from '../components/dashboard/upcoming';
@@ -26,6 +27,7 @@ export function DashboardPage() {
 	// 等科目也到齊再畫，科目 chip 與顏色不會晚一步才出現
 	const subjects = useSubjects();
 	const timerActive = useTimerState().phase !== 'idle';
+	const [startFocus, focusConfirm, focusingTaskId] = useFocusTask();
 	const [eventOpen, setEventOpen] = useState(false);
 	const [taskDialog, setTaskDialog] = useState<TaskDialogState>(null);
 
@@ -129,6 +131,8 @@ export function DashboardPage() {
 						openCount={data.openTaskCount}
 						onOpen={(task) => setTaskDialog({ task })}
 						onNew={() => setTaskDialog({})}
+						onFocus={startFocus}
+						focusingTaskId={focusingTaskId}
 					/>
 					<GoalsCard goals={data.goals} todayMinutes={data.todayMinutes} weekMinutes={data.weekMinutes} />
 				</div>
@@ -141,6 +145,7 @@ export function DashboardPage() {
 
 			<EventDialog open={eventOpen} onClose={() => setEventOpen(false)} />
 			<TaskDialog open={!!taskDialog} task={taskDialog?.task} defaults={taskDialog?.defaults} onClose={() => setTaskDialog(null)} />
+			{focusConfirm}
 		</div>
 	);
 }
