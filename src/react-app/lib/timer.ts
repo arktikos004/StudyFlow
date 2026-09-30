@@ -1,9 +1,9 @@
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import type { PublicUser } from '../../shared/api-types';
-import { localDate } from '../../shared/dates';
-import { api } from './api';
+import type { PublicUser, StudySession } from '../../shared/api-types';
+import { addDays, localDate } from '../../shared/dates';
+import { api, qs } from './api';
 import { formatMinutes } from './format';
 import { SESSION_KEYS, type SessionInput } from './queries';
 import {
@@ -172,6 +172,23 @@ async function exclusive<T>(name: string, fn: () => Promise<T> | T): Promise<T> 
 	return fn();
 }
 
+/**
+ * 伺服器是否已經有同一筆（模式與起訖時間到毫秒都相同）。
+ * 上次送出成功、但還沒從佇列移除就關掉分頁（或瀏覽器當掉）時，佇列會留著這筆，不檢查就會重複記錄。
+ * 離線時丟出錯誤（留在佇列）；其他錯誤當作沒有，照原本的流程送出。
+ */
+async function alreadySaved(record: SessionInput): Promise<boolean> {
+	// 前後各多查一天：登入資料載入前的時區可能和伺服器用的不同
+	const day = localDate(record.startedAt, timeZone);
+	try {
+		const { sessions } = await api.get<{ sessions: StudySession[] }>(`/study-sessions${qs({ from: addDays(day, -1), to: addDays(day, 1) })}`);
+		return sessions.some((s) => s.mode === record.mode && s.startedAt === record.startedAt && s.endedAt === record.endedAt);
+	} catch (e) {
+		if ((e as { status?: number }).status === 0) throw e;
+		return false;
+	}
+}
+
 let flushing = false;
 async function flushQueue(onSaved: (r: SessionInput) => void) {
 	if (flushing || !navigator.onLine || readQueue().length === 0) return;
@@ -180,8 +197,10 @@ async function flushQueue(onSaved: (r: SessionInput) => void) {
 		await exclusive('studyflow-flush', async () => {
 			for (const record of readQueue()) {
 				try {
-					await api.post('/study-sessions', record);
-					onSaved(record);
+					if (!(await alreadySaved(record))) {
+						await api.post('/study-sessions', record);
+						onSaved(record);
+					}
 				} catch (e) {
 					const status = (e as { status?: number }).status;
 					// 離線或尚未登入：留著下次再送
