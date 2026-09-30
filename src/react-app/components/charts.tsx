@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from 'recharts';
+import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from 'recharts';
 import { formatDate, formatMinutes, formatMinutesShort, formatMonthDay, weekdayLabel } from '../lib/format';
 import { ChartColumn, Table2 } from 'lucide-react';
 import { Button, cn } from './ui';
@@ -182,10 +182,13 @@ export function DailyStackedBars({
 	data,
 	series,
 	today,
+	goal,
 }: {
 	data: { date: string; bySubject: Record<string, number>; minutes: number }[];
 	series: SeriesDef[];
 	today: string;
+	/** 每日目標（分鐘）：畫一條虛線門檻；圖例請另外標示「每日目標」 */
+	goal?: number | null;
 }) {
 	const rows = data.map((d) => ({
 		date: d.date,
@@ -193,7 +196,7 @@ export function DailyStackedBars({
 		...Object.fromEntries(series.map((s) => [s.key, d.bySubject[s.key] ?? 0])),
 	}));
 	const dense = data.length > 31;
-	const ticks = minuteTicks(Math.max(30, ...data.map((d) => d.minutes)));
+	const ticks = minuteTicks(Math.max(30, goal ?? 0, ...data.map((d) => d.minutes)));
 	const keys = series.map((s) => s.key);
 	return (
 		<div className="h-64 w-full">
@@ -247,6 +250,7 @@ export function DailyStackedBars({
 							shape={stackSegment(s.key, keys)}
 						/>
 					))}
+					{goal ? <ReferenceLine y={goal} stroke="var(--ink-3)" strokeWidth={1.5} strokeDasharray="4 4" /> : null}
 				</BarChart>
 			</ResponsiveContainer>
 		</div>
@@ -461,10 +465,7 @@ export function Heatmap({ data, today }: { data: { date: string; minutes: number
 						多（2 小時以上）
 					</div>
 				)}
-				<Button size="sm" variant="ghost" onClick={() => setTable((v) => !v)} aria-pressed={table}>
-					<Table2 className="size-4" aria-hidden />
-					{table ? '圖表' : '表格'}
-				</Button>
+				<TableToggle on={table} onToggle={() => setTable((v) => !v)} />
 			</div>
 		</div>
 	);
