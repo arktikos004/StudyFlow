@@ -182,7 +182,9 @@ async function alreadySaved(record: SessionInput): Promise<boolean> {
 	// 前後各多查一天：登入資料載入前的時區可能和伺服器用的不同
 	const day = localDate(record.startedAt, timeZone);
 	try {
-		const { sessions } = await api.get<{ sessions: StudySession[] }>(`/study-sessions${qs({ from: addDays(day, -1), to: addDays(day, 1) })}`);
+		const { sessions } = await api.get<{ sessions: StudySession[] }>(
+			`/study-sessions${qs({ from: addDays(day, -1), to: addDays(day, 1) })}`,
+		);
 		return sessions.some((s) => s.mode === record.mode && s.startedAt === record.startedAt && s.endedAt === record.endedAt);
 	} catch (e) {
 		if ((e as { status?: number }).status === 0) throw e;

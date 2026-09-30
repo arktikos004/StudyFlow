@@ -85,7 +85,8 @@ function SessionForm({
 		const end = zonedParts(times.endedAt, tz);
 		return `結束時間（${relativeDateLabel(end.date, zonedParts(at, tz).date)} ${end.time}）晚於現在，請提早開始時間或縮短時長`;
 	};
-	const errors: FieldErrors = checkedAt !== null && timeChanged ? { ...fieldErrors, minutes: fieldErrors.minutes ?? futureError(checkedAt) } : {};
+	const errors: FieldErrors =
+		checkedAt !== null && timeChanged ? { ...fieldErrors, minutes: fieldErrors.minutes ?? futureError(checkedAt) } : {};
 
 	// 結束時間提示：沒改時間時顯示原本的（可能中間暫停過）
 	let endHint: string | undefined;
@@ -235,7 +236,12 @@ export function SessionDialog({
 				onClose={onClose}
 				title={session ? '編輯學習紀錄' : '補登學習時間'}
 				footer={
-					<DialogFooter formId={FORM_ID} onClose={onClose} onDelete={session ? onDelete : undefined} saving={create.isPending || update.isPending} />
+					<DialogFooter
+						formId={FORM_ID}
+						onClose={onClose}
+						onDelete={session ? onDelete : undefined}
+						saving={create.isPending || update.isPending}
+					/>
 				}
 			>
 				<SessionForm

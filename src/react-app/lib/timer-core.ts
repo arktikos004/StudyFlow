@@ -38,7 +38,10 @@ export type TimerState = {
 };
 
 /** 可以自訂的設定（timer.setOptions） */
-export type TimerOptions = Pick<TimerState, 'focusMin' | 'breakMin' | 'longBreakMin' | 'longBreakEvery' | 'autoStartBreak' | 'autoStartFocus'>;
+export type TimerOptions = Pick<
+	TimerState,
+	'focusMin' | 'breakMin' | 'longBreakMin' | 'longBreakEvery' | 'autoStartBreak' | 'autoStartFocus'
+>;
 
 /** 數字設定的範圍與預設值（TMR-1） */
 export const LIMITS = {
@@ -192,7 +195,7 @@ export function advance(
 	let s = start;
 	const records: SessionRecord[] = [];
 	const events: TimerEvent[] = [];
-	// 最多：專注到點 → 休息到點；自動開始的專注從不到 1 分鐘前開始，這次不可能再到點
+	// 最多：專注到點，接著休息到點；自動開始的專注從不到 1 分鐘前開始，這次不可能再到點
 	for (let i = 0; i < 4; i++) {
 		if (!s.running || s.mode !== 'pomodoro' || s.phase === 'idle') break;
 		const target = targetMs(s)!;

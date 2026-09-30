@@ -16,7 +16,10 @@ function readPrefs(): NoisePrefs {
 	try {
 		const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<NoisePrefs> | null;
 		const kind = raw?.kind === 'white' || raw?.kind === 'pink' || raw?.kind === 'brown' ? raw.kind : 'off';
-		const volume = typeof raw?.volume === 'number' && Number.isFinite(raw.volume) ? Math.min(100, Math.max(0, Math.round(raw.volume))) : DEFAULT_PREFS.volume;
+		const volume =
+			typeof raw?.volume === 'number' && Number.isFinite(raw.volume)
+				? Math.min(100, Math.max(0, Math.round(raw.volume)))
+				: DEFAULT_PREFS.volume;
 		return { kind, volume };
 	} catch {
 		return { ...DEFAULT_PREFS };
@@ -128,7 +131,7 @@ let playing: NoiseKind | null = null;
 let stopTimer: ReturnType<typeof setTimeout> | undefined;
 const buffers = new Map<NoiseKind, AudioBuffer>();
 
-/** 音量 0–100 → 增益（平方曲線，比較接近聽感） */
+/** 音量 0–100 換算成增益（平方曲線，比較接近聽感） */
 const gainFor = (volume: number) => (volume / 100) ** 2;
 
 function ramp(target: number) {

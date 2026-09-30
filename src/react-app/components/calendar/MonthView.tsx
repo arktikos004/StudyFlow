@@ -27,8 +27,8 @@ function cellLabel(date: string, today: string, items: DayItems | undefined, min
 }
 
 /**
- * 月檢視：WAI-ARIA grid（grid → row → gridcell），只有一個 tab stop（選取的那天）。
- * ←→ ±1 天、↑↓ ±7 天、Home／End 到週一／週日、PageUp／PageDown 換月（Shift 換年）；
+ * 月檢視：WAI-ARIA grid（grid、row、gridcell 三層），只有一個 tab stop（選取的那天）。
+ * 左右方向鍵 ±1 天、上下方向鍵 ±7 天、Home／End 到週一／週日、PageUp／PageDown 換月（Shift 換年）；
  * 今天加 aria-current="date"，選取中用內框 ring。每一格顯示當天的讀書分鐘數。
  */
 export function MonthView({

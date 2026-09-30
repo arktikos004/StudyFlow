@@ -42,7 +42,14 @@ describe('番茄鐘到點切換（advance）', () => {
 		expect(records).toEqual([
 			{ mode: 'pomodoro', startedAt: T0, endedAt: T0 + 25 * MIN, durationSec: 25 * 60, subjectId: 'subject-1', taskId: 'task-1' },
 		]);
-		expect(state).toMatchObject({ phase: 'break', breakKind: 'short', running: true, segmentStart: T0 + 25 * MIN, cycles: 1, cyclesDate: TODAY });
+		expect(state).toMatchObject({
+			phase: 'break',
+			breakKind: 'short',
+			running: true,
+			segmentStart: T0 + 25 * MIN,
+			cycles: 1,
+			cyclesDate: TODAY,
+		});
 		expect(events).toEqual([{ type: 'focus-done', at: T0 + 25 * MIN, count: 1, breakKind: 'short', autoStarted: true }]);
 		expect(targetMs(state)).toBe(5 * MIN);
 	});
@@ -97,7 +104,14 @@ describe('番茄鐘到點切換（advance）', () => {
 
 	it('休息結束後自動專注：從休息結束的時刻開始下一輪', () => {
 		const breakStart = T0;
-		const s: TimerState = { ...focusing(T0), phase: 'break', segmentStart: breakStart, sessionStartedAt: null, autoStartFocus: true, cycles: 1 };
+		const s: TimerState = {
+			...focusing(T0),
+			phase: 'break',
+			segmentStart: breakStart,
+			sessionStartedAt: null,
+			autoStartFocus: true,
+			cycles: 1,
+		};
 		const end = breakStart + 5 * MIN;
 		const { state, records, events } = advance(s, end + 30_000, dayOf);
 		expect(records).toEqual([]);
@@ -182,10 +196,28 @@ describe('舊版 localStorage 狀態（normalizeState）', () => {
 		expect(normalizeState(null, TODAY)).toEqual(defaultState(TODAY));
 		expect(normalizeState('oops', TODAY)).toEqual(defaultState(TODAY));
 		const s = normalizeState(
-			{ mode: 'x', phase: 'nope', running: true, focusMin: 999, breakMin: 0, longBreakMin: 'a', longBreakEvery: 1.4, accumulatedMs: -5, breakKind: 'long' },
+			{
+				mode: 'x',
+				phase: 'nope',
+				running: true,
+				focusMin: 999,
+				breakMin: 0,
+				longBreakMin: 'a',
+				longBreakEvery: 1.4,
+				accumulatedMs: -5,
+				breakKind: 'long',
+			},
 			TODAY,
 		);
-		expect(s).toMatchObject({ mode: 'pomodoro', phase: 'idle', running: false, focusMin: 180, breakMin: 1, longBreakMin: 15, longBreakEvery: 2 });
+		expect(s).toMatchObject({
+			mode: 'pomodoro',
+			phase: 'idle',
+			running: false,
+			focusMin: 180,
+			breakMin: 1,
+			longBreakMin: 15,
+			longBreakEvery: 2,
+		});
 		expect(s.accumulatedMs).toBe(0);
 		expect(s.breakKind).toBe('short');
 	});
@@ -238,7 +270,9 @@ describe('設定檢查與通知文字', () => {
 				{ ...s, autoStartFocus: true },
 			),
 		).toEqual({ title: '完成第 1 個番茄', body: '休息時間也結束了，準備好就開始下一輪' });
-		expect(describeEvents([{ type: 'break-done', at: T0, breakKind: 'short', autoStarted: false, late: true }], { ...s, autoStartFocus: true })).toEqual({
+		expect(
+			describeEvents([{ type: 'break-done', at: T0, breakKind: 'short', autoStarted: false, late: true }], { ...s, autoStartFocus: true }),
+		).toEqual({
 			title: '休息結束',
 			body: '離開超過 1 分鐘，這次沒有自動開始下一輪',
 		});

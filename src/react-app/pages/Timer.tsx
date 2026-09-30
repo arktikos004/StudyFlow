@@ -158,7 +158,11 @@ function PomodoroSettings({ s }: { s: TimerState }) {
 					<OptionField option="longBreakEvery" value={s.longBreakEvery} hint={`每完成 ${s.longBreakEvery} 個番茄，長休息一次`} />
 				</div>
 				<div className="mt-4 flex flex-col">
-					<Switch checked={s.autoStartBreak} onChange={(autoStartBreak) => timer.setOptions({ autoStartBreak })} label="專注結束後自動開始休息" />
+					<Switch
+						checked={s.autoStartBreak}
+						onChange={(autoStartBreak) => timer.setOptions({ autoStartBreak })}
+						label="專注結束後自動開始休息"
+					/>
 					<Switch
 						checked={s.autoStartFocus}
 						onChange={(autoStartFocus) => timer.setOptions({ autoStartFocus })}
@@ -286,7 +290,12 @@ function SessionLog({
 
 	const onDelete = async (x: StudySession) => {
 		const range = formatClockRange(x.startedAt, x.endedAt, tz);
-		if (await confirm({ title: '刪除這筆學習紀錄？', message: `${dateLabel} ${range}，${formatMinutes(x.durationSec / 60)}。刪除後無法復原。` }))
+		if (
+			await confirm({
+				title: '刪除這筆學習紀錄？',
+				message: `${dateLabel} ${range}，${formatMinutes(x.durationSec / 60)}。刪除後無法復原。`,
+			})
+		)
 			remove.mutate(x.id);
 	};
 
@@ -491,9 +500,7 @@ export function TimerPage() {
 			<PageHeader
 				title="學習計時"
 				description={
-					todayMinutes > 0 || round.done > 0
-						? `今天已讀 ${formatMinutes(todayMinutes)}，完成 ${round.done} 個番茄`
-						: '今天還沒有學習紀錄'
+					todayMinutes > 0 || round.done > 0 ? `今天已讀 ${formatMinutes(todayMinutes)}，完成 ${round.done} 個番茄` : '今天還沒有學習紀錄'
 				}
 			/>
 			<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
@@ -509,10 +516,7 @@ export function TimerPage() {
 						]}
 					/>
 
-					<div
-						key={celebrations}
-						className={cn('relative aspect-square w-[min(78vw,20rem)]', celebrations > 0 && 'animate-complete')}
-					>
+					<div key={celebrations} className={cn('relative aspect-square w-[min(78vw,20rem)]', celebrations > 0 && 'animate-complete')}>
 						<ProgressRing
 							value={progress * 100}
 							label="本輪進度"

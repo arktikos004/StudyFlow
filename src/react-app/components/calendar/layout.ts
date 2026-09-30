@@ -44,7 +44,7 @@ export function shiftMonthKeepDay(date: string, delta: number): string {
 
 /**
  * 月格的鍵盤移動（WAI-ARIA grid / date picker）：
- * ←→ ±1 天、↑↓ ±7 天、Home／End 到這週的週一／週日、PageUp／PageDown ±1 個月（加 Shift ±1 年）。
+ * 左右方向鍵 ±1 天、上下方向鍵 ±7 天、Home／End 到這週的週一／週日、PageUp／PageDown ±1 個月（加 Shift ±1 年）。
  * 不是移動鍵時回傳 null。
  */
 export function moveDate(date: string, key: string, shift = false): string | null {
