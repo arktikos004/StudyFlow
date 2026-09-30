@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from 'recharts';
 import { formatDate, formatMinutes, formatMinutesShort, formatMonthDay, weekdayLabel } from '../lib/format';
-import { Table2 } from 'lucide-react';
+import { ChartColumn, Table2 } from 'lucide-react';
 import { Button, cn } from './ui';
 
 // 科目色的邏輯在 lib/subject-color.ts；這裡保留 re-export，既有的 import 不用改
@@ -97,8 +97,9 @@ export type StatItem = { key?: string; label: ReactNode; value: ReactNode; sub?:
 /**
  * 一張卡片、用分隔線分成幾格的數字列（手機 2 欄、sm 以上一列最多 4 格）。
  * 數值用 font-num 28/600、等寬數字；icon 會縮成 16px。
+ * footer（可選）：放在數字下方、用分隔線隔開的一列，例如「3 題錯題待複習」加上「開始複習」的動作列。
  */
-export function StatStrip({ items, className }: { items: StatItem[]; className?: string }) {
+export function StatStrip({ items, className, footer }: { items: StatItem[]; className?: string; footer?: ReactNode }) {
 	const cols = ['sm:grid-cols-1', 'sm:grid-cols-2', 'sm:grid-cols-3', 'sm:grid-cols-4'][Math.min(4, Math.max(1, items.length)) - 1];
 	return (
 		<div className={cn('overflow-hidden rounded-xl border border-line bg-card shadow-sm', className)}>
@@ -121,7 +122,18 @@ export function StatStrip({ items, className }: { items: StatItem[]; className?:
 					</div>
 				))}
 			</dl>
+			{footer && <div className="border-t border-line">{footer}</div>}
 		</div>
+	);
+}
+
+/** 圖表／表格切換：每張圖都有表格檢視（dataviz）。文字寫出按下去會切到哪一種 */
+export function TableToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+	return (
+		<Button size="sm" variant="ghost" onClick={onToggle} aria-label={on ? '改用圖表檢視' : '改用表格檢視'}>
+			{on ? <ChartColumn className="size-4" aria-hidden /> : <Table2 className="size-4" aria-hidden />}
+			{on ? '圖表' : '表格'}
+		</Button>
 	);
 }
 
