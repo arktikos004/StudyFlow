@@ -5,6 +5,7 @@ import type { PublicUser, StudySession } from '../../shared/api-types';
 import { addDays, localDate } from '../../shared/dates';
 import { api, qs } from './api';
 import { formatMinutes } from './format';
+import { startNoiseSync } from './noise';
 import { SESSION_KEYS, type SessionInput } from './queries';
 import {
 	advance,
@@ -320,10 +321,19 @@ export function useTimerEngine() {
 		const id = setInterval(run, 1000);
 		document.addEventListener('visibilitychange', run);
 		window.addEventListener('online', run);
+		// 白噪音：專注中（計時在跑）才播放，暫停、休息或結束時停止（TMR-3）
+		const stopNoise = startNoiseSync(
+			() => state.phase === 'focus' && state.running,
+			(l) => {
+				listeners.add(l);
+				return () => listeners.delete(l);
+			},
+		);
 		return () => {
 			clearInterval(id);
 			document.removeEventListener('visibilitychange', run);
 			window.removeEventListener('online', run);
+			stopNoise();
 		};
 	}, [qc]);
 }
