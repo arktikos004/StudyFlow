@@ -56,6 +56,8 @@ export type NumericOption = keyof typeof LIMITS;
 export const LATE_MS = 60_000;
 /** 不到 1 分鐘的計時不記錄 */
 export const MIN_RECORD_MS = 60_000;
+/** 結束時間最多可以比現在晚這麼多（和後端 studySessionSchema 的「不能記錄未來的時間」一致，容許時鐘誤差） */
+export const FUTURE_TOLERANCE_MS = 5 * 60_000;
 
 export function defaultState(today: string): TimerState {
 	return {

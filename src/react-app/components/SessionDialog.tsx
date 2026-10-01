@@ -3,6 +3,7 @@ import type { StudySession } from '../../shared/api-types';
 import { zonedTime } from '../../shared/dates';
 import { formatDate, formatMinutes, MODE_LABEL } from '../lib/format';
 import { useCreateSession, useDeleteSession, useTasks, useUpdateSession, useUser } from '../lib/queries';
+import { FUTURE_TOLERANCE_MS } from '../lib/timer-core';
 import { deviceTimeZone, formatClockRange, relativeDateLabel, zonedParts } from '../lib/timer-format';
 import { DialogFooter } from './forms';
 import { SubjectSelect } from './subjects';
@@ -81,7 +82,7 @@ function SessionForm({
 	const timeChanged = !session || form.date !== init.date || form.start !== init.start || form.minutes !== init.minutes;
 	const { errors: fieldErrors, times } = toTimes(form, tz);
 	const futureError = (at: number | null) => {
-		if (!times || at === null || times.endedAt <= at) return undefined;
+		if (!times || at === null || times.endedAt <= at + FUTURE_TOLERANCE_MS) return undefined;
 		const end = zonedParts(times.endedAt, tz);
 		return `結束時間（${relativeDateLabel(end.date, zonedParts(at, tz).date)} ${end.time}）晚於現在，請提早開始時間或縮短時長`;
 	};
@@ -106,7 +107,7 @@ function SessionForm({
 		e.preventDefault();
 		const at = Date.now();
 		setCheckedAt(at);
-		if (timeChanged && (!times || times.endedAt > at)) return;
+		if (timeChanged && (!times || times.endedAt > at + FUTURE_TOLERANCE_MS)) return;
 		onSubmit({
 			times: timeChanged ? times! : null,
 			subjectId: form.subjectId,
