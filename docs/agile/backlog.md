@@ -251,3 +251,44 @@ Lane 欄的格式是「負責的 lane（相依的 lane）」。
 - **ui-designer**：評估是否放寬深色的 DARK_BAND。
 - **QA**：確認 Google 日曆匯入 .ics 後，VALARM 提醒會不會生效。
 
+## Sprint 2 第一波結束時的待辦
+
+**交給第二波的 lane**
+- **s2/tasks**：
+  - `TaskCheckbox` 存檔時改用 `aria-disabled`。目前用 `disabled`，焦點會掉到 body。
+  - 科目篩選的 select 加上 `aria-label="科目"`。
+  - 任務狀態 badge 的圖示和總覽一致：逾期 CircleAlert、今天到期 CalendarClock、進行中 CircleDot。
+- **s2/notes**：
+  - 支援這些深連結：`/events?open=<id>`、`/notes?view=review&mode=cram&subject=<id>`、`/notes?new=mistake`。
+  - `EventDialog` 加上可選的 `defaults.subjectId`。只新增，不影響既有用法。
+  - 考試頁沿用總覽的 `PrepProgress`。
+- **s2/shell**：
+  - **共用元件**：
+    - `useConfirm` 加上 `tone`，確認鈕不一定是紅色。
+    - 評估收進共用元件：`ButtonLink`、`TextLink`、`MoreLink`、`Duration`／`Unit`、`gridKeyTarget`、`Figure`、`TableToggle`。
+    - Field 加上橫排版型；Switch 加上 `description`。
+  - **設計審查**：審查 `SubjectTag variant="icon"`。
+  - **文件**：更新 DESIGN.md：
+    - 色格大小 32–44px。
+    - §7 補上新的 props。
+    - 註明 `ProgressRing` 裡面的 children 是純展示。
+  - **指令面板**：搜尋結果的科目連到 `/subjects/<id>`；設定頁支援 `?new=1`、`?open=<id>`。
+
+**之後的後端改善**
+- `DashboardResponse` 加上 `nextExam`。
+- `POST /study-sessions` 支援冪等。
+- 儲存讀書目標時的提示文字。
+
+**Sprint 3 的修正與 QA**
+- **單科頁**：
+  - 直接開啟時，圖示方塊晚一點才出現。
+  - 「剛完成」的列在特殊情況下會重新出現。
+  - 按鈕連結按下時沒有回饋。
+  - 截止日在 3 天內也顯示紅色，和 DESIGN.md 的規則不一致。
+- **總覽**：「設定目標」連到設定頁的 `#goals` 錨點。
+- **QA 畫面檢查**：
+  - 390px 下「全部 N 項」與第一列的 ▶ 不能重疊。
+  - 計時頁、筆記頁的按鈕大小。
+  - Dialog 的初始焦點。
+- **QA**：確認 Google 日曆匯入 .ics 後，VALARM 提醒會不會生效。
+

@@ -18,16 +18,16 @@
 | s1/backend | backend-engineer | 資料模型與 migration、所有新 API 與 hook、BUG-1 | 已合併（review：修正後合併） |
 | s1/design | ui-designer | UI-1、SUB-4（tokens） | 已合併（review：修正後合併） |
 | s1/color | frontend-engineer | SUB-1、拆分設定頁 | 已合併（review：修正後合併） |
-| QA 把關 | qa-engineer（Sonnet） | 全套檢查、migration 演練 | 進行中 |
+| QA 把關 | qa-engineer（Sonnet） | 全套檢查、migration 演練 | 通過（無阻斷問題；無瀏覽器工具，畫面改做程式碼層級檢查） |
 
 ## Sprint 2：功能與頁面
 
 | Lane | Agent | 故事 | 狀態 |
 |---|---|---|---|
-| s2/subjects | frontend-engineer | SUB-2、SUB-3、GOAL-1/2 設定卡、DATA-1/CAL-2 設定卡、SUB-4 設定卡 | 待辦 |
-| s2/dashboard | frontend-engineer | 總覽與統計改版、GOAL-1/2、DASH-1 | 待辦 |
+| s2/subjects | frontend-engineer | SUB-2、SUB-3、GOAL-1/2 設定卡、DATA-1/CAL-2 設定卡、SUB-4 設定卡 | 已合併（review：可合併） |
+| s2/dashboard | frontend-engineer | 總覽與統計改版、GOAL-1/2、DASH-1 | 已合併（review：修正後合併） |
 | s2/tasks | frontend-engineer | TSK-1～4、任務頁改版 | 待辦 |
-| s2/timer | frontend-engineer | TMR-1～3、CAL-1、計時頁與月曆改版 | 待辦 |
+| s2/timer | frontend-engineer | TMR-1～3、CAL-1、計時頁與月曆改版 | 已合併（review：月曆修正後合併、計時可合併） |
 | s2/notes | frontend-engineer | NOTE-1/2、筆記頁與考試頁改版 | 待辦 |
 | s2/shell | ui-designer | APP-1、APP-2、導覽、Auth 頁、品牌、動效 | 待辦 |
 
