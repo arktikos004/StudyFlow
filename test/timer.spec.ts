@@ -5,6 +5,7 @@ import {
 	clampOptions,
 	defaultState,
 	describeEvents,
+	isDuplicate,
 	LATE_MS,
 	normalizeState,
 	optionError,
@@ -339,5 +340,57 @@ describe('補送佇列：送不出去時不會靜默丟掉（sendRecord）', () 
 		expect(queueAction(400, record)).toBe('unlink');
 		expect(queueAction(400, { ...record, subjectId: null, taskId: null })).toBe('drop');
 		for (const status of [0, 401, 403, 404, 429, 500, 503, undefined]) expect(queueAction(status, record)).toBe('keep');
+	});
+});
+
+describe('補送去重：上次已經送出成功的不再送一次', () => {
+	const record: QueuedRecord = { mode: 'pomodoro', startedAt: T0, endedAt: T0 + 25 * MIN, subjectId: null, taskId: null };
+	const onServer = (r: QueuedRecord) => [
+		{ mode: 'manual', startedAt: T0 - 60 * MIN, endedAt: T0 - 30 * MIN },
+		{ mode: r.mode, startedAt: r.startedAt, endedAt: r.endedAt },
+	];
+
+	it('模式與起訖時間完全相同：跳過，不會送出', async () => {
+		expect(isDuplicate(record, onServer(record))).toBe(true);
+		const f = fakePost();
+		expect(await sendRecord(record, { existing: async (r) => onServer(r), post: f.post })).toEqual({ kind: 'duplicate' });
+		expect(f.sent).toEqual([]);
+	});
+
+	it('起訖差 1 毫秒（或模式不同）：不算重複，照常送出', async () => {
+		const later = { ...record, endedAt: record.endedAt + 1 };
+		expect(isDuplicate(later, onServer(record))).toBe(false);
+		expect(isDuplicate({ ...record, startedAt: record.startedAt - 1 }, onServer(record))).toBe(false);
+		expect(isDuplicate({ ...record, mode: 'stopwatch' }, onServer(record))).toBe(false);
+		const f = fakePost(undefined);
+		expect(await sendRecord(later, { existing: async () => onServer(record), post: f.post })).toEqual({
+			kind: 'saved',
+			record: later,
+			unlinked: false,
+		});
+		expect(f.sent).toEqual([later]);
+	});
+
+	it('離線：查詢或送出時是 status 0，都留在佇列', async () => {
+		const offline = async (): Promise<never> => {
+			throw apiError(0, '目前離線，請確認網路連線');
+		};
+		const f = fakePost();
+		expect(await sendRecord(record, { existing: offline, post: f.post })).toEqual({ kind: 'keep' });
+		expect(f.sent).toEqual([]);
+		const g = fakePost(apiError(0));
+		expect(await sendRecord(record, { existing: async () => [], post: g.post })).toEqual({ kind: 'keep' });
+	});
+
+	it('查詢失敗但不是離線（例如 500）：不擋住，照常送出（後端仍會檢查）', async () => {
+		const f = fakePost(undefined);
+		const r = await sendRecord(record, {
+			existing: async () => {
+				throw apiError(500);
+			},
+			post: f.post,
+		});
+		expect(r.kind).toBe('saved');
+		expect(f.sent).toHaveLength(1);
 	});
 });
