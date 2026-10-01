@@ -52,6 +52,26 @@ describe('學習紀錄切成每天的時段（splitByDay）', () => {
 			{ date: '2026-11-01', startMin: 30, endMin: 150, continuesFromPrev: false, continuesToNext: false },
 		]);
 	});
+
+	it('夏令時間結束那天，牆上時間的結束早於或等於開始：改用實際經過的分鐘數', () => {
+		// 01:30 EDT（05:30Z）開始、1 小時後是 01:30 EST：牆上時間沒有前進
+		const start = Date.UTC(2026, 10, 1, 5, 30);
+		expect(splitByDay(start, start + 60 * MIN, 'America/New_York')).toEqual([
+			{ date: '2026-11-01', startMin: 90, endMin: 150, continuesFromPrev: false, continuesToNext: false },
+		]);
+		// 01:50 EDT 開始、20 分鐘後是 01:10 EST：牆上時間倒退
+		const later = Date.UTC(2026, 10, 1, 5, 50);
+		expect(splitByDay(later, later + 20 * MIN, 'America/New_York')[0]).toMatchObject({ startMin: 110, endMin: 130 });
+	});
+
+	it('跨午夜進入夏令時間結束那天：仍然切成兩段', () => {
+		const start = Date.UTC(2026, 10, 1, 3, 50); // 10/31 23:50 EDT
+		const segs = splitByDay(start, start + 2 * 60 * MIN, 'America/New_York'); // 11/1 01:50 EDT（02:00 才撥回）
+		expect(segs.map((s) => [s.date, s.startMin, s.endMin])).toEqual([
+			['2026-10-31', 1430, 1440],
+			['2026-11-01', 0, 110],
+		]);
+	});
 });
 
 describe('重疊時段的欄位（layoutColumns）', () => {

@@ -98,7 +98,11 @@ export function splitByDay(startedAt: number, endedAt: number, timeZone: string)
 		date = addDays(date, 1);
 		startMin = 0;
 	}
-	if (out.length === 0 || b.minute > 0) {
+	if (out.length === 0 && b.minute <= startMin && endedAt > startedAt) {
+		// 夏令時間結束當天（牆上時間倒退一小時）：結束的牆上時間可能早於或等於開始，改用實際經過的分鐘數
+		const endMin = Math.min(DAY_MINUTES, startMin + Math.ceil((endedAt - startedAt) / 60_000));
+		out.push({ date, startMin, endMin, continuesFromPrev: false, continuesToNext: false });
+	} else if (out.length === 0 || b.minute > 0) {
 		out.push({ date, startMin, endMin: Math.max(startMin, b.minute), continuesFromPrev: out.length > 0, continuesToNext: false });
 	} else {
 		out[out.length - 1].continuesToNext = false;
