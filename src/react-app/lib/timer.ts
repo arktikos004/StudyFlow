@@ -15,6 +15,7 @@ import {
 	elapsedMs,
 	MIN_RECORD_MS,
 	normalizeState,
+	sendRecord,
 	type TimerEvent,
 	type TimerOptions,
 	type TimerState,
@@ -173,49 +174,42 @@ async function exclusive<T>(name: string, fn: () => Promise<T> | T): Promise<T> 
 	return fn();
 }
 
-/**
- * 伺服器是否已經有同一筆（模式與起訖時間到毫秒都相同）。
- * 上次送出成功、但還沒從佇列移除就關掉分頁（或瀏覽器當掉）時，佇列會留著這筆，不檢查就會重複記錄。
- * 離線時丟出錯誤（留在佇列）；其他錯誤當作沒有，照原本的流程送出。
- */
-async function alreadySaved(record: SessionInput): Promise<boolean> {
-	// 前後各多查一天：登入資料載入前的時區可能和伺服器用的不同
+/** 伺服器上這筆前後各一天的紀錄（登入資料載入前的時區可能和伺服器用的不同，所以多查一天） */
+async function nearbySessions(record: SessionInput): Promise<StudySession[]> {
 	const day = localDate(record.startedAt, timeZone);
-	try {
-		const { sessions } = await api.get<{ sessions: StudySession[] }>(
-			`/study-sessions${qs({ from: addDays(day, -1), to: addDays(day, 1) })}`,
-		);
-		return sessions.some((s) => s.mode === record.mode && s.startedAt === record.startedAt && s.endedAt === record.endedAt);
-	} catch (e) {
-		if ((e as { status?: number }).status === 0) throw e;
-		return false;
-	}
+	return (await api.get<{ sessions: StudySession[] }>(`/study-sessions${qs({ from: addDays(day, -1), to: addDays(day, 1) })}`)).sessions;
 }
 
+// 送不出去（離線、伺服器錯誤）時不要每秒重試：15 秒起跳、每次加倍，最多 5 分鐘；送出成功或恢復連線時重設
+const BACKOFF_MIN = 15_000;
+const BACKOFF_MAX = 5 * 60_000;
+let backoff = BACKOFF_MIN;
+let retryAt = 0;
+const resetBackoff = () => {
+	backoff = BACKOFF_MIN;
+	retryAt = 0;
+};
+
+type FlushHandlers = { onSaved: (r: SessionInput, unlinked: boolean) => void; onDropped: (reason: string) => void };
+
 let flushing = false;
-async function flushQueue(onSaved: (r: SessionInput) => void) {
-	if (flushing || !navigator.onLine || readQueue().length === 0) return;
+async function flushQueue({ onSaved, onDropped }: FlushHandlers) {
+	if (flushing || !navigator.onLine || Date.now() < retryAt || readQueue().length === 0) return;
 	flushing = true;
 	try {
 		await exclusive('studyflow-flush', async () => {
 			for (const record of readQueue()) {
-				try {
-					if (!(await alreadySaved(record))) {
-						await api.post('/study-sessions', record);
-						onSaved(record);
-					}
-				} catch (e) {
-					const status = (e as { status?: number }).status;
-					// 離線或尚未登入：留著下次再送
-					if (status === 0 || status === 401) return;
-					// 計時途中科目或任務被刪除：改成不掛科目再送一次，讀書時間不會不見
-					if (status === 400 && (record.subjectId || record.taskId)) {
-						await api
-							.post('/study-sessions', { ...record, subjectId: null, taskId: null })
-							.then(() => onSaved(record))
-							.catch(() => {});
-					}
+				// 每一筆怎麼送、失敗時怎麼處理在 timer-core.ts 的 sendRecord（有測試）
+				const outcome = await sendRecord(record, { existing: nearbySessions, post: (r) => api.post('/study-sessions', r) });
+				if (outcome.kind === 'keep') {
+					// 留在佇列，稍後再送
+					retryAt = Date.now() + backoff;
+					backoff = Math.min(backoff * 2, BACKOFF_MAX);
+					return;
 				}
+				resetBackoff();
+				if (outcome.kind === 'saved') onSaved(outcome.record, outcome.unlinked);
+				if (outcome.kind === 'dropped') onDropped(outcome.reason);
 				writeQueue(readQueue().slice(1));
 			}
 		});
@@ -297,10 +291,16 @@ const userTimeZone = (qc: QueryClient) => qc.getQueryData<PublicUser | null>(['m
 export function useTimerEngine() {
 	const qc = useQueryClient();
 	useEffect(() => {
-		const onSaved = (r: SessionInput) => {
-			// 和手動新增、編輯紀錄同一組：紀錄列表、任務投入時間、總覽、統計、頁首摘要、成就、單科總覽
-			SESSION_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
-			toast.success(`已記錄 ${formatMinutes((r.durationSec ?? 0) / 60)}的學習時間`);
+		const handlers: FlushHandlers = {
+			onSaved: (r, unlinked) => {
+				// 和手動新增、編輯紀錄同一組：紀錄列表、任務投入時間、總覽、統計、頁首摘要、成就、單科總覽
+				SESSION_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
+				toast.success(
+					`已記錄 ${formatMinutes((r.durationSec ?? 0) / 60)}的學習時間`,
+					unlinked ? { description: '原本的科目或任務已經刪除，這筆改成未分類' } : undefined,
+				);
+			},
+			onDropped: (reason) => toast.error(`有一筆學習紀錄無法儲存（${reason}）`, { description: '可以到計時頁手動補登這段時間' }),
 		};
 		let busy = false;
 		const run = async () => {
@@ -314,7 +314,7 @@ export function useTimerEngine() {
 				});
 				const message = describeEvents(events, state);
 				if (message) notify(message.title, message.body);
-				await flushQueue(onSaved);
+				await flushQueue(handlers);
 			} finally {
 				busy = false;
 			}
@@ -322,7 +322,12 @@ export function useTimerEngine() {
 		run();
 		const id = setInterval(run, 1000);
 		document.addEventListener('visibilitychange', run);
-		window.addEventListener('online', run);
+		// 恢復連線時馬上補送，不等退避時間
+		const onOnline = () => {
+			resetBackoff();
+			run();
+		};
+		window.addEventListener('online', onOnline);
 		// 白噪音：專注中（計時在跑）才播放，暫停、休息或結束時停止（TMR-3）
 		const stopNoise = startNoiseSync(
 			() => state.phase === 'focus' && state.running,
@@ -334,7 +339,7 @@ export function useTimerEngine() {
 		return () => {
 			clearInterval(id);
 			document.removeEventListener('visibilitychange', run);
-			window.removeEventListener('online', run);
+			window.removeEventListener('online', onOnline);
 			stopNoise();
 		};
 	}, [qc]);

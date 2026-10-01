@@ -172,6 +172,70 @@ export type SessionRecord = {
 	taskId: string | null;
 };
 
+// ---- 待上傳佇列：每一筆怎麼送（lib/timer.ts 的 flushQueue 用；依賴注入，方便測試） ----
+
+/** 佇列裡的一筆（SessionInput 的子集） */
+export type QueuedRecord = { mode: string; startedAt: number; endedAt: number; subjectId?: string | null; taskId?: string | null };
+
+/** 伺服器上是否已經有同一筆：模式與起訖時間到毫秒都相同（計時器產生的時間戳不會巧合到毫秒） */
+export function isDuplicate(record: QueuedRecord, existing: readonly { mode: string; startedAt: number; endedAt: number }[]): boolean {
+	return existing.some((s) => s.mode === record.mode && s.startedAt === record.startedAt && s.endedAt === record.endedAt);
+}
+
+const statusOf = (e: unknown): number | undefined => {
+	const status = (e as { status?: unknown } | null)?.status;
+	return typeof status === 'number' ? status : undefined;
+};
+
+/**
+ * 送出失敗時這筆怎麼處理：
+ * - keep：留在佇列，這次先停（離線 0、未登入 401、伺服器錯誤或不明狀況），稍後再送
+ * - unlink：400 而且有掛科目或任務（可能在計時途中被刪除），改成不掛科目再送一次
+ * - drop：確定無效的 400（不掛科目也被拒絕），從佇列移除並告知使用者
+ */
+export function queueAction(status: number | undefined, record: QueuedRecord): 'keep' | 'unlink' | 'drop' {
+	if (status !== 400) return 'keep';
+	return record.subjectId || record.taskId ? 'unlink' : 'drop';
+}
+
+export type SendOutcome<R> =
+	{ kind: 'saved'; record: R; unlinked: boolean } | { kind: 'duplicate' } | { kind: 'keep' } | { kind: 'dropped'; reason: string };
+
+/**
+ * 送出佇列裡的一筆：先確認伺服器還沒有同一筆（上次送出成功、但還沒從佇列移除就關掉分頁時會發生），再送出。
+ * - existing：查伺服器上這筆附近的紀錄；離線時丟出 status 0（留在佇列），其他查詢錯誤照常送出。
+ * - post：送出；失敗時依 queueAction 處理，絕不靜默丟掉。
+ */
+export async function sendRecord<R extends QueuedRecord>(
+	record: R,
+	deps: {
+		existing: (record: R) => Promise<readonly { mode: string; startedAt: number; endedAt: number }[]>;
+		post: (record: R) => Promise<unknown>;
+	},
+): Promise<SendOutcome<R>> {
+	try {
+		if (isDuplicate(record, await deps.existing(record))) return { kind: 'duplicate' };
+	} catch (e) {
+		const status = statusOf(e);
+		if (status === 0 || status === 401) return { kind: 'keep' };
+		// 其他查詢錯誤：照原本的流程送出（後端仍會檢查）
+	}
+	let attempt: R = record;
+	let unlinked = false;
+	for (;;) {
+		try {
+			await deps.post(attempt);
+			return { kind: 'saved', record: attempt, unlinked };
+		} catch (e) {
+			const action = queueAction(statusOf(e), attempt);
+			if (action === 'keep') return { kind: 'keep' };
+			if (action === 'drop') return { kind: 'dropped', reason: e instanceof Error && e.message ? e.message : '資料格式錯誤' };
+			attempt = { ...attempt, subjectId: null, taskId: null };
+			unlinked = true;
+		}
+	}
+}
+
 export type TimerEvent =
 	| { type: 'focus-done'; at: number; count: number; breakKind: BreakKind; autoStarted: boolean }
 	| { type: 'break-done'; at: number; breakKind: BreakKind; autoStarted: boolean; late: boolean };

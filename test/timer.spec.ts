@@ -8,8 +8,11 @@ import {
 	LATE_MS,
 	normalizeState,
 	optionError,
+	queueAction,
 	roundInfo,
+	sendRecord,
 	targetMs,
+	type QueuedRecord,
 	type TimerState,
 } from '../src/react-app/lib/timer-core';
 
@@ -276,5 +279,65 @@ describe('設定檢查與通知文字', () => {
 			title: '休息結束',
 			body: '離開超過 1 分鐘，這次沒有自動開始下一輪',
 		});
+	});
+});
+
+/** 和 ApiError 一樣帶 status 的錯誤 */
+const apiError = (status: number, message = '請求失敗') => Object.assign(new Error(message), { status });
+
+/** 假的 post：依序丟出 errors 裡的錯誤（undefined 代表成功），並記下每次送出的內容 */
+function fakePost(...results: (Error | undefined)[]) {
+	const sent: QueuedRecord[] = [];
+	return {
+		sent,
+		post: async (r: QueuedRecord) => {
+			sent.push(r);
+			const e = results.shift();
+			if (e) throw e;
+		},
+	};
+}
+
+describe('補送佇列：送不出去時不會靜默丟掉（sendRecord）', () => {
+	const record: QueuedRecord = { mode: 'pomodoro', startedAt: T0, endedAt: T0 + 25 * MIN, subjectId: 'subject-1', taskId: 'task-1' };
+	const none = async () => [];
+
+	it('計時途中科目被刪除（400）：改成不掛科目再送一次，成功就算記錄', async () => {
+		const f = fakePost(apiError(400, '找不到此科目'), undefined);
+		const r = await sendRecord(record, { existing: none, post: f.post });
+		expect(r).toEqual({ kind: 'saved', record: { ...record, subjectId: null, taskId: null }, unlinked: true });
+		expect(f.sent.map((x) => x.subjectId)).toEqual(['subject-1', null]);
+	});
+
+	it('不掛科目重試時離線（0）或未登入（401）：留在佇列', async () => {
+		for (const status of [0, 401]) {
+			const f = fakePost(apiError(400), apiError(status));
+			expect(await sendRecord(record, { existing: none, post: f.post })).toEqual({ kind: 'keep' });
+		}
+	});
+
+	it('確定無效的 400（不掛科目也被拒絕）才移除，並帶出原因', async () => {
+		const f = fakePost(apiError(400), apiError(400, '單次學習不可超過 24 小時'));
+		expect(await sendRecord(record, { existing: none, post: f.post })).toEqual({ kind: 'dropped', reason: '單次學習不可超過 24 小時' });
+		const bare = fakePost(apiError(400, '結束時間必須晚於開始時間'));
+		expect(await sendRecord({ ...record, subjectId: null, taskId: null }, { existing: none, post: bare.post })).toEqual({
+			kind: 'dropped',
+			reason: '結束時間必須晚於開始時間',
+		});
+		expect(bare.sent).toHaveLength(1);
+	});
+
+	it('伺服器錯誤（500）、未登入（401）、不明錯誤：留在佇列，不會丟掉', async () => {
+		for (const e of [apiError(500), apiError(401), new Error('不明')]) {
+			const f = fakePost(e);
+			expect(await sendRecord(record, { existing: none, post: f.post })).toEqual({ kind: 'keep' });
+			expect(f.sent).toHaveLength(1);
+		}
+	});
+
+	it('queueAction：只有 400 會改送或移除', () => {
+		expect(queueAction(400, record)).toBe('unlink');
+		expect(queueAction(400, { ...record, subjectId: null, taskId: null })).toBe('drop');
+		for (const status of [0, 401, 403, 404, 429, 500, 503, undefined]) expect(queueAction(status, record)).toBe('keep');
 	});
 });
