@@ -20,9 +20,9 @@ import { SessionDialog } from '../components/SessionDialog';
 import { SubjectTag } from '../components/subjects';
 import { Button, Card, PageHeader, Segmented } from '../components/ui';
 import { formatDate, formatMinutes, formatMonthDay } from '../lib/format';
-import { useEvents, useStudySessions, useSubjectMap, useTasks, useUser } from '../lib/queries';
+import { useEvents, useSubjectMap, useTasks, useUser } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
-import { useDeepLink, useMediaQuery, useMinuteClock } from '../lib/timer-queries';
+import { useDeepLink, useEventsKeep, useMediaQuery, useMinuteClock, useSessionsKeep } from '../lib/timer-queries';
 
 type View = 'month' | 'week';
 const VIEW_KEY = 'studyflow:calendar-view';
@@ -113,10 +113,11 @@ export function CalendarPage() {
 	const grid = monthGrid(month);
 	const week = weekDays(selected);
 	const [from, to] = view === 'month' ? [grid[0], grid[41]] : [week[0], week[6]];
-	const { data: events = [] } = useEvents({ from, to });
+	// 換月份或週次時保留上一個範圍的資料，新資料到之前 chip、分鐘數、方塊不會閃成空白
+	const { data: events = [] } = useEventsKeep({ from, to });
 	const { data: tasks = [] } = useTasks();
 	// 前一天開始、跨午夜到範圍第一天的紀錄也要畫出來
-	const { data: sessions = [] } = useStudySessions({ from: addDays(from, -1), to });
+	const { data: sessions = [] } = useSessionsKeep({ from: addDays(from, -1), to });
 
 	const itemsByDate = useMemo(() => {
 		const map = new Map<string, DayItems>();

@@ -1,7 +1,31 @@
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
+import type { EventItem, StudySession } from '../../shared/api-types';
+import { api, qs } from './api';
 
-// s2/timer 的頁面 hook（計時頁、月曆）。資料查詢一律用 queries.ts 的 hook。
+// s2/timer 的頁面 hook（計時頁、月曆）。
+
+/**
+ * 和 queries.ts 的 useEvents 相同（query key、queryFn 都一樣，快取與 invalidate 共用），
+ * 另外在換範圍時保留上一個範圍的資料：月曆切換月份或週次時，新資料載入前畫面不會閃成空白。
+ */
+export function useEventsKeep(params: { from?: string; to?: string } = {}) {
+	return useQuery({
+		queryKey: ['events', params],
+		queryFn: async () => (await api.get<{ events: EventItem[] }>(`/events${qs(params)}`)).events,
+		placeholderData: (prev) => prev,
+	});
+}
+
+/** 和 queries.ts 的 useStudySessions 相同，另外在換範圍時保留上一個範圍的資料（同 useEventsKeep） */
+export function useSessionsKeep(params: { from?: string; to?: string } = {}) {
+	return useQuery({
+		queryKey: ['sessions', params],
+		queryFn: async () => (await api.get<{ sessions: StudySession[] }>(`/study-sessions${qs(params)}`)).sessions,
+		placeholderData: (prev) => prev,
+	});
+}
 
 export type DeepLink<K extends string> = { seq: number; values: Partial<Record<K, string>> };
 
