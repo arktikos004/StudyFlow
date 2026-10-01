@@ -16,7 +16,7 @@ import {
 	Volume2,
 	VolumeX,
 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { toast } from 'sonner';
 import type { StudySession } from '../../shared/api-types';
 import { addDays, today as todayOf } from '../../shared/dates';
@@ -419,12 +419,22 @@ export function TimerPage() {
 		if (link.values.new === '1') setDialog({});
 		if (link.values.open) setPendingOpen(link.values.open);
 	}
-	const { data: logSessions } = useStudySessions({ from: logDate, to: logDate });
+	const { data: logSessions, isFetching: logFetching } = useStudySessions({ from: logDate, to: logDate });
+	const [missingOpen, setMissingOpen] = useState(0);
 	if (pendingOpen && logSessions) {
-		setPendingOpen(null);
 		const found = logSessions.find((x) => x.id === pendingOpen);
-		if (found) setDialog({ session: found });
+		if (found) {
+			setPendingOpen(null);
+			setDialog({ session: found });
+		} else if (!logFetching) {
+			// 快取裡的舊資料找不到時，等這次查詢回來再判斷；最後還是找不到才告知
+			setPendingOpen(null);
+			setMissingOpen((n) => n + 1);
+		}
 	}
+	useEffect(() => {
+		if (missingOpen) toast.error('找不到這筆紀錄', { description: '可能已經刪除，或不在這一天的紀錄裡' });
+	}, [missingOpen]);
 
 	// 專注完成的那一刻（唯一刻意設計的動畫）：完成數改變時重播一次
 	const completionKey = `${s.cyclesDate}|${s.cycles}`;
