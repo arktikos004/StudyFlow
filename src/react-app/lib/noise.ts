@@ -140,15 +140,21 @@ function ramp(target: number) {
 	gain.gain.setTargetAtTime(target, ctx.currentTime, 0.08);
 }
 
+/** 已經在等使用者操作（避免 suspended 期間每次 play 都多註冊一組監聽） */
+let gestureArmed = false;
+
 /** 瀏覽器不允許沒有使用者操作就播放（例如重新整理後計時仍在跑）：等下一次點擊或按鍵再開始 */
 function resumeOnGesture(c: AudioContext) {
+	if (gestureArmed) return;
+	gestureArmed = true;
 	const resume = () => {
+		gestureArmed = false;
 		c.resume().catch(() => {});
 		window.removeEventListener('pointerdown', resume);
 		window.removeEventListener('keydown', resume);
 	};
-	window.addEventListener('pointerdown', resume, { once: true });
-	window.addEventListener('keydown', resume, { once: true });
+	window.addEventListener('pointerdown', resume);
+	window.addEventListener('keydown', resume);
 }
 
 function play(kind: NoiseKind, volume: number) {
