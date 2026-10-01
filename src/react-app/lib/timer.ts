@@ -1,78 +1,80 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { api } from './api';
+import type { PublicUser, StudySession } from '../../shared/api-types';
+import { addDays, localDate } from '../../shared/dates';
+import { api, qs } from './api';
 import { formatMinutes } from './format';
-import type { SessionInput } from './queries';
+import { startNoiseSync } from './noise';
+import { SESSION_KEYS, type SessionInput } from './queries';
+import {
+	advance,
+	clampOptions,
+	defaultState,
+	describeEvents,
+	elapsedMs,
+	MIN_RECORD_MS,
+	normalizeState,
+	sendRecord,
+	type TimerEvent,
+	type TimerOptions,
+	type TimerState,
+} from './timer-core';
 
 // 計時器狀態存在 localStorage，並以「開始時間戳」計算經過時間：
 // 重新整理、切換分頁、手機鎖屏都不會讓計時中斷或變慢。
+// 到點切換、長休息、自動開始的規則是純函式，放在 timer-core.ts（有測試）。
 
-export type TimerMode = 'pomodoro' | 'stopwatch';
-export type TimerPhase = 'idle' | 'focus' | 'break';
-
-export type TimerState = {
-	mode: TimerMode;
-	phase: TimerPhase;
-	running: boolean;
-	/** 目前這段連續計時的開始時間（暫停時為 null） */
-	segmentStart: number | null;
-	/** 此階段在暫停前累積的毫秒數 */
-	accumulatedMs: number;
-	/** 本次專注第一次按下開始的時間，寫入學習紀錄用 */
-	sessionStartedAt: number | null;
-	subjectId: string | null;
-	taskId: string | null;
-	focusMin: number;
-	breakMin: number;
-	/** 今天完成的番茄數（顯示用） */
-	cycles: number;
-	cyclesDate: string;
-};
+export {
+	breakMinutes,
+	elapsedMs,
+	LATE_MS,
+	LIMITS,
+	optionError,
+	roundInfo,
+	targetMs,
+	type BreakKind,
+	type NumericOption,
+	type TimerMode,
+	type TimerOptions,
+	type TimerPhase,
+	type TimerState,
+} from './timer-core';
 
 const KEY = 'studyflow:timer';
 const QUEUE_KEY = 'studyflow:pending-sessions';
-const MIN_RECORD_MS = 60_000;
 
-const todayKey = () => new Date().toDateString();
-
-const DEFAULT: TimerState = {
-	mode: 'pomodoro',
-	phase: 'idle',
-	running: false,
-	segmentStart: null,
-	accumulatedMs: 0,
-	sessionStartedAt: null,
-	subjectId: null,
-	taskId: null,
-	focusMin: 25,
-	breakMin: 5,
-	cycles: 0,
-	cyclesDate: todayKey(),
-};
+/** 「今天」與輪數跨日依使用者時區；登入資料還沒載入前先用裝置時區 */
+let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const todayKey = () => localDate(Date.now(), timeZone);
 
 function load(): TimerState {
 	try {
 		const raw = localStorage.getItem(KEY);
-		if (raw) return { ...DEFAULT, ...JSON.parse(raw) };
+		// 舊版缺少的欄位、不合法的值都換成預設值
+		if (raw) return normalizeState(JSON.parse(raw), todayKey());
 	} catch {
 		// 讀不到就用預設值
 	}
-	return { ...DEFAULT };
+	return defaultState(todayKey());
 }
 
 let state = load();
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
-function setState(patch: Partial<TimerState>) {
-	state = { ...state, ...patch };
+function replaceState(next: TimerState) {
+	state = next;
 	try {
 		localStorage.setItem(KEY, JSON.stringify(state));
 	} catch {
 		// 無法儲存時仍可在本頁使用
 	}
 	emit();
+}
+
+function setState(patch: Partial<TimerState>) {
+	replaceState({ ...state, ...patch });
 }
 
 // 多個分頁同步同一個計時器
@@ -83,38 +85,38 @@ window.addEventListener('storage', (e) => {
 	}
 });
 
-export function elapsedMs(s: TimerState, now = Date.now()) {
-	return Math.max(0, s.accumulatedMs + (s.running && s.segmentStart ? now - s.segmentStart : 0));
-}
-
-export function targetMs(s: TimerState): number | null {
-	if (s.mode === 'stopwatch' || s.phase === 'idle') return s.mode === 'pomodoro' ? s.focusMin * 60_000 : null;
-	return (s.phase === 'break' ? s.breakMin : s.focusMin) * 60_000;
-}
-
 // ---- 操作 ----
 
 export const timer = {
+	/** 模式、專注／短休息分鐘數（超出範圍時夾進 1–180／1–60）、科目與任務 */
 	configure(patch: Partial<Pick<TimerState, 'mode' | 'focusMin' | 'breakMin' | 'subjectId' | 'taskId'>>) {
-		setState(patch);
+		setState(clampOptions(patch));
+	},
+	/** 番茄鐘設定：專注、短休息、長休息、長休息間隔、自動開始（數字會夾進合法範圍） */
+	setOptions(patch: Partial<TimerOptions>) {
+		setState(clampOptions(patch));
 	},
 	start() {
 		const now = Date.now();
-		setState({ phase: 'focus', running: true, segmentStart: now, accumulatedMs: 0, sessionStartedAt: now });
+		setState({ phase: 'focus', breakKind: 'short', running: true, segmentStart: now, accumulatedMs: 0, sessionStartedAt: now });
 		requestNotificationPermission();
 	},
 	pause() {
 		setState({ accumulatedMs: elapsedMs(state), running: false, segmentStart: null });
 	},
+	/** 繼續暫停中的專注；也用來開始「準備休息」的休息（自動開始休息關閉時） */
 	resume() {
 		setState({ running: true, segmentStart: Date.now() });
 	},
 	/** 放棄本次計時，不記錄 */
 	discard() {
-		setState({ phase: 'idle', running: false, segmentStart: null, accumulatedMs: 0, sessionStartedAt: null });
+		setState({ phase: 'idle', breakKind: 'short', running: false, segmentStart: null, accumulatedMs: 0, sessionStartedAt: null });
 	},
+	/** 提早結束休息：和休息到點一樣，開啟「休息結束後自動專注」時直接開始下一輪 */
 	skipBreak() {
-		timer.discard();
+		if (state.phase !== 'break') return;
+		if (state.autoStartFocus) timer.start();
+		else timer.discard();
 	},
 	/** 結束並儲存（碼錶，或提早結束番茄鐘）；不到 1 分鐘不記錄 */
 	finish(): boolean {
@@ -137,39 +139,13 @@ export const timer = {
 	},
 };
 
-/** 檢查番茄鐘是否到時間；回傳這次發生的事件 */
-function tick(): 'focus-done' | 'break-done' | null {
-	if (!state.running || state.mode !== 'pomodoro' || state.phase === 'idle') return null;
-	const now = Date.now();
-	const target = targetMs(state)!;
-	const el = elapsedMs(state, now);
-	if (el < target) return null;
-	// 真正到點的時刻（使用者可能過了很久才回到頁面）
-	const reachedAt = now - (el - target);
-
-	if (state.phase === 'focus') {
-		enqueue({
-			mode: 'pomodoro',
-			startedAt: state.sessionStartedAt ?? reachedAt - target,
-			endedAt: reachedAt,
-			durationSec: Math.round(target / 1000),
-			subjectId: state.subjectId,
-			taskId: state.taskId,
-		});
-		const sameDay = state.cyclesDate === todayKey();
-		setState({
-			phase: 'break',
-			running: true,
-			segmentStart: reachedAt,
-			accumulatedMs: 0,
-			sessionStartedAt: null,
-			cycles: (sameDay ? state.cycles : 0) + 1,
-			cyclesDate: todayKey(),
-		});
-		return 'focus-done';
-	}
-	setState({ phase: 'idle', running: false, segmentStart: null, accumulatedMs: 0 });
-	return 'break-done';
+/** 檢查番茄鐘是否到時間：到點就記錄、切換階段，回傳這次發生的事件 */
+function tick(): TimerEvent[] {
+	const { state: next, records, events } = advance(state, Date.now(), (ms) => localDate(ms, timeZone));
+	if (!events.length) return events;
+	records.forEach(enqueue);
+	replaceState(next);
+	return events;
 }
 
 // ---- 待上傳佇列（離線時先存著，恢復連線再送） ----
@@ -198,28 +174,42 @@ async function exclusive<T>(name: string, fn: () => Promise<T> | T): Promise<T> 
 	return fn();
 }
 
+/** 伺服器上這筆前後各一天的紀錄（登入資料載入前的時區可能和伺服器用的不同，所以多查一天） */
+async function nearbySessions(record: SessionInput): Promise<StudySession[]> {
+	const day = localDate(record.startedAt, timeZone);
+	return (await api.get<{ sessions: StudySession[] }>(`/study-sessions${qs({ from: addDays(day, -1), to: addDays(day, 1) })}`)).sessions;
+}
+
+// 送不出去（離線、伺服器錯誤）時不要每秒重試：15 秒起跳、每次加倍，最多 5 分鐘；送出成功或恢復連線時重設
+const BACKOFF_MIN = 15_000;
+const BACKOFF_MAX = 5 * 60_000;
+let backoff = BACKOFF_MIN;
+let retryAt = 0;
+const resetBackoff = () => {
+	backoff = BACKOFF_MIN;
+	retryAt = 0;
+};
+
+type FlushHandlers = { onSaved: (r: SessionInput, unlinked: boolean) => void; onDropped: (reason: string) => void };
+
 let flushing = false;
-async function flushQueue(onSaved: (r: SessionInput) => void) {
-	if (flushing || !navigator.onLine || readQueue().length === 0) return;
+async function flushQueue({ onSaved, onDropped }: FlushHandlers) {
+	if (flushing || !navigator.onLine || Date.now() < retryAt || readQueue().length === 0) return;
 	flushing = true;
 	try {
 		await exclusive('studyflow-flush', async () => {
 			for (const record of readQueue()) {
-				try {
-					await api.post('/study-sessions', record);
-					onSaved(record);
-				} catch (e) {
-					const status = (e as { status?: number }).status;
-					// 離線或尚未登入：留著下次再送
-					if (status === 0 || status === 401) return;
-					// 計時途中科目或任務被刪除：改成不掛科目再送一次，讀書時間不會不見
-					if (status === 400 && (record.subjectId || record.taskId)) {
-						await api
-							.post('/study-sessions', { ...record, subjectId: null, taskId: null })
-							.then(() => onSaved(record))
-							.catch(() => {});
-					}
+				// 每一筆怎麼送、失敗時怎麼處理在 timer-core.ts 的 sendRecord（有測試）
+				const outcome = await sendRecord(record, { existing: nearbySessions, post: (r) => api.post('/study-sessions', r) });
+				if (outcome.kind === 'keep') {
+					// 留在佇列，稍後再送
+					retryAt = Date.now() + backoff;
+					backoff = Math.min(backoff * 2, BACKOFF_MAX);
+					return;
 				}
+				resetBackoff();
+				if (outcome.kind === 'saved') onSaved(outcome.record, outcome.unlinked);
+				if (outcome.kind === 'dropped') onDropped(outcome.reason);
 				writeQueue(readQueue().slice(1));
 			}
 		});
@@ -295,28 +285,36 @@ export function useNow(active: boolean) {
 	return now;
 }
 
+const userTimeZone = (qc: QueryClient) => qc.getQueryData<PublicUser | null>(['me'])?.timezone;
+
 /** 全站只掛一次（在 Layout）：負責到點切換、通知與上傳紀錄 */
 export function useTimerEngine() {
 	const qc = useQueryClient();
 	useEffect(() => {
-		const onSaved = (r: SessionInput) => {
-			qc.invalidateQueries({ queryKey: ['sessions'] });
-			qc.invalidateQueries({ queryKey: ['dashboard'] });
-			qc.invalidateQueries({ queryKey: ['stats'] });
-			toast.success(`已記錄 ${formatMinutes((r.durationSec ?? 0) / 60)} 的學習時間`);
+		const handlers: FlushHandlers = {
+			onSaved: (r, unlinked) => {
+				// 和手動新增、編輯紀錄同一組：紀錄列表、任務投入時間、總覽、統計、頁首摘要、成就、單科總覽
+				SESSION_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
+				toast.success(
+					`已記錄 ${formatMinutes((r.durationSec ?? 0) / 60)}的學習時間`,
+					unlinked ? { description: '原本的科目或任務已經刪除，這筆改成未分類' } : undefined,
+				);
+			},
+			onDropped: (reason) => toast.error(`有一筆學習紀錄無法儲存（${reason}）`, { description: '可以到計時頁手動補登這段時間' }),
 		};
 		let busy = false;
 		const run = async () => {
 			if (busy) return;
 			busy = true;
 			try {
-				const event = await exclusive('studyflow-timer', () => {
+				timeZone = userTimeZone(qc) ?? timeZone;
+				const events = await exclusive('studyflow-timer', () => {
 					state = load();
 					return tick();
 				});
-				if (event === 'focus-done') notify('專注時間結束 🎉', `休息 ${state.breakMin} 分鐘吧！`);
-				if (event === 'break-done') notify('休息結束', '準備好就開始下一個番茄鐘');
-				await flushQueue(onSaved);
+				const message = describeEvents(events, state);
+				if (message) notify(message.title, message.body);
+				await flushQueue(handlers);
 			} finally {
 				busy = false;
 			}
@@ -324,11 +322,25 @@ export function useTimerEngine() {
 		run();
 		const id = setInterval(run, 1000);
 		document.addEventListener('visibilitychange', run);
-		window.addEventListener('online', run);
+		// 恢復連線時馬上補送，不等退避時間
+		const onOnline = () => {
+			resetBackoff();
+			run();
+		};
+		window.addEventListener('online', onOnline);
+		// 白噪音：專注中（計時在跑）才播放，暫停、休息或結束時停止（TMR-3）
+		const stopNoise = startNoiseSync(
+			() => state.phase === 'focus' && state.running,
+			(l) => {
+				listeners.add(l);
+				return () => listeners.delete(l);
+			},
+		);
 		return () => {
 			clearInterval(id);
 			document.removeEventListener('visibilitychange', run);
-			window.removeEventListener('online', run);
+			window.removeEventListener('online', onOnline);
+			stopNoise();
 		};
 	}, [qc]);
 }
