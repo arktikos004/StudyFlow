@@ -148,7 +148,14 @@ export function TimeGrid({
 						const items = allDay.get(d) ?? [];
 						const shown = single ? items : items.slice(0, 2);
 						return (
-							<div key={d} className={cn('flex min-w-0 flex-col gap-0.5 px-0.5', !single && 'border-l border-line')}>
+							// 手機單日顯示全部項目：任務期限很多時最多約 3 列高，其餘在列內捲動，不會把時間軸擠掉
+							<div
+								key={d}
+								className={cn(
+									'flex min-w-0 flex-col gap-0.5 px-0.5',
+									single ? 'max-h-36 overflow-y-auto overscroll-contain' : 'border-l border-line',
+								)}
+							>
 								{shown.map((it) =>
 									it.kind === 'event' ? (
 										<button
