@@ -9,15 +9,20 @@ import { SubjectTag } from './subjects';
 import { ChecklistCount, DueLabel, EventLabel, TaskStatusBadges, TaskTimeLabel } from './tasks/TaskMeta';
 import { Checkbox, cn, Highlight } from './ui';
 
+type Pending = { done: boolean; status: Task['status']; updatedAt: number };
+/** 儲存成功後，等清單更新的上限（毫秒） */
+const PENDING_TIMEOUT = 2000;
+
 /**
  * 完成任務的圓形勾選框（總覽、月曆、單科總覽、任務頁共用，簽名凍結：只收 task）。
  * - 視覺 22px，點擊範圍 44px。
  * - 儲存中用 aria-disabled（不用 disabled，焦點才不會掉到 body），並忽略點擊。
  * - 送出後到清單更新前先顯示要改成的狀態；資料更新（updatedAt 或狀態改變）或失敗時改回顯示實際狀態。
+ * - 儲存成功但清單重抓失敗（例如離線）時，最多再等 PENDING_TIMEOUT 也會結束忙碌狀態，不會一直 aria-disabled。
  */
 export function TaskCheckbox({ task }: { task: Task }) {
 	const update = useUpdateTask();
-	const [pending, setPending] = useState<{ done: boolean; status: Task['status']; updatedAt: number } | null>(null);
+	const [pending, setPending] = useState<Pending | null>(null);
 	if (pending && (pending.updatedAt !== task.updatedAt || pending.status !== task.status)) setPending(null);
 	const done = pending ? pending.done : task.status === 'done';
 	const busy = update.isPending || !!pending;
@@ -31,8 +36,14 @@ export function TaskCheckbox({ task }: { task: Task }) {
 			onClick={() => {
 				if (busy) return;
 				const next = !done;
-				setPending({ done: next, status: task.status, updatedAt: task.updatedAt });
-				update.mutate({ id: task.id, status: next ? 'done' : 'todo' }, { onError: () => setPending(null) });
+				const token: Pending = { done: next, status: task.status, updatedAt: task.updatedAt };
+				// 只清掉這一次的 pending（之後若又有新的一次，不會被舊的計時器清掉）
+				const clear = () => setPending((p) => (p === token ? null : p));
+				setPending(token);
+				update.mutate(
+					{ id: task.id, status: next ? 'done' : 'todo' },
+					{ onError: clear, onSuccess: () => window.setTimeout(clear, PENDING_TIMEOUT) },
+				);
 			}}
 			className="group -m-[11px] grid size-11 shrink-0 place-items-center rounded-full focus-visible:outline-none aria-disabled:cursor-progress"
 		>
