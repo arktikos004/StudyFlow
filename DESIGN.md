@@ -55,6 +55,8 @@
 | chart-rest | #c1bdb5 | #6c727e | 圖表中的「未完成」等其餘項目 |
 | heat-1…4 | accent 以 24／45／70／100% 混入 card | accent 以 10／40／72% 混入 accent-soft；heat-4 = accent 與 accent-ink 各半 | 熱度圖（heat-0 = subtle），跟著主題色；藍筆時為淺 #c7d5f2 #9ab2e9 #6689dc #2d53ca、深 #263660 #415890 #607ec7 #8eaffc |
 | backdrop | rgb(22 29 49 / .4) | rgb(0 0 0 / .6) | 對話框背景遮罩 |
+| logo-tile／logo-ink | accent／card | ink／accent-soft | 品牌標誌的底與 S（Sprint 2）：淺色是主題色的底、紙色的 S；深色反過來是紙色的底、深色主題色的 S。跟著主題色 |
+| logo-mark | #ffd84a | #ffcf33 | 品牌標誌的螢光筆黃，**只用在標誌裡**（介面的螢光筆仍是 mark） |
 
 - **元件只能使用 token。**
   - 不在元件裡寫 raw hex。
@@ -91,6 +93,22 @@
     | accent／page、card（焦點框） | 5.55、5.86 | 7.07、6.49 | 3 |
     | accent／accent-soft（進度條填色與軌道） | 5.06 | 4.93 | 3 |
     | heat-4／card | 5.86 | 7.77 | 3 |
+
+  - **Sprint 2 新增的組合（s2/shell，實際計算，6 組主題色中的最低值）**：
+
+    | 組合 | 淺色 | 深色 | 門檻 |
+    |---|---|---|---|
+    | 導覽標籤（桌面）：danger／danger-soft、warning／warning-soft | 5.31、5.02 | 5.28、7.74 | 4.5 |
+    | 導覽標籤（手機實心）：on-accent／danger、on-accent／warning | 6.08、5.66 | 6.90、10.73 | 4.5 |
+    | 手機實心標籤的外形：danger、warning 對 card | 5.93、5.52 | 6.39、9.93 | 3 |
+    | 指令面板目前選項：ink、ink-2、ink-3、accent-ink 對 accent-soft | 14.07、6.80、4.75、6.40 | 11.73、7.35、4.81、7.02 | 4.5 |
+    | 指令面板：ink／mark（關鍵字標示）、ink-3／subtle | 14.17、4.85 | 7.38、5.67 | 4.5 |
+    | 成就徽章（已解鎖）：on-accent／accent；徽章對 card | 6.00、5.86 | 7.01、6.49 | 4.5、3 |
+    | 成就徽章（未解鎖）：ink-3 圖示／card、line-field 虛線框／card | 5.52、3.28 | 6.33、3.19 | 3 |
+    | 已解鎖 badge：success／success-soft | 5.22 | 6.66 | 4.5 |
+    | 標誌：S／底（on-accent≈card／accent；深色 accent-soft／ink） | 6.00 | 11.73 | 3 |
+    | 標誌的底對 page | 5.55 | 16.83 | 3 |
+    | 焦點框：accent 對 accent-soft、subtle | 5.06、5.14 | 4.93、5.81 | 3 |
 
   - **語意撞色（OKLab ΔE×100）**：莓果和 danger 14.2／11.0；墨綠和 success 7.7／9.2（計時環的專注與休息階段靠文字標籤區分）。
   - **不收錄琥珀橘**：和 warning（ΔE 4.7）、danger（ΔE 8.6）幾乎同色，主要按鈕與「今天到期」會分不出來，所以改收錄中性的「鉛筆」。紅、橘、黃系一律不做主題色。
@@ -135,7 +153,9 @@
     - 和任何一個科目幾乎一樣：淺色 ΔE < 8，或兩色的**深色 mark** ΔE < 5（深色也要判定）。
   - 推薦色彼此之間不提醒「幾乎一樣」（它們是驗證過的一組）；但兩個科目用了同一個推薦色時仍然提醒。
   - 提醒旁附「改用建議色」；建議色必須在淺色與深色兩種模式下都通過以上檢查。
-- **色格排版**：桌面 10 × 4、每格 32px；觸控裝置或窄容器改成兩塊 5 × 4、每格 44px。
+- **色格排版**：
+  - 精確指標（滑鼠）且容器夠寬（≥ 22.25rem）：10 × 4 一整塊，格子 **32–44px**，隨容器寬度縮放（`clamp(2rem, (100cqw − 2.25rem) / 10, 2.75rem)`）。
+  - 觸控裝置或窄容器：兩塊 5 × 4，每格 44px。
 - **驗證**：色盤有改動時，必須用 dataviz skill 的 `validate_palette.js` 驗證淺色與深色兩種模式。
 - **待評估（Sprint 2）：是否放寬深色的 DARK_BAND**。目前深色把 L 0.43–0.77 壓進 0.55–0.67，同色相的 4 個色調在深色只差 ΔE 3–5，所以深色的色格實際上只剩約 10 種可分辨的顏色。這個 Sprint 不改 `src/shared/color.ts`（屬於 s1/color）。
 
@@ -217,6 +237,12 @@
   時長也有 token：`--dur-press` 120、`--dur-toggle` 180、`--dur-pop` 240、`--dur-sheet` 320、`--dur-moment` 600；Tailwind 直接寫 `duration-120`、`duration-180`。
 - **動畫工具類**：`animate-fade-in`（120ms）、`animate-pop-in`（240ms，popover）、`animate-complete`（600ms，只給「專注完成」用）。
 - **對話框**：只有進場動畫（`@starting-style`＋`transition-behavior: allow-discrete`）：手機由下滑入、sm 以上輕微放大淡入；關閉時立即消失，因為內容同時卸載。
+- **Sprint 2 的殼層動效（s2/shell）**：都只表達狀態，不做裝飾。
+  - 指令面板：240ms，從上方落下 0.5rem 並放大淡入（`.sf-palette`）；關閉立即消失、內容卸載。
+  - 手機底部導覽：目前頁面的膠囊底由中間展開（`.sf-tab-pill::before`，scaleX 0.5 → 1、180ms），圖示不跟著縮放；文字顏色同步 180ms。
+  - 導覽數量標籤：出現與數字改變時播一次 `animate-pop-in`（完成一項、數字減一時看得到）。
+  - toast（sonner）：套件自己的進場；sonner 在 reduced motion 時會關掉所有 toast 動畫。
+  - reduced motion：指令面板改成 120ms 淡入、膠囊底只淡入不縮放、標籤只淡入。
 - **只動畫 transform、opacity、顏色。**
   - 不用 `transition: all`。
   - 不動畫 width、height、top、left；進度條用 translateX，不動畫寬度。
@@ -235,6 +261,7 @@
   - 標籤 14/600 ink-2。
   - 提示 13 ink-3；錯誤 13 danger 加圖示。兩者都用 aria-describedby 連到欄位，錯誤時加 aria-invalid。
   - 輸入框：在卡片上用 page 色內嵌底；邊框 line-field；focus 時邊框變 accent，外加 3px 的 accent/20 光環。
+  - 版型：stacked（預設，標籤在上）；inline（Sprint 2）標籤與提示在左、欄位在右，用在設定列、短數字欄位。
 - **Badge**：
   - 高 20px，12px 字，圓角 sm。
   - 狀態一律是圖示加文字；標籤用 outline；錯題、筆記用中性色加圖示。
@@ -264,12 +291,31 @@
   - 小於 sm 時是 bottom sheet：拖曳把手、safe-area 內距、由下滑入；sm 以上置中。
   - 觸控裝置不自動 focus；加上 `overscroll-behavior: contain`。
   - **關閉後仍然卸載內容**，表單靠這個重設狀態。
+- **確認對話框（useConfirm）的焦點規則**（Sprint 2）：
+  - `tone: 'danger'`（預設）：刪除、放棄等破壞性操作。確認鈕是 danger，**預設焦點在「取消」**，連按 Enter 不會誤刪。
+  - `tone: 'primary'`：非破壞性、可以復原的確認（例如「要一併完成任務嗎？」）。確認鈕是 primary，**預設焦點在確認鈕**，Enter 直接確認。
+  - 兩者在觸控裝置都不自動 focus（同 Dialog）。確認鈕文字寫出動作（「刪除」「完成任務」），不要寫「確定」，除非真的沒有更具體的動詞。
+- **指令面板（CommandPalette）**（Sprint 2，APP-1）：
+  - 開啟：任何頁面按 Ctrl+K（macOS ⌘K；macOS 的 Ctrl+K 在輸入欄位裡保留給「刪到行尾」）；桌面側欄 Logo 下方的「搜尋」鈕、手機頁首的搜尋圖示鈕。其他對話框開著時不開，避免離開頁面遺失表單。
+  - 外觀：上方錨定（桌面距頂 12dvh、寬 36rem；手機貼齊上緣、左右 8px），card 底、圓角 2xl、陰影 lg；輸入列 56px，focus 時下緣線變 accent；目前選項是 accent-soft 底，圖示方塊轉成 card 底 accent-ink；關鍵字用 `<mark>`。
+  - 無障礙：WAI-ARIA combobox（input `role="combobox"`、`aria-expanded`、`aria-controls`、`aria-activedescendant`、`aria-autocomplete="list"`），listbox 內 `role="group"`＋`aria-labelledby` 分組；焦點一直在輸入框。上下鍵循環、Enter 開啟、Esc 關閉；注音選字中（isComposing）不攔截上下鍵、Enter、Esc。結果數以 `role="status"` 報讀。
+  - 內容：空白時「快捷動作」（開始專注／計時中改成回到計時、新增任務、新增錯題、新增科目）與「前往」各頁；有輸入時先列本機比對到的動作與頁面，再列任務、考試與截止、筆記與錯題、科目，每組最多 5 筆。搜尋防抖 160ms。
+  - 焦點：沒有選項就關閉時還給打開前的元素；選了項目就移到新頁面的 `#main-content`（目標頁用 `?open=` 開對話框時，對話框會接手焦點）。
+  - 指令面板是「觸控裝置不自動 focus」的例外：使用者明確按了搜尋，輸入框直接聚焦。
 
 **App 專屬元件**
 - **SubjectTag**：
   - chip 版：ink 文字、科目 tint 底、1px ring、8px 圓點。
   - compact 版：圓點加名稱。
+  - icon 版（單科總覽頁的標題方塊）：科目 mark 底、onMark 圖示，**純裝飾**（aria-hidden），旁邊一定要有可見的科目名稱；不可放進按鈕或連結當唯一內容。
+    - 對比：onMark／mark 在 48 色中最低 4.24（淺色）／4.39（深色）。圖示是圖形（≥ 3:1）全部通過；沒有圖示時顯示的「名稱第一個字」是文字，6／48（淺色）與 8／48（深色）低於 4.5:1，所以第一個字要用 large text（≥ 19px 粗體）或改顯示通用圖示。
+    - 第一個字要以字素（`Intl.Segmenter`）切，避免 emoji、組合字被切半。
   - 科目圖示只透過 SubjectTag 顯示。
+- **成就（Achievements 頁）**（Sprint 2，APP-2）：
+  - 徽章：已解鎖是藍筆塗滿（accent 底、on-accent 圖示、外圈 4px accent-soft 像蓋章）＋ success 的「已解鎖」badge；未解鎖是 1.5px line-field 虛線框、ink-3 圖示（還沒描上墨的鉛筆稿）＋進度條與「3／25 個」。狀態都有文字，不只靠顏色。
+  - 這頁的焦點是「下一個目標」：最接近解鎖的成就、還差多少、一個前往的動作。其餘依讀書時數／連續天數／番茄鐘／錯題與任務分組，每組一張卡片、列之間用分隔線（不做一排一樣的卡片）。
+  - 圖示：後端回傳 lucide 名稱，前端用白名單（`lib/shell-icons.ts` 的 `AchievementIcon`）對應，不動態 import 整包。
+  - 新解鎖的 toast 由 Layout 全站跳一次：「解鎖成就「名稱」」＋說明＋「查看」動作；同時解鎖多個時合併成一則。
 - **共用小元件**（Sprint 1 由設計師提供）：
   - ProgressBar、ProgressRing
   - Switch、Checkbox
@@ -283,11 +329,17 @@
 - **側欄**：
   - 用 page 色底，靠空白分組。
   - 目前頁面：accent-soft 底、字重 600、較粗的圖示。
-  - 第一個可聚焦元素是「跳到主要內容」連結。
+  - 第一個可聚焦元素是「跳到主要內容」連結；Logo 下方是像輸入框的「搜尋」鈕（右側 Kbd 提示 ⌘K／Ctrl K，`aria-keyshortcuts`）。
 - **手機底部導覽**：
   - 實心底，12px 標籤。
   - 目前頁面在圖示後面加上膠囊底。
   - 計時中，「計時」那格顯示即時進度環。
+  - 頁首右側是搜尋圖示鈕（44px），開指令面板。
+- **導覽數量標籤**（Sprint 2）：
+  - 學習任務＝逾期＋今天到期；筆記與錯題＝待複習。0 時不顯示，超過 99 顯示 99+。
+  - 顏色依語意：有逾期是 danger，否則 warning。桌面是 soft 膠囊（`bg-*-soft text-*`）靠右；手機是實心膠囊（`bg-danger／bg-warning`＋on-accent 字＋2px card 外圈）疊在圖示右上角。
+  - 數字本身 aria-hidden，報讀文字接在名稱後面：「學習任務，3 項待處理，其中 1 項逾期」「筆記與錯題，2 項待複習」。
+- **換頁**：路徑改變時捲回頂端；上一頁／下一頁交給瀏覽器還原；只改網址參數（篩選、`?open=`）不捲動。
 
 **頁面元件**
 - **計時**：進度環是科目 mark 疊在 tint 軌道上；數字用 font-num；番茄數以圓點顯示；`role="timer"`。
@@ -312,7 +364,7 @@
 | `Button` | `variant: 'primary'｜'secondary'（預設）｜'ghost'｜'danger'｜'soft'`、`size: 'sm'｜'md'（預設）｜'lg'｜'icon'`、`loading` | 40px（觸控 44px；sm 32px 另有 44px 點擊範圍；lg 48px；icon 36px、觸控 44px）。`loading` 保留文字並加 `aria-busy`。只有圖示時一定要給 `aria-label`。型別 `ButtonVariant`、`ButtonSize` |
 | `Input`、`Textarea` | 原生屬性 | 手機 16px、sm 以上 15px；page 色內嵌底、line-field 邊框、focus 時 accent 邊框加光環；`aria-invalid` 時變紅 |
 | `Select` | 原生屬性 | 右側 ChevronDown。**`className` 套在外層容器**（寬度、版面），select 填滿容器 |
-| `Field` | `label`、`hint`、`error`、`children: (id, aria) => …`、`className` | `aria` 是 `FieldAria`（`aria-describedby`、`aria-invalid`），請展開到欄位上：`{(id, aria) => <Input id={id} {...aria} />}`。舊寫法 `(id) =>` 會自動把 aria 補到回傳的元素上 |
+| `Field` | `label`、`hint`、`error`、`children: (id, aria) => …`、`className`；**Sprint 2**：`layout?: 'stacked'（預設）｜'inline'`（型別 `FieldLayout`） | `aria` 是 `FieldAria`（`aria-describedby`、`aria-invalid`），請展開到欄位上：`{(id, aria) => <Input id={id} {...aria} />}`。舊寫法 `(id) =>` 會自動把 aria 補到回傳的元素上。inline：標籤與提示／錯誤在左欄、欄位在右欄垂直置中，右欄寬度由欄位決定，請給欄位寬度（`className="w-24"`） |
 | `Card` | `as: 'section'｜'div'｜'article'｜'li'`、`variant: 'default'｜'inset'｜'plain'`、`interactive` | 只有整張可點的卡片才加 `interactive` |
 | `CardHeader` | `title`、`icon`、`meta`、`action` | 標題是 h2（18px／600）；meta 例如「3 項」 |
 | `PageHeader` | `title`、`description`（ReactNode）、`actions` | h1；description 放即時摘要 |
@@ -321,11 +373,11 @@
 | `Spinner`、`PageLoader`、`ErrorNote` | — | PageLoader 延遲 150ms 才出現；ErrorNote 有圖示 |
 | `Segmented<T>` | `value`、`onChange`、`options: { value, label, disabled? }[]`、`label`（必填，群組名稱）、`stretch`、`className` | WAI-ARIA radio：roving tabindex、方向鍵循環並選取、Home／End |
 | `Dialog` | `open`、`onClose`、`title`、`footer`、`wide` | `aria-labelledby`；手機 bottom sheet（拖曳把手往下拉可關閉）；觸控裝置不自動 focus，桌面版 `autoFocus` 有效；關閉後卸載內容 |
-| `useConfirm()` | 回傳 `[confirm, element]` | 預設焦點在「取消」 |
+| `useConfirm(defaults?)` | 回傳 `[confirm, element]`；`confirm(opts: ConfirmOptions)` → `Promise<boolean>`。`ConfirmOptions = { title, message?, confirmText?, cancelText?, tone? }`；**Sprint 2**：`tone?: 'danger'（預設）｜'primary'`（型別 `ConfirmTone`），也可以 `useConfirm({ tone })` 設整個 hook 的預設值 | danger：danger 確認鈕、預設焦點在「取消」、省略 message 時顯示「刪除後無法復原。」、確認鈕預設「刪除」。primary：primary 確認鈕、預設焦點在確認鈕、省略 message 時不顯示、確認鈕預設「確定」（請改寫成動作）。既有呼叫端行為不變 |
 | `ProgressBar` | `value`、`max`（100）、`label` 或 `labelledBy`、`valueText`、`tone: 'accent'｜'success'｜'warning'｜'danger'`、`color`、`size: 'sm'｜'md'` | `role="progressbar"`；`color` 傳 `subjectTone(...).mark`，軌道自動用同色淡一階；型別 `ProgressTone` |
-| `ProgressRing` | 同上，另有 `size`（40）、`stroke`（4）、`trackColor`、`children`（圓心內容） | 底色和軌道同色時（例如膠囊底上）用 `trackColor` 換軌道色 |
+| `ProgressRing` | 同上，另有 `size`（40）、`stroke`（4）、`trackColor`、`children`（圓心內容） | 底色和軌道同色時（例如膠囊底上）用 `trackColor` 換軌道色。**children 是純展示**：progressbar 的子元素在無障礙樹裡是 presentational，螢幕報讀器不會念；要報讀的內容放在 `label`／`valueText`，圓心不要放按鈕、連結等可互動元素 |
 | `GoalProgress` | `label`、`value`、`goal`（> 0）、`unit`（'分鐘'）、`format`、`color` | 已讀／目標、百分比、「還差 …」或「已達成」（圖示加文字，進度條轉成 success）。沒設目標時不要用它，改顯示「設定目標」連結 |
-| `Switch`、`Checkbox` | `checked`、`onChange(checked)`、`label`、`disabled`、`id`、`aria-*`；Checkbox 另有 `indeterminate` | `role="switch"／"checkbox"` + `aria-checked`，整列可點、至少 44px；沒有 `label` 時要給 `aria-label` |
+| `Switch`、`Checkbox` | `checked`、`onChange(checked)`、`label`、`disabled`、`id`、`aria-*`；Checkbox 另有 `indeterminate`；**Sprint 2**：Switch 另有 `description?: ReactNode` | `role="switch"／"checkbox"` + `aria-checked`，整列可點、至少 44px；沒有 `label` 時要給 `aria-label`。description 顯示在標籤下方（13px ink-3），以 `aria-describedby` 連到開關（和呼叫端給的 aria-describedby 合併），名稱仍只有標籤；有 description 時開關對齊第一行 |
 | `Highlight` | `text`、`query`（字串以空白分隔，或字串陣列）、`className` | 用 `<mark>`（mark token）標出關鍵字，不分大小寫 |
 | `Kbd` | `children` | 例如 `<Kbd>Ctrl</Kbd> <Kbd>K</Kbd>` |
 | `NumDisplay` | `children`、`unit`、`size: 'xl'｜'lg'（預設）｜'md'｜'sm'` | 數字字型、等寬數字；xl 為計時大字；型別 `NumSize` |
@@ -333,7 +385,24 @@
 
 **`components/charts.tsx`**：`StatStrip({ items: StatItem[] })`，`StatItem = { key?, label, value, sub?, icon? }`（一張卡片用分隔線分格、手機 2 欄、sm 以上最多 4 格、數值 28／600）。`Heatmap` 內建「表格／圖表」切換與 `role="img"` 摘要。`StatTile`、`Legend`、`SubjectBars`、`MiniDailyBars`、`DailyStackedBars`、`WeeklyTaskBars`、`SeriesDef` 的 API 不變（`StatTile` 只為相容保留，新頁面改用 `StatStrip`）。
 
-**導覽與版面**：`components/nav.ts` 提供 `NAV`、`NAV_GROUPS`（側欄分組）、`MOBILE_MAIN`、`NavItem { to, label, short?, icon, end? }`；`components/TimerPill.tsx` 提供 `TimerPill`、`TimerNavIcon`。`<main id="main-content">` 是「跳到主要內容」的目標。佔位路由：`/subjects/:id`（`pages/Subject.tsx`，s2/subjects 實作）、`/achievements`（`pages/Achievements.tsx`，s2/shell 實作）。
+**Sprint 2 新增到 `components/ui.tsx`（s2/shell，只新增、既有 API 不變）**
+
+| 元件 | Props | 說明 |
+|---|---|---|
+| `ButtonLink` | react-router 的 `LinkProps` ＋ `variant`、`size`（同 Button） | 看起來像按鈕的導覽連結（`<a>`，可新分頁開啟）。外觀、尺寸、按下回饋與 Button 相同。前往另一頁用 ButtonLink，原地動作用 Button |
+| `TextLink` | `LinkProps` | 文字連結＋ChevronRight，accent-ink 14px／600，`min-h-11`（佔版面的 44px 點擊高度） |
+| `MoreLink` | `LinkProps` | CardHeader 右側的「查看全部」：14px／400，外觀不佔高度，`::after` 把點擊範圍往上 16px、往下 8px 擴大到 44px |
+| `Unit` | `children` | 數字後面的單位：文字字型 14px ink-2，放在 font-num 的數值裡 |
+| `Duration` | `minutes` | 分鐘數 → 「45 分鐘」「2 小時」「1 小時 20 分」，數字沿用外層字型、單位用 Unit |
+| `Figure` | `label`、`sub?`、`children`、`className` | dt＋dd 的一格數字，必須放在 `<dl>` 裡；卡片內分格時第二格起加 `border-l border-line` |
+| `TableToggle` | `on`、`onToggle` | 圖表／表格切換（`aria-pressed`），和 charts.tsx 的同名元件相同，不必為了它載入圖表函式庫 |
+| `gridKeyTarget(e, index, count, grid)` | 函式 | 格狀 radiogroup 的方向鍵目標（左右循環、上下同欄、Home／End），欄數讀 CSS grid 實際排出的欄 |
+
+**殼層（s2/shell）**：`components/CommandPalette.tsx` 的 `CommandPalette({ onClose })` 由 Layout 掛載（分開打包、閒置時預載），頁面不必使用。純邏輯在 `lib/shell-palette.ts`（`resultHref`、`QUICK_ACTIONS`、`PAGE_KEYWORDS`、`matchesQuery`、`isPaletteShortcut`）、`lib/shell-nav.ts`（`navBadges`、`badgeLabel`）、`lib/shell-achievements.ts`（`seenKey`、`parseSeen`、`diffUnlocked`、`achievementUnit`、`groupAchievements`、`nextMilestone`、`formatProgress`）、`lib/shell-icons.ts`（`achievementIcon`、`AchievementIcon`）。
+- 搜尋結果的深連結：任務 `/tasks?open=<id>`、考試 `/events?open=<id>`、筆記 `/notes?open=<id>`、科目 `/subjects/<id>`；快捷動作 `/timer`、`/tasks?new=1`、`/notes?new=mistake`、`/settings?new=1`。**目標頁已經開著時也要能反應網址參數的改變**（例如在任務頁按 ⌘K 選另一個任務）。
+- 已看過的成就：localStorage `studyflow:achievements-seen:<userId>`（JSON 字串陣列）。
+
+**導覽與版面**：`components/nav.ts` 提供 `NAV`、`NAV_GROUPS`（側欄分組）、`MOBILE_MAIN`、`NavItem { to, label, short?, icon, end? }`；`components/TimerPill.tsx` 提供 `TimerPill`、`TimerNavIcon`。`<main id="main-content">` 是「跳到主要內容」的目標。路由：`/subjects/:id`（`pages/Subject.tsx`）、`/achievements`（`pages/Achievements.tsx`，`AchievementsPage`）。`components/Logo.tsx` 的 `LogoMark({ className })`、`Logo()` API 不變，顏色改用 `--logo-*` token。
 
 **`lib/theme.ts`**：原有的 `ThemeMode`、`initTheme`、`setThemeMode`、`useThemeMode`、`useIsDark` 不變；新增 `ACCENTS`、`AccentId`、`useAccent()`、`setAccent(id)`（設定頁的主題色卡可以直接用色票 `<span data-accent={id} className="bg-accent" />`，會跟著目前的深淺色）。
 
@@ -362,5 +431,8 @@
 - **熱度圖最淺一階**：heat-1 對 card 約 1.3:1。依 dataviz 對 sequential 色階的規則（最淺一階代表接近 0，可以貼近表面）保留，並以表格檢視、格子的 title 提示與 `role="img"` 摘要補足。
 - **墨綠主題色與 success 相近**（ΔE 7.7／9.2）：計時環的專注（accent）與休息（success）靠文字標籤區分。
 - **待評估（Sprint 2）**：是否放寬深色的 DARK_BAND（見 §3）。
-- **第三方與頁面層**：sonner 的關閉鈕只有 20px（套件內建；toast 會自動消失，也能滑掉）；PWA 啟動畫面（manifest `background_color`）只有淺色；`Logo.tsx` 的品牌藍是寫死的，不跟主題色。頁面裡的 emoji、「・」、「→」、一排 `StatTile` 等舊寫法留給 Sprint 2 各頁 lane（UI-2）。
+- **第三方與頁面層**：sonner 的關閉鈕只有 20px（套件內建；toast 會自動消失，也能滑掉）；toast 的動作鈕（例如「查看」）在觸控裝置用 `::after` 擴大到約 44px。PWA 啟動畫面（manifest `background_color`）只有淺色。頁面裡的 emoji、「・」、「→」、一排 `StatTile` 等舊寫法留給各頁 lane（UI-2）。
+- **品牌標誌**：站內的 `LogoMark` 跟著主題色與深淺色（`--logo-*`）；PWA 圖示與 favicon（`public/logo.svg`）是固定的藍筆版，換主題色不會變。
+- **成就 toast**：已看過的紀錄存在各瀏覽器的 localStorage，換裝置或清除網站資料後，第一次載入會把當時已解鎖的視為「已看過」而不跳 toast；徽章被收回後再解鎖也不會再跳（成就頁仍顯示目前的真實狀態）。同時開兩個分頁時，兩邊可能各跳一次。
+- **指令面板的「開始專注」**只前往計時頁，不會自動開始計時（避免誤觸就開始記錄）。
 - **Field 舊寫法的自動 aria**：只補在 children 回傳的那個元素上；自訂元件（例如 `SubjectSelect`）沒有把 aria 屬性傳給內部欄位時不會生效，Sprint 2 請改成 `(id, aria)` 並往下傳。
