@@ -17,7 +17,7 @@ import { useDeepLink } from '../lib/timer-queries';
 
 /** 頁首的即時摘要：未完成、已逾期、今天到期（數字用等寬數字） */
 function Summary({ open, overdue, dueToday }: { open: number; overdue: number; dueToday: number }) {
-	if (!open) return <>沒有未完成的任務</>;
+	if (!open) return <>任務都完成了</>;
 	const n = (v: number) => <span className="font-num tabular-nums">{v}</span>;
 	return (
 		<>
@@ -96,6 +96,7 @@ export function TasksPage() {
 	const listed = searched.filter((t) => status === 'all' || (status === 'done' ? t.status === 'done' : t.status !== 'done'));
 	const shown = view === 'board' ? searched : listed;
 	const searching = query.trim().length > 0;
+	const empty = !!tasks && all.length === 0;
 
 	const addButton = (label = '新增任務', variant: 'primary' | 'secondary' = 'primary') => (
 		<Button variant={variant} onClick={() => setDialog({})}>
@@ -107,7 +108,7 @@ export function TasksPage() {
 	let content: ReactNode;
 	if (isPending || subjects.isPending) content = <PageLoader />;
 	else if (error) content = <ErrorNote error={error} />;
-	else if (all.length === 0)
+	else if (empty)
 		content = (
 			<Card>
 				<EmptyState
@@ -179,7 +180,12 @@ export function TasksPage() {
 
 	return (
 		<div>
-			<PageHeader title="學習任務" description={tasks && <Summary {...summary} />} actions={addButton()} />
+			<PageHeader
+				title="學習任務"
+				description={empty ? undefined : tasks && <Summary {...summary} />}
+				// 完全沒有任務時，新增按鈕在空狀態裡（每個畫面只有一個主要動作）
+				actions={empty ? undefined : addButton()}
+			/>
 
 			<TaskToolbar
 				query={query}
