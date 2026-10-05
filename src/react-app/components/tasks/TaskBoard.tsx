@@ -78,20 +78,21 @@ export function TaskBoard({
 	// 放到別欄時卡片會直接出現在新的欄，不播放「飛回原位」的動畫
 	const [skipDropAnimation, setSkipDropAnimation] = useState(false);
 	const [message, setMessage] = useState('');
-	const focusAfterMove = useRef<string | null>(null);
-
-	// 用按鈕移動後，焦點跟著卡片到新的欄（原本的按鈕已經不在了）
+	// 用按鈕移動的卡片：之後幾秒內卡片換欄（移過去，或儲存失敗退回原欄）、焦點因此掉到 body 時，把焦點放回這張卡片的標題
+	const follow = useRef<{ id: string; until: number } | null>(null);
 	useEffect(() => {
-		const id = focusAfterMove.current;
-		if (!id) return;
-		const title = document.querySelector<HTMLElement>(`[data-task-card="${CSS.escape(id)}"] [data-task-title]`);
-		if (!title) return;
-		focusAfterMove.current = null;
-		title.focus();
+		const target = follow.current;
+		if (!target) return;
+		if (Date.now() > target.until) {
+			follow.current = null;
+			return;
+		}
+		if (document.activeElement && document.activeElement !== document.body) return;
+		document.querySelector<HTMLElement>(`[data-task-card="${CSS.escape(target.id)}"] [data-task-title]`)?.focus();
 	}, [columns]);
 
 	const moveByButton = (task: TaskItem, to: TaskStatus) => {
-		focusAfterMove.current = task.id;
+		follow.current = { id: task.id, until: Date.now() + 10_000 };
 		setMessage(`已把「${task.title}」移到「${STATUS_LABEL[to]}」`);
 		onMove(task, to);
 	};
@@ -202,6 +203,7 @@ function BoardColumn({
 	return (
 		<section
 			ref={setNodeRef}
+			data-board-column={status}
 			aria-labelledby={headingId}
 			className={cn(
 				'min-w-0 rounded-xl bg-subtle p-2 transition-[background-color,box-shadow] duration-120 ease-out',
