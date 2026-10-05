@@ -21,7 +21,7 @@ import type { EventItem, TaskItem } from '../../../shared/api-types';
 import { STATUS_LABEL } from '../../lib/format';
 import { usePrefersReducedMotion } from '../../lib/task-queries';
 import { neighborStatuses, TASK_STATUS_ORDER, type TaskStatus } from '../../lib/task-sort';
-import { TaskCheckbox, TaskMetaLine, TaskTitleButton } from '../TaskItem';
+import { DescriptionSnippet, TaskCheckbox, TaskMetaLine, TaskTitleButton } from '../TaskItem';
 import { Badge, Button, cn, Highlight } from '../ui';
 import { TaskStatusBadges } from './TaskMeta';
 
@@ -282,6 +282,7 @@ function BoardCard({
 				</div>
 				<div className="relative min-w-0 flex-1">
 					<TaskTitleButton title={task.title} query={query} done={task.status === 'done'} onOpen={onOpen} />
+					<DescriptionSnippet task={task} query={query} />
 					<TaskMetaLine task={task} today={today} event={event} />
 				</div>
 				<TaskStatusBadges task={task} showDoing={false} />

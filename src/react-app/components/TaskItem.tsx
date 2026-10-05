@@ -71,7 +71,6 @@ export function TaskRow({
 	onToggleItem?: (task: Task | TaskItem, itemId: string) => void;
 }) {
 	const done = task.status === 'done';
-	const snippet = query ? descriptionSnippet(task, searchTerms(query)) : null;
 	return (
 		<div className="flex items-start gap-3 px-4 py-3 sm:px-5">
 			<div className="pt-px">
@@ -79,11 +78,7 @@ export function TaskRow({
 			</div>
 			<div className="relative min-w-0 flex-1">
 				<TaskTitleButton title={task.title} query={query} done={done} onOpen={onOpen} />
-				{snippet && (
-					<p className="mt-0.5 line-clamp-2 text-meta break-words text-ink-2">
-						<Highlight text={snippet} query={query} />
-					</p>
-				)}
+				<DescriptionSnippet task={task} query={query} />
 				<TaskMetaLine task={task} today={today} event={event} onToggleItem={onToggleItem} />
 			</div>
 			<TaskStatusBadges task={task} />
@@ -110,6 +105,17 @@ export function TaskTitleButton({ title, query, done, onOpen }: { title: string;
 		>
 			<Highlight text={title} query={query} />
 		</button>
+	);
+}
+
+/** 搜尋時只有說明符合：在標題下方顯示說明裡符合的片段（用 <mark> 標出），讓人知道為什麼會找到 */
+export function DescriptionSnippet({ task, query }: { task: Pick<Task, 'title' | 'description'>; query: string }) {
+	const snippet = query ? descriptionSnippet(task, searchTerms(query)) : null;
+	if (!snippet) return null;
+	return (
+		<p className="mt-0.5 line-clamp-2 text-meta break-words text-ink-2">
+			<Highlight text={snippet} query={query} />
+		</p>
 	);
 }
 
