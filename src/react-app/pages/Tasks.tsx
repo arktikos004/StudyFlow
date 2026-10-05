@@ -200,12 +200,16 @@ export function TasksPage() {
 				onSortChange={setSort}
 			/>
 
+			{/* 搜尋結果的報讀：有結果時也顯示在畫面上；沒有結果時畫面上已經有空狀態，這裡只給螢幕報讀器 */}
 			<p role="status" className={searching && shown.length > 0 ? 'mb-3 text-meta text-ink-2' : 'sr-only'}>
-				{searching && shown.length > 0 && (
-					<>
-						找到 <span className="font-num tabular-nums">{shown.length}</span> 項符合「{query.trim()}」的任務
-					</>
-				)}
+				{searching &&
+					(shown.length > 0 ? (
+						<>
+							找到 <span className="font-num tabular-nums">{shown.length}</span> 項符合「{query.trim()}」的任務
+						</>
+					) : (
+						'找不到符合的任務'
+					))}
 			</p>
 
 			{content}
