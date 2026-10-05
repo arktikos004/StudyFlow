@@ -171,7 +171,8 @@ function NoteEditorForm({
 
 	return (
 		<form id="note-form" onSubmit={onSubmit} className="space-y-4" noValidate>
-			{!note && (
+			{/* 新增後（例如照片上傳失敗再按儲存）會改走更新，更新不能改類型：已經存過就不能再切換 */}
+			{!note && !savedId && (
 				<Segmented
 					label="類型"
 					value={form.kind}
