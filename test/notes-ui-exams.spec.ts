@@ -29,6 +29,25 @@ describe('考試頁的倒數磚', () => {
 		expect(countdownState({ kind: 'exam', date: '2026-10-07', time: '09:00' }, '2026-10-06', now, 'America/New_York').secondsLeft).toBeNull();
 	});
 
+	it('剛好 24 小時不算即時倒數；跨午夜仍依實際剩餘時間', () => {
+		const exam = { kind: 'exam', date: '2026-10-07', time: '09:00' } as const;
+		expect(countdownState(exam, '2026-10-06', at('2026-10-06', '09:00'), tz).secondsLeft).toBeNull();
+		expect(countdownState(exam, '2026-10-06', at('2026-10-06', '09:01'), tz).secondsLeft).toBe(24 * 3600 - 60);
+		// 23:30 看隔天 00:30 的考試：明天（days 1）、還剩 1 小時
+		const midnight = { kind: 'exam', date: '2026-10-07', time: '00:30' } as const;
+		expect(countdownState(midnight, '2026-10-06', at('2026-10-06', '23:30'), tz)).toMatchObject({ days: 1, secondsLeft: 3600, tone: 'urgent', label: '後開始' });
+	});
+
+	it('夏令時間結束當天：用實際經過的時間，不是牆上時間', () => {
+		// 紐約 2026-11-01 02:00 撥回 01:00；11/1 09:00 EST = 14:00 UTC
+		const ny = 'America/New_York';
+		const exam = { kind: 'exam', date: '2026-11-01', time: '09:00' } as const;
+		// 10/31 10:00 EDT（14:00 UTC）：牆上差 23 小時，實際剛好 24 小時
+		expect(countdownState(exam, '2026-10-31', Date.UTC(2026, 9, 31, 14, 0), ny).secondsLeft).toBeNull();
+		// 10/31 10:30 EDT（14:30 UTC）：實際還剩 23.5 小時
+		expect(countdownState(exam, '2026-10-31', Date.UTC(2026, 9, 31, 14, 30), ny).secondsLeft).toBe(23.5 * 3600);
+	});
+
 	it('今天已經開始、沒有時間、已經過去', () => {
 		const now = at('2026-10-06', '10:00');
 		expect(countdownState({ kind: 'exam', date: '2026-10-06', time: '09:00' }, '2026-10-06', now, tz).label).toBe('已開始');

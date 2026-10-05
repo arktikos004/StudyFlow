@@ -3,17 +3,20 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import type { EventItem } from '../../shared/api-types';
-import { diffDays, localDate } from '../../shared/dates';
+import { localDate } from '../../shared/dates';
 import { PrepProgress } from '../components/dashboard/exams';
 import { useSubjectMark } from '../components/dashboard/hooks';
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SubjectSelect, SubjectTag } from '../components/subjects';
 import { Badge, Button, Card, cn, Countdown, EmptyState, ErrorNote, NumDisplay, PageHeader, PageLoader } from '../components/ui';
+import { eventStartMs } from '../lib/dashboard-format';
 import { EVENT_KIND_LABEL, formatDate } from '../lib/format';
 import { countdownState, eventsSummary, type CountdownTone } from '../lib/notes-exams';
 import { useEvents, useSubjectMap, useSubjects, useUser } from '../lib/queries';
 import { useNow } from '../lib/timer';
 import { useDeepLink, useMinuteClock } from '../lib/timer-queries';
+
+const DAY_MS = 86_400_000;
 
 const TILE: Record<CountdownTone, string> = {
 	urgent: 'bg-danger-soft text-danger',
@@ -27,10 +30,12 @@ const TILE: Record<CountdownTone, string> = {
  * 紅色只給 3 天內的考試（DESIGN.md §1 第 5 條），並加上鬧鐘圖示，不只靠顏色；今天截止的截止日用 warning。
  * 「今天」與考試時間都依使用者時區。
  */
-function CountdownTile({ event, today, timeZone }: { event: EventItem; today: string; timeZone: string }) {
-	const days = diffDays(today, event.date);
-	// 只有今天或明天、有時間的才需要每秒更新
-	const now = useNow(!!event.time && days >= 0 && days <= 1);
+function CountdownTile({ event, today, timeZone, clock }: { event: EventItem; today: string; timeZone: string; clock: number }) {
+	// 只有開始前 24 小時內才每 250ms 更新（即時倒數）；其他時候用頁面每 30 秒更新的時鐘
+	const start = eventStartMs(event.date, event.time, timeZone);
+	const live = start !== null && start - clock > 0 && start - clock < DAY_MS;
+	// 停止更新後 tick 會停在最後一次的值，取兩者較新的，倒數結束時才會換成「已開始」
+	const now = Math.max(useNow(live), clock);
 	const s = countdownState(event, today, now, timeZone);
 
 	let value: ReactNode;
@@ -67,12 +72,15 @@ function TextLink({ to, children, label }: { to: string; children: ReactNode; la
 function EventCard({
 	event,
 	today,
+	clock,
 	timeZone,
 	onEdit,
 	onAddTask,
 }: {
 	event: EventItem;
 	today: string;
+	/** 頁面每 30 秒更新的現在時間 */
+	clock: number;
 	timeZone: string;
 	onEdit: () => void;
 	onAddTask: () => void;
@@ -86,7 +94,7 @@ function EventCard({
 	return (
 		<Card as="article" variant={past ? 'plain' : 'default'} className="flex h-full flex-col p-4 sm:p-5">
 			<div className="flex items-start gap-3 sm:gap-4">
-				<CountdownTile event={event} today={today} timeZone={timeZone} />
+				<CountdownTile event={event} today={today} timeZone={timeZone} clock={clock} />
 				<div className="min-w-0 flex-1">
 					<div className="flex items-start justify-between gap-2">
 						<div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-2 pointer-coarse:pt-3">
@@ -149,7 +157,8 @@ type DialogState = { event?: EventItem; subjectId?: string | null } | null;
 export function EventsPage() {
 	const user = useUser();
 	// 每 30 秒更新「今天」：頁面開著跨過午夜時，倒數也會跟著換日（依使用者時區）
-	const today = localDate(useMinuteClock(), user.timezone);
+	const clock = useMinuteClock();
+	const today = localDate(clock, user.timezone);
 	const { data: events, isPending, error } = useEvents();
 	const { data: subjects = [] } = useSubjects();
 	const [subjectId, setSubjectId] = useState<string | null>(null);
@@ -190,6 +199,7 @@ export function EventsPage() {
 			<EventCard
 				event={e}
 				today={today}
+				clock={clock}
 				timeZone={user.timezone}
 				onEdit={() => setDialog({ event: e })}
 				onAddTask={() => setTaskFor(e)}
