@@ -1,161 +1,275 @@
-import { GraduationCap, ListPlus, MapPin, Pencil, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { AlarmClock, Brain, CalendarClock, CalendarDays, ChevronDown, ChevronRight, GraduationCap, ListPlus, MapPin, Pencil, Plus } from 'lucide-react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
+import { Link } from 'react-router';
+import { toast } from 'sonner';
 import type { EventItem } from '../../shared/api-types';
-import { today as todayOf } from '../../shared/dates';
+import { diffDays, localDate } from '../../shared/dates';
+import { PrepProgress } from '../components/dashboard/exams';
+import { useSubjectMark } from '../components/dashboard/hooks';
 import { EventDialog, TaskDialog } from '../components/forms';
-import { SubjectTag } from '../components/subjects';
-import { Badge, Button, Card, EmptyState, ErrorNote, PageHeader, PageLoader, cn } from '../components/ui';
-import { dDay, EVENT_KIND_LABEL, formatDate, relativeDay } from '../lib/format';
-import { useEvents, useUser } from '../lib/queries';
+import { SubjectSelect, SubjectTag } from '../components/subjects';
+import { Badge, Button, Card, cn, Countdown, EmptyState, ErrorNote, NumDisplay, PageHeader, PageLoader } from '../components/ui';
+import { EVENT_KIND_LABEL, formatDate } from '../lib/format';
+import { countdownState, eventsSummary, type CountdownTone } from '../lib/notes-exams';
+import { useEvents, useSubjectMap, useSubjects, useUser } from '../lib/queries';
+import { useNow } from '../lib/timer';
+import { useDeepLink, useMinuteClock } from '../lib/timer-queries';
 
-function EventCard({ event, today, onEdit, onAddTask }: { event: EventItem; today: string; onEdit: () => void; onAddTask: () => void }) {
-	const rel = relativeDay(event.date, today);
-	const past = rel.days < 0;
-	const pct = event.taskTotal ? Math.round((event.taskDone / event.taskTotal) * 100) : 0;
+const TILE: Record<CountdownTone, string> = {
+	urgent: 'bg-danger-soft text-danger',
+	today: 'bg-warning-soft text-warning',
+	normal: 'bg-subtle text-ink',
+	past: 'bg-subtle text-ink-3',
+};
+
+/**
+ * 倒數磚：幾天後（或幾天前）；24 小時內而且有時間的改成即時倒數（h:mm:ss）。
+ * 紅色只給 3 天內的考試（DESIGN.md §1 第 5 條），並加上鬧鐘圖示，不只靠顏色；今天截止的截止日用 warning。
+ * 「今天」與考試時間都依使用者時區。
+ */
+function CountdownTile({ event, today, timeZone }: { event: EventItem; today: string; timeZone: string }) {
+	const days = diffDays(today, event.date);
+	// 只有今天或明天、有時間的才需要每秒更新
+	const now = useNow(!!event.time && days >= 0 && days <= 1);
+	const s = countdownState(event, today, now, timeZone);
+
+	let value: ReactNode;
+	if (s.secondsLeft !== null) value = <Countdown seconds={s.secondsLeft} size="md" />;
+	else if (s.days === 0) value = <span className="text-h2 font-bold">今天</span>;
+	else value = <NumDisplay size="lg">{Math.abs(s.days)}</NumDisplay>;
+
+	const icon = s.tone === 'urgent' ? <AlarmClock aria-hidden /> : s.tone === 'today' ? <CalendarClock aria-hidden /> : null;
 	return (
-		<Card as="article" className={cn('p-4', past && 'opacity-70')}>
-			<div className="flex items-start gap-4">
-				<div
-					className={cn(
-						'flex w-16 shrink-0 flex-col items-center rounded-xl py-2',
-						past
-							? 'bg-subtle text-ink-3'
-							: rel.days <= 3
-								? 'bg-danger-soft text-danger'
-								: rel.days <= 14
-									? 'bg-warning-soft text-warning'
-									: 'bg-accent-soft text-accent-ink',
-					)}
-				>
-					<span className="text-lg leading-tight font-bold">{dDay(event.date, today)}</span>
-					<span className="text-[11px]">{rel.label}</span>
-				</div>
+		<div className={cn('flex w-[5.25rem] shrink-0 flex-col items-center justify-center rounded-lg px-2 py-2.5 text-center', TILE[s.tone])}>
+			{value}
+			<span className={cn('mt-1 inline-flex items-center gap-1 text-meta [&_svg]:size-3.5 [&_svg]:shrink-0', s.tone === 'normal' && 'text-ink-2')}>
+				{icon}
+				{s.label}
+			</span>
+		</div>
+	);
+}
+
+/** 文字連結加 ChevronRight（連結後面不加「→」），觸控裝置 44px 高 */
+function TextLink({ to, children, label }: { to: string; children: ReactNode; label?: string }) {
+	return (
+		<Link
+			to={to}
+			aria-label={label}
+			className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-sm text-sm font-semibold text-accent-ink hover:underline pointer-fine:min-h-9 [&_svg]:size-4 [&_svg]:shrink-0"
+		>
+			{children}
+			<ChevronRight aria-hidden />
+		</Link>
+	);
+}
+
+function EventCard({
+	event,
+	today,
+	timeZone,
+	onEdit,
+	onAddTask,
+}: {
+	event: EventItem;
+	today: string;
+	timeZone: string;
+	onEdit: () => void;
+	onAddTask: () => void;
+}) {
+	const markOf = useSubjectMark();
+	const subjects = useSubjectMap();
+	const past = event.date < today;
+	const subject = event.subjectId ? subjects.get(event.subjectId) : undefined;
+	const sameYear = event.date.slice(0, 4) === today.slice(0, 4);
+
+	return (
+		<Card as="article" variant={past ? 'plain' : 'default'} className="flex h-full flex-col p-4 sm:p-5">
+			<div className="flex items-start gap-3 sm:gap-4">
+				<CountdownTile event={event} today={today} timeZone={timeZone} />
 				<div className="min-w-0 flex-1">
-					<div className="flex flex-wrap items-center gap-2">
-						<Badge tone={event.kind === 'exam' ? 'accent' : 'neutral'}>{EVENT_KIND_LABEL[event.kind]}</Badge>
-						<SubjectTag subjectId={event.subjectId} />
+					<div className="flex items-start justify-between gap-2">
+						<div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-2 pointer-coarse:pt-3">
+							<Badge icon={event.kind === 'exam' ? <GraduationCap aria-hidden /> : <CalendarClock aria-hidden />}>{EVENT_KIND_LABEL[event.kind]}</Badge>
+							<SubjectTag subjectId={event.subjectId} />
+						</div>
+						<Button size="icon" variant="ghost" onClick={onEdit} aria-label={`編輯「${event.title}」`} className="-mt-0.5 -mr-2 shrink-0">
+							<Pencil className="size-4" aria-hidden />
+						</Button>
 					</div>
-					<h3 className="mt-1 text-[16px] font-semibold break-words">{event.title}</h3>
-					<div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-ink-2">
-						<span>
-							{formatDate(event.date, true)} {event.time}
+					<h3 className="mt-1 text-h3 font-semibold break-words">{event.title}</h3>
+					<div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-meta text-ink-2">
+						<span className="inline-flex items-center gap-1">
+							<CalendarDays className="size-3.5 shrink-0 text-ink-3" aria-hidden />
+							<time dateTime={event.time ? `${event.date}T${event.time}` : event.date} className="font-num tabular-nums">
+								{formatDate(event.date, !sameYear)}
+								{event.time && ` ${event.time}`}
+							</time>
 						</span>
 						{event.location && (
-							<span className="inline-flex items-center gap-1">
-								<MapPin className="size-3.5" aria-hidden />
-								{event.location}
+							<span className="inline-flex min-w-0 items-center gap-1">
+								<MapPin className="size-3.5 shrink-0 text-ink-3" aria-hidden />
+								<span className="break-words">{event.location}</span>
 							</span>
 						)}
 					</div>
-					{event.notes && <p className="mt-2 text-sm whitespace-pre-wrap text-ink-2">{event.notes}</p>}
-					{event.taskTotal > 0 && (
-						<div className="mt-3">
-							<div className="mb-1 flex justify-between text-xs text-ink-2">
-								<span>準備進度</span>
-								<span className="tabular-nums">
-									{event.taskDone}/{event.taskTotal} 項任務・{pct}%
-								</span>
-							</div>
-							<div
-								className="h-2 overflow-hidden rounded-full bg-subtle"
-								role="progressbar"
-								aria-valuenow={pct}
-								aria-valuemin={0}
-								aria-valuemax={100}
-							>
-								<div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
-							</div>
-						</div>
-					)}
-				</div>
-				<div className="flex shrink-0 flex-col gap-1">
-					<Button size="icon" variant="ghost" onClick={onEdit} aria-label="編輯">
-						<Pencil className="size-4" />
-					</Button>
-					{!past && (
-						<Button size="icon" variant="ghost" onClick={onAddTask} aria-label="新增準備任務">
-							<ListPlus className="size-4" />
-						</Button>
-					)}
 				</div>
 			</div>
+			{event.notes && <p className="mt-3 line-clamp-3 text-meta break-words whitespace-pre-wrap text-ink-2">{event.notes}</p>}
+
+			{past ? (
+				event.taskTotal > 0 && <PrepProgress event={event} color={markOf(event.subjectId)} size="sm" className="mt-4" />
+			) : (
+				<div className="mt-auto pt-4">
+					{event.taskTotal > 0 ? (
+						<PrepProgress event={event} color={markOf(event.subjectId)} />
+					) : (
+						<p className="text-meta text-ink-3">還沒有準備任務</p>
+					)}
+					<div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-2">
+						<Button size="sm" variant="ghost" className="-ml-2" onClick={onAddTask}>
+							<ListPlus className="size-4" aria-hidden />
+							新增準備任務
+						</Button>
+						{subject && (
+							<TextLink to={`/notes?view=review&mode=cram&subject=${subject.id}`} label={`複習「${subject.name}」的錯題`}>
+								<Brain aria-hidden />
+								複習這科錯題
+							</TextLink>
+						)}
+					</div>
+				</div>
+			)}
 		</Card>
 	);
 }
 
+type DialogState = { event?: EventItem; subjectId?: string | null } | null;
+
 export function EventsPage() {
 	const user = useUser();
-	const today = todayOf(user.timezone);
+	// 每 30 秒更新「今天」：頁面開著跨過午夜時，倒數也會跟著換日（依使用者時區）
+	const today = localDate(useMinuteClock(), user.timezone);
 	const { data: events, isPending, error } = useEvents();
-	const [dialog, setDialog] = useState<{ event?: EventItem } | null>(null);
+	const { data: subjects = [] } = useSubjects();
+	const [subjectId, setSubjectId] = useState<string | null>(null);
+	const [dialog, setDialog] = useState<DialogState>(null);
 	const [taskFor, setTaskFor] = useState<EventItem | null>(null);
 	const [showPast, setShowPast] = useState(false);
+	const pastId = useId();
 
-	const upcoming = (events ?? []).filter((e) => e.date >= today);
-	const past = (events ?? []).filter((e) => e.date < today).reverse();
+	// 深連結：?new=1 新增考試、?open=<id> 開啟該考試；處理後由 useDeepLink 用 replace 清掉
+	const link = useDeepLink(['new', 'open']);
+	const [seenLink, setSeenLink] = useState(0);
+	const [pendingOpen, setPendingOpen] = useState<string | null>(null);
+	const [missing, setMissing] = useState(0);
+	if (link.seq !== seenLink) {
+		setSeenLink(link.seq);
+		if (link.values.new === '1') setDialog({ subjectId });
+		if (link.values.open) setPendingOpen(link.values.open);
+	}
+	if (pendingOpen && events) {
+		const hit = events.find((e) => e.id === pendingOpen);
+		setPendingOpen(null);
+		if (hit) {
+			setDialog({ event: hit });
+			if (hit.date < today) setShowPast(true);
+		} else setMissing((m) => m + 1);
+	}
+	useEffect(() => {
+		if (missing) toast.error('找不到這場考試，可能已經刪除了');
+	}, [missing]);
+
+	const visible = (events ?? []).filter((e) => !subjectId || e.subjectId === subjectId);
+	const upcoming = visible.filter((e) => e.date >= today);
+	const past = visible.filter((e) => e.date < today).reverse();
+	const subjectName = subjectId ? subjects.find((s) => s.id === subjectId)?.name : undefined;
+
+	const card = (e: EventItem) => (
+		<li key={e.id} className="min-w-0">
+			<EventCard
+				event={e}
+				today={today}
+				timeZone={user.timezone}
+				onEdit={() => setDialog({ event: e })}
+				onAddTask={() => setTaskFor(e)}
+			/>
+		</li>
+	);
 
 	return (
 		<div>
 			<PageHeader
 				title="考試與截止日"
-				description="倒數計時，並追蹤每場考試的準備進度"
+				description={events ? eventsSummary(upcoming, today) : undefined}
 				actions={
-					<Button variant="primary" onClick={() => setDialog({})}>
+					<Button variant="primary" onClick={() => setDialog({ subjectId })}>
 						<Plus className="size-4" aria-hidden />
-						新增
+						新增考試
 					</Button>
 				}
 			/>
+			{subjects.length > 0 && (
+				<div className="mb-5 flex flex-wrap items-center gap-2">
+					<div className="w-40">
+						<SubjectSelect aria-label="科目" value={subjectId} onChange={setSubjectId} emptyLabel="所有科目" />
+					</div>
+				</div>
+			)}
+
 			{isPending ? (
 				<PageLoader />
 			) : error ? (
 				<ErrorNote error={error} />
 			) : (
 				<>
-					{upcoming.length === 0 ? (
-						<Card>
-							<EmptyState
-								icon={<GraduationCap />}
-								title="沒有即將到來的考試或截止日"
-								description="新增考試日期後，可以替它建立準備任務，隨時掌握進度。"
-								action={
-									<Button size="sm" onClick={() => setDialog({})}>
-										<Plus className="size-4" aria-hidden />
-										新增考試
-									</Button>
-								}
-							/>
-						</Card>
-					) : (
-						<div className="grid gap-3 lg:grid-cols-2">
-							{upcoming.map((e) => (
-								<EventCard key={e.id} event={e} today={today} onEdit={() => setDialog({ event: e })} onAddTask={() => setTaskFor(e)} />
-							))}
-						</div>
-					)}
+					<section>
+						<h2 className="sr-only">即將到來</h2>
+						{upcoming.length === 0 ? (
+							<Card>
+								<EmptyState
+									icon={<GraduationCap />}
+									title={subjectName ? `「${subjectName}」沒有即將到來的考試或截止日` : '沒有即將到來的考試或截止日'}
+									description="新增考試日期後，可以替它列出準備任務，隨時掌握進度。"
+									action={
+										<Button variant="primary" onClick={() => setDialog({ subjectId })}>
+											<Plus className="size-4" aria-hidden />
+											{subjectName ? '新增這科的考試' : '新增考試'}
+										</Button>
+									}
+								/>
+							</Card>
+						) : (
+							<ul className="grid gap-3 sm:gap-4 lg:grid-cols-2">{upcoming.map(card)}</ul>
+						)}
+					</section>
 
 					{past.length > 0 && (
-						<div className="mt-8">
-							<button
-								className="mb-3 text-sm font-medium text-ink-2 hover:text-ink"
-								onClick={() => setShowPast((v) => !v)}
-								aria-expanded={showPast}
-							>
-								{showPast ? '▾' : '▸'} 已結束（{past.length}）
-							</button>
-							{showPast && (
-								<div className="grid gap-3 lg:grid-cols-2">
-									{past.map((e) => (
-										<EventCard key={e.id} event={e} today={today} onEdit={() => setDialog({ event: e })} onAddTask={() => {}} />
-									))}
-								</div>
-							)}
-						</div>
+						<section className="mt-8">
+							<h2>
+								<Button variant="ghost" className="-ml-3" onClick={() => setShowPast((v) => !v)} aria-expanded={showPast} aria-controls={pastId}>
+									<ChevronDown
+										className={cn('size-4 transition-transform duration-180 ease-out motion-reduce:transition-none', !showPast && '-rotate-90')}
+										aria-hidden
+									/>
+									已結束
+									<span className="font-num text-ink-3 tabular-nums">{past.length}</span>
+								</Button>
+							</h2>
+							<ul id={pastId} hidden={!showPast} className="mt-3 grid gap-3 sm:gap-4 lg:grid-cols-2">
+								{showPast && past.map(card)}
+							</ul>
+						</section>
 					)}
 				</>
 			)}
 
-			<EventDialog open={!!dialog} event={dialog?.event} onClose={() => setDialog(null)} />
+			<EventDialog
+				open={!!dialog}
+				event={dialog?.event}
+				defaults={dialog?.event ? undefined : { subjectId: dialog?.subjectId ?? null }}
+				onClose={() => setDialog(null)}
+			/>
 			<TaskDialog
 				open={!!taskFor}
 				defaults={{ eventId: taskFor?.id, subjectId: taskFor?.subjectId, dueDate: taskFor?.date }}
