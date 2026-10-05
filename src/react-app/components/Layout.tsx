@@ -119,9 +119,11 @@ function useAchievementToasts() {
 function CountBadge({ badge, solid }: { badge: NavBadge; solid?: boolean }) {
 	return (
 		<span
+			// 數字改變時重新掛載，播一次 pop-in（reduced motion 時只淡入），讓「完成一項，數字減一」看得到
+			key={badge.count}
 			aria-hidden
 			className={cn(
-				'inline-flex h-5 min-w-5 animate-fade-in items-center justify-center rounded-full px-1.5 font-num text-caption leading-none font-semibold tabular-nums',
+				'inline-flex h-5 min-w-5 animate-pop-in items-center justify-center rounded-full px-1.5 font-num text-caption leading-none font-semibold tabular-nums',
 				solid
 					? cn('text-on-accent ring-2 ring-card', badge.tone === 'danger' ? 'bg-danger' : 'bg-warning')
 					: badge.tone === 'danger'
@@ -203,7 +205,10 @@ function TabItem({
 }
 
 const tabClass = (active: boolean) =>
-	cn('flex h-16 w-full flex-col items-center justify-center gap-1 text-xs', active ? 'font-semibold text-ink' : 'text-ink-2');
+	cn(
+		'flex h-16 w-full flex-col items-center justify-center gap-1 text-xs transition-colors duration-180 ease-out',
+		active ? 'font-semibold text-ink' : 'text-ink-2',
+	);
 
 export function Layout() {
 	useTimerEngine();

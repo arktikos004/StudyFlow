@@ -758,6 +758,12 @@
 	color: var(--on-accent);
 	font-size: 0.875rem;
 	font-weight: 600;
+	transition: background-color var(--dur-press) var(--ease-out);
+}
+@media (hover: hover) {
+	:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-button]:hover {
+		background: var(--accent-hover);
+	}
 }
 @media (pointer: coarse) {
 	:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-button]::after {
