@@ -8,10 +8,25 @@ export const TASK_STATUS_ORDER: readonly TaskStatus[] = ['todo', 'doing', 'done'
 
 // ---- 搜尋 ----
 
+/**
+ * 不分大小寫比對用：逐個 code point 轉小寫。
+ * 不用整串 toLowerCase()：那樣少數字元（例如 İ → i̇、字尾的 Σ）的結果會和逐字轉換不同，
+ * 說明片段就沒辦法把比對到的位置對回原字串。搜尋、比對、片段都用這個函式，結果才一致。
+ */
+export function foldCase(s: string): string {
+	return Array.from(s, (c) => c.toLowerCase()).join('');
+}
+
+const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+
+/** 字串切成使用者看到的「字」（grapheme：emoji、組合字不會被切開）；不支援 Intl.Segmenter 時退回 code point */
+function graphemes(s: string): string[] {
+	return segmenter ? Array.from(segmenter.segment(s), (x) => x.segment) : Array.from(s);
+}
+
 /** 搜尋字串拆成關鍵字（以空白分隔、不分大小寫）；空字串回傳空陣列 */
 export function searchTerms(q: string): string[] {
-	return q
-		.toLowerCase()
+	return foldCase(q)
 		.split(/\s+/)
 		.filter((t) => t.length > 0);
 }
@@ -19,8 +34,8 @@ export function searchTerms(q: string): string[] {
 /** 每個關鍵字都要出現在標題或說明裡（AND）；沒有關鍵字時全部符合 */
 export function matchesTerms(task: Pick<Task, 'title' | 'description'>, terms: readonly string[]): boolean {
 	if (!terms.length) return true;
-	const title = task.title.toLowerCase();
-	const description = (task.description ?? '').toLowerCase();
+	const title = foldCase(task.title);
+	const description = foldCase(task.description ?? '');
 	return terms.every((t) => title.includes(t) || description.includes(t));
 }
 
@@ -32,6 +47,7 @@ export function filterTasks<T extends Pick<Task, 'title' | 'description'>>(tasks
 /**
  * 說明裡符合關鍵字的片段（標題已經包含全部關鍵字時回傳 null，不必再顯示說明）。
  * 從第一個符合的位置往前留 before 個字，總長最多 length 個字；有截斷的一側加「…」。
+ * 字數以使用者看到的字（grapheme）計算：emoji、組合字不會被切成半個（不會出現孤立的 surrogate）。
  */
 export function descriptionSnippet(
 	task: Pick<Task, 'title' | 'description'>,
@@ -41,14 +57,23 @@ export function descriptionSnippet(
 ): string | null {
 	const description = task.description?.replace(/\s+/g, ' ').trim();
 	if (!description || !terms.length) return null;
-	const title = task.title.toLowerCase();
+	const title = foldCase(task.title);
 	if (terms.every((t) => title.includes(t))) return null;
-	const lower = description.toLowerCase();
-	const hits = terms.map((t) => lower.indexOf(t)).filter((i) => i >= 0);
+	// 逐字轉小寫並記下每個位置屬於第幾個字，比對到的位置才對得回原字串
+	const chars = graphemes(description);
+	let folded = '';
+	const charAt: number[] = [];
+	chars.forEach((ch, i) => {
+		const f = foldCase(ch);
+		folded += f;
+		for (let k = 0; k < f.length; k++) charAt.push(i);
+	});
+	const hits = terms.map((t) => folded.indexOf(t)).filter((i) => i >= 0);
 	if (!hits.length) return null;
-	const start = Math.max(0, Math.min(...hits) - before);
-	const end = Math.min(description.length, start + length);
-	return `${start > 0 ? '…' : ''}${description.slice(start, end)}${end < description.length ? '…' : ''}`;
+	const first = charAt[Math.min(...hits)];
+	const start = Math.max(0, first - before);
+	const end = Math.min(chars.length, start + length);
+	return `${start > 0 ? '…' : ''}${chars.slice(start, end).join('')}${end < chars.length ? '…' : ''}`;
 }
 
 // ---- 排序 ----
