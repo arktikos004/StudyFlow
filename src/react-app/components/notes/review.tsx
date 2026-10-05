@@ -1,6 +1,8 @@
-import { Brain, Check, CircleCheck, Eye, Plus, Repeat, RotateCcw, Shuffle, Sparkles, X, Zap } from 'lucide-react';
+import { Brain, Check, CircleAlert, CircleCheck, Eye, Plus, Repeat, RotateCcw, RotateCw, Shuffle, SkipForward, Sparkles, X, Zap } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
 import type { NoteItem } from '../../../shared/api-types';
+import { ApiError } from '../../lib/api';
 import { cramPool, cramQueue, cramTags, retryQueue, tally, type ReviewResult } from '../../lib/notes-cram';
 import { useNotes, useReviewNote, useSubjectMap } from '../../lib/queries';
 import { SubjectSelect, SubjectTag } from '../subjects';
@@ -32,7 +34,8 @@ function ModeSwitch({ value, onChange }: { value: ReviewMode; onChange: (m: Revi
 /**
  * 一次一題：先看題目、想好再「顯示答案」，然後選「還不熟」或「記住了」。
  * 焦點：顯示答案後移到答案區，換下一題時移到題目標題（按鈕會換掉，焦點不能掉到 body）。
- * record 回傳 Promise：今天到期模式送出後才換題，失敗時留在這一題（錯誤訊息由 toast 顯示）。
+ * record 回傳 Promise：今天到期模式送出後才換題。失敗時留在這一題，顯示原因與「跳過這題」；
+ * 題目在別處被刪除（404）時自動略過。
  */
 function ReviewRunner({
 	queue: initialQueue,
@@ -59,6 +62,7 @@ function ReviewRunner({
 	const [revealed, setRevealed] = useState(false);
 	const [results, setResults] = useState<Results>({});
 	const [saving, setSaving] = useState<ReviewResult | null>(null);
+	const [failure, setFailure] = useState<string | null>(null);
 	const headingRef = useRef<HTMLHeadingElement>(null);
 	const answerRef = useRef<HTMLDivElement>(null);
 	const focusNext = useRef<'heading' | 'answer' | null>(autoFocus ? 'heading' : null);
@@ -79,25 +83,35 @@ function ReviewRunner({
 		setRevealed(true);
 	};
 
+	/** 換下一題（或結束）；略過時 next 就是原本的結果 */
+	const advance = (next: Results) => {
+		setFailure(null);
+		setResults(next);
+		if (index + 1 >= queue.length) return onDone(next, queue);
+		focusNext.current = 'heading';
+		setRevealed(false);
+		setIndex(index + 1);
+	};
+
 	const answer = async (result: ReviewResult) => {
 		if (saving) return;
 		if (record) {
 			setSaving(result);
 			try {
 				await record(note, result);
-			} catch {
+			} catch (e) {
+				if (e instanceof ApiError && e.status === 404) {
+					toast.info('這題已經被刪除，先跳過');
+					return advance(results);
+				}
+				setFailure(e instanceof Error ? e.message : '請稍後再試');
 				answerRef.current?.focus();
 				return;
 			} finally {
 				setSaving(null);
 			}
 		}
-		const next = { ...results, [note.id]: result };
-		setResults(next);
-		if (index + 1 >= queue.length) return onDone(next, queue);
-		focusNext.current = 'heading';
-		setRevealed(false);
-		setIndex(index + 1);
+		advance({ ...results, [note.id]: result });
 	};
 
 	return (
@@ -154,6 +168,19 @@ function ReviewRunner({
 					</p>
 				)}
 			</Card>
+
+			{failure && (
+				<div role="alert" className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-danger-soft py-2 pr-2 pl-4 text-sm text-danger">
+					<span className="inline-flex min-w-0 items-start gap-1.5 py-1">
+						<CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+						這題沒有記錄成功（{failure}），可以再選一次，或先跳過
+					</span>
+					<Button size="sm" variant="ghost" className="text-danger hover:text-danger" onClick={() => advance(results)}>
+						<SkipForward className="size-4" aria-hidden />
+						跳過這題
+					</Button>
+				</div>
+			)}
 
 			{/* 手機：貼在底部導覽上方（64px + 1px 邊框 + safe area），實心底蓋住捲到後面的內容 */}
 			<div className="sticky bottom-[calc(4rem+1px+env(safe-area-inset-bottom))] z-10 -mx-4 mt-1 flex gap-3 bg-page px-4 py-3 md:bottom-0 md:mx-0 md:px-0 md:py-4">
@@ -272,9 +299,28 @@ function DueReview({
 	onOpenNote: (id: string) => void;
 	onBack: () => void;
 }) {
-	const { data, isPending, error, isPlaceholderData } = useNotes({ review: 'due', ...(subjectId ? { subjectId } : {}) });
+	const { data, error, isFetching, isFetchedAfterMount, isPlaceholderData, refetch } = useNotes({
+		review: 'due',
+		...(subjectId ? { subjectId } : {}),
+	});
 	const review = useReviewNote();
+	const [queue, setQueue] = useState<NoteItem[] | null>(null);
 	const [done, setDone] = useState<{ queue: NoteItem[]; results: Results } | null>(null);
+
+	// 換科目：重新開始
+	const [seenSubject, setSeenSubject] = useState(subjectId);
+	if (seenSubject !== subjectId) {
+		setSeenSubject(subjectId);
+		setQueue(null);
+		setDone(null);
+	}
+
+	// 進入（或換科目）時一定重新取得一次：快取可能是舊的，已掌握或不再到期的題目不能再問，
+	// 作答也會再推進一次排程。取得完成後才固定題目，之後作答造成的重新取得都不影響進行中的複習。
+	useEffect(() => {
+		void refetch({ cancelRefetch: false });
+	}, [subjectId, refetch]);
+	if (queue === null && data && isFetchedAfterMount && !isFetching && !isPlaceholderData && !error) setQueue(data);
 
 	let body: ReactNode;
 	if (done)
@@ -298,9 +344,7 @@ function DueReview({
 				}
 			/>
 		);
-	else if (isPending || isPlaceholderData) body = <PageLoader />;
-	else if (error) body = <ErrorNote error={error} />;
-	else if (data.length === 0)
+	else if (queue && queue.length === 0)
 		body = (
 			<Card>
 				<EmptyState
@@ -316,21 +360,33 @@ function DueReview({
 				/>
 			</Card>
 		);
-	else
+	else if (queue)
+		// 已經開始：之後的重新取得（包括失敗）都不影響進行中的複習
 		body = (
 			<ReviewRunner
 				key={subjectId ?? 'all'}
-				queue={data}
+				queue={queue}
 				title="作答後會排定下次複習的日期"
 				meta={(n) => <span className="text-meta text-ink-3">第 {n.reviewStage + 1} 輪</span>}
 				record={async (n, result) => {
 					await review.mutateAsync({ id: n.id, result });
 				}}
-				onDone={(results, queue) => setDone({ queue, results })}
+				onDone={(results, q) => setDone({ queue: q, results })}
 				onExit={onBack}
 				exitLabel="結束複習"
 			/>
 		);
+	else if (error && !isFetching)
+		body = (
+			<div className="space-y-3">
+				<ErrorNote error={error} />
+				<Button onClick={() => refetch()}>
+					<RotateCw className="size-4" aria-hidden />
+					重新載入
+				</Button>
+			</div>
+		);
+	else body = <PageLoader />;
 
 	return (
 		<>
