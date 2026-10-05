@@ -430,9 +430,11 @@
 - **只加 `data-accent` 的元素不會重算 heat-***：熱度圖色階跟著 `<html>` 的主題色。
 - **熱度圖最淺一階**：heat-1 對 card 約 1.3:1。依 dataviz 對 sequential 色階的規則（最淺一階代表接近 0，可以貼近表面）保留，並以表格檢視、格子的 title 提示與 `role="img"` 摘要補足。
 - **墨綠主題色與 success 相近**（ΔE 7.7／9.2）：計時環的專注（accent）與休息（success）靠文字標籤區分。
-- **待評估（Sprint 2）**：是否放寬深色的 DARK_BAND（見 §3）。
+- **待評估（延到 Sprint 3）**：是否放寬深色的 DARK_BAND（見 §3），Sprint 2 沒有 lane 負責 `src/shared/color.ts`。
 - **第三方與頁面層**：sonner 的關閉鈕只有 20px（套件內建；toast 會自動消失，也能滑掉）；toast 的動作鈕（例如「查看」）在觸控裝置用 `::after` 擴大到約 44px。PWA 啟動畫面（manifest `background_color`）只有淺色。頁面裡的 emoji、「・」、「→」、一排 `StatTile` 等舊寫法留給各頁 lane（UI-2）。
 - **品牌標誌**：站內的 `LogoMark` 跟著主題色與深淺色（`--logo-*`）；PWA 圖示與 favicon（`public/logo.svg`）是固定的藍筆版，換主題色不會變。
 - **成就 toast**：已看過的紀錄存在各瀏覽器的 localStorage，換裝置或清除網站資料後，第一次載入會把當時已解鎖的視為「已看過」而不跳 toast；徽章被收回後再解鎖也不會再跳（成就頁仍顯示目前的真實狀態）。同時開兩個分頁時，兩邊可能各跳一次。
 - **指令面板的「開始專注」**只前往計時頁，不會自動開始計時（避免誤觸就開始記錄）。
+- **指令面板的深連結**：`?open=<id>`、`?new=1`、`?new=mistake` 由各頁實作（任務頁 s2/tasks、考試與筆記頁 s2/notes、設定頁已支援）；還沒合併前，選了搜尋結果只會前往該頁、不會自動開啟項目。
+- **SubjectTag icon 版的第一個字**：目前 16px 字重 600，6／48（淺色）、8／48（深色）的科目色上對比低於 4.5:1（最低 4.24），修正方式見 §7；`components/subjects.tsx` 不屬於 s2/shell，留給 Sprint 3。
 - **Field 舊寫法的自動 aria**：只補在 children 回傳的那個元素上；自訂元件（例如 `SubjectSelect`）沒有把 aria 屬性傳給內部欄位時不會生效，Sprint 2 請改成 `(id, aria)` 並往下傳。
