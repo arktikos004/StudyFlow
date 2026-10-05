@@ -59,6 +59,11 @@
 	--dur-sheet: 320ms;
 	--dur-moment: 600ms;
 
+	/* 品牌標誌（Logo.tsx）：淺色是主題色的底、紙色的 S；螢光筆黃只用在標誌裡 */
+	--logo-tile: var(--accent);
+	--logo-ink: var(--card);
+	--logo-mark: #ffd84a;
+
 	/* Sprint 1 相容：舊 token 名稱保留為別名 */
 	--chart-grid: var(--line);
 	--chart-axis: var(--line-strong);
@@ -102,6 +107,11 @@
 	--elevation-sm: 0 1px 0 rgb(0 0 0 / 0.35);
 	--elevation-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 20px -6px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.04);
 	--elevation-lg: 0 2px 8px rgb(0 0 0 / 0.5), 0 28px 56px -12px rgb(0 0 0 / 0.7);
+
+	/* 深色反過來：紙色的底、深藍（accent-soft）的 S */
+	--logo-tile: var(--ink);
+	--logo-ink: var(--accent-soft);
+	--logo-mark: #ffcf33;
 }
 
 /*
