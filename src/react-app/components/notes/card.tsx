@@ -68,7 +68,7 @@ export function NoteCard({
 					<button
 						type="button"
 						onClick={onOpen}
-						className="block w-full text-left after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
+						className="block w-full text-left after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:outline-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
 					>
 						<span className="line-clamp-2">
 							<Highlight text={note.title} query={terms} />

@@ -153,7 +153,8 @@ function ReviewRunner({
 				)}
 			</Card>
 
-			<div className="sticky bottom-20 z-10 mt-4 flex gap-3 md:bottom-4">
+			{/* 手機：貼在底部導覽上方（64px + 1px 邊框 + safe area），實心底蓋住捲到後面的內容 */}
+			<div className="sticky bottom-[calc(4rem+1px+env(safe-area-inset-bottom))] z-10 -mx-4 mt-1 flex gap-3 bg-page px-4 py-3 md:bottom-0 md:mx-0 md:px-0 md:py-4">
 				{!revealed ? (
 					<Button variant="primary" size="lg" className="flex-1" onClick={reveal}>
 						<Eye className="size-5" aria-hidden />
@@ -318,7 +319,7 @@ function DueReview({
 			<ReviewRunner
 				key={subjectId ?? 'all'}
 				queue={data}
-				title="今天到期的複習，作答會調整下次複習的日期"
+				title="作答後會排定下次複習的日期"
 				meta={(n) => <span className="text-meta text-ink-3">第 {n.reviewStage + 1} 輪</span>}
 				record={async (n, result) => {
 					await review.mutateAsync({ id: n.id, result });
@@ -566,7 +567,7 @@ export function ReviewView({
 }) {
 	const onMode = (m: ReviewMode) => onParams({ mode: m });
 	return (
-		<div className="mx-auto max-w-2xl">
+		<div className="max-w-2xl">
 			{mode === 'cram' ? (
 				<CramReview
 					subjectId={subjectId}
