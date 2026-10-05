@@ -35,7 +35,7 @@ function ModeSwitch({ value, onChange }: { value: ReviewMode; onChange: (m: Revi
  * record 回傳 Promise：今天到期模式送出後才換題，失敗時留在這一題（錯誤訊息由 toast 顯示）。
  */
 function ReviewRunner({
-	queue,
+	queue: initialQueue,
 	title,
 	meta,
 	record,
@@ -49,10 +49,12 @@ function ReviewRunner({
 	meta?: (note: NoteItem) => ReactNode;
 	record?: (note: NoteItem, result: ReviewResult) => Promise<void>;
 	autoFocus?: boolean;
-	onDone: (results: Results) => void;
-	onExit: (results: Results) => void;
+	onDone: (results: Results, queue: NoteItem[]) => void;
+	onExit: (results: Results, queue: NoteItem[]) => void;
 	exitLabel: string;
 }) {
+	// 開始時固定題目：今天到期的清單在每次作答後會重新取得（答過的不再到期），不能跟著縮短，否則會跳題
+	const [queue] = useState(initialQueue);
 	const [index, setIndex] = useState(0);
 	const [revealed, setRevealed] = useState(false);
 	const [results, setResults] = useState<Results>({});
@@ -92,7 +94,7 @@ function ReviewRunner({
 		}
 		const next = { ...results, [note.id]: result };
 		setResults(next);
-		if (index + 1 >= queue.length) return onDone(next);
+		if (index + 1 >= queue.length) return onDone(next, queue);
 		focusNext.current = 'heading';
 		setRevealed(false);
 		setIndex(index + 1);
@@ -104,7 +106,7 @@ function ReviewRunner({
 				<p className="min-w-0 truncate text-meta text-ink-2" title={title}>
 					{title}
 				</p>
-				<Button size="sm" variant="ghost" className="-mr-2" onClick={() => onExit(results)}>
+				<Button size="sm" variant="ghost" className="-mr-2" onClick={() => onExit(results, queue)}>
 					<X className="size-4" aria-hidden />
 					{exitLabel}
 				</Button>
@@ -324,7 +326,7 @@ function DueReview({
 				record={async (n, result) => {
 					await review.mutateAsync({ id: n.id, result });
 				}}
-				onDone={(results) => setDone({ queue: data, results })}
+				onDone={(results, queue) => setDone({ queue, results })}
 				onExit={onBack}
 				exitLabel="結束複習"
 			/>
