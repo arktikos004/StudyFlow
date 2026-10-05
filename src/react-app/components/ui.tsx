@@ -1,8 +1,9 @@
 import clsx, { type ClassValue } from 'clsx';
-import { Check, ChevronDown, CircleAlert, CircleCheck, Loader2, Minus, X } from 'lucide-react';
+import { ChartColumn, Check, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Loader2, Minus, Table2, X } from 'lucide-react';
 import {
 	cloneElement,
 	forwardRef,
+	Fragment,
 	isValidElement,
 	useCallback,
 	useEffect,
@@ -18,6 +19,7 @@ import {
 	type SelectHTMLAttributes,
 	type TextareaHTMLAttributes,
 } from 'react';
+import { Link, type LinkProps } from 'react-router';
 import { formatDuration } from '../lib/format';
 
 export const cn = (...args: ClassValue[]) => clsx(args);
@@ -60,6 +62,53 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 	);
 });
 
+/**
+ * 看起來像按鈕的導覽連結（語意是 <a>：可以用新分頁開啟、中鍵點擊）。外觀、尺寸、按下回饋與 Button 相同。
+ * 會「前往另一頁」的動作用 ButtonLink；在原地執行的動作（儲存、刪除、開對話框）用 Button。
+ */
+export const ButtonLink = forwardRef<HTMLAnchorElement, LinkProps & { variant?: ButtonVariant; size?: ButtonSize }>(function ButtonLink(
+	{ variant = 'secondary', size = 'md', className, ...props },
+	ref,
+) {
+	return <Link ref={ref} className={cn('sf-btn', `sf-btn-${variant}`, size !== 'md' && `sf-btn-${size}`, className)} {...props} />;
+});
+
+/**
+ * 文字連結＋ChevronRight（連結後面不加「→」）：accent-ink、14px、600。
+ * min-h-11 撐出 44px 的點擊高度（會佔版面）；放在卡片標題列的請改用 MoreLink。
+ */
+export function TextLink({ children, className, ...props }: LinkProps) {
+	return (
+		<Link
+			className={cn('inline-flex min-h-11 shrink-0 items-center gap-0.5 text-sm font-semibold text-accent-ink hover:underline', className)}
+			{...props}
+		>
+			{children}
+			<ChevronRight className="size-4 shrink-0" aria-hidden />
+		</Link>
+	);
+}
+
+/**
+ * CardHeader 右側的「查看全部」連結：文字加 ChevronRight，14px、400。
+ * 外觀不佔額外高度，點擊範圍用 ::after 擴大到 44px：往上 16px、往下 8px
+ * （CardHeader 下方只有 pb-2，往下擴大太多會蓋到卡片第一列的按鈕）。
+ */
+export function MoreLink({ children, className, ...props }: LinkProps) {
+	return (
+		<Link
+			className={cn(
+				"relative inline-flex shrink-0 items-center gap-0.5 rounded-sm text-sm whitespace-nowrap text-accent-ink after:absolute after:-inset-x-1 after:-top-4 after:-bottom-2 after:content-[''] hover:underline",
+				className,
+			)}
+			{...props}
+		>
+			{children}
+			<ChevronRight className="size-4 shrink-0" aria-hidden />
+		</Link>
+	);
+}
+
 // ---- 表單元件 ----
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...props }, ref) {
@@ -86,10 +135,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
 /** Field 傳給欄位的無障礙屬性：提示或錯誤訊息的 id，以及錯誤狀態 */
 export type FieldAria = { 'aria-describedby'?: string; 'aria-invalid'?: true };
 
+/** Field 的版型：stacked（預設）標籤在上、欄位在下；inline 標籤與提示在左、欄位在右（設定列、短數字欄位） */
+export type FieldLayout = 'stacked' | 'inline';
+
 /**
  * 標籤 + 欄位 + 提示／錯誤。
  * children 可以是 `(id, aria) => <Input id={id} {...aria} />`（建議），或舊寫法 `(id) => <Input id={id} />`：
  * 舊寫法會自動把 aria 屬性補到回傳的元素上（元素本身已指定的不覆蓋）。
+ * layout="inline"：標籤與提示／錯誤在左欄、欄位在右欄並垂直置中；右欄寬度由欄位決定，請給欄位寬度（例如 `className="w-24"`）。
  */
 export function Field({
 	label,
@@ -97,12 +150,14 @@ export function Field({
 	error,
 	children,
 	className,
+	layout = 'stacked',
 }: {
 	label: ReactNode;
 	hint?: ReactNode;
 	error?: ReactNode;
 	children: (id: string, aria: FieldAria) => ReactNode;
 	className?: string;
+	layout?: FieldLayout;
 }) {
 	const id = useId();
 	const noteId = `${id}-note`;
@@ -114,24 +169,38 @@ export function Field({
 		const props = control.props;
 		control = cloneElement(control, Object.fromEntries(Object.entries(aria).filter(([k]) => props[k] === undefined)));
 	}
+	const labelEl = (
+		<label htmlFor={id} className="text-sm font-semibold text-ink-2">
+			{label}
+		</label>
+	);
+	const note = error ? (
+		<p id={noteId} className="flex items-start gap-1.5 text-meta text-danger" role="alert">
+			<CircleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+			<span>{error}</span>
+		</p>
+	) : (
+		hint && (
+			<p id={noteId} className="text-meta text-ink-3">
+				{hint}
+			</p>
+		)
+	);
+	if (layout === 'inline')
+		return (
+			<div className={cn('grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4', className)}>
+				<div className="flex min-w-0 flex-col gap-0.5">
+					{labelEl}
+					{note}
+				</div>
+				{control}
+			</div>
+		);
 	return (
 		<div className={cn('flex flex-col gap-1.5', className)}>
-			<label htmlFor={id} className="text-sm font-semibold text-ink-2">
-				{label}
-			</label>
+			{labelEl}
 			{control}
-			{error ? (
-				<p id={noteId} className="flex items-start gap-1.5 text-meta text-danger" role="alert">
-					<CircleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-					<span>{error}</span>
-				</p>
-			) : (
-				hint && (
-					<p id={noteId} className="text-meta text-ink-3">
-						{hint}
-					</p>
-				)
-			)}
+			{note}
 		</div>
 	);
 }
@@ -523,19 +592,41 @@ export function Dialog({
 	);
 }
 
-/** 用法：const [confirm, confirmDialog] = useConfirm(); if (await confirm({...})) ... ；並渲染 {confirmDialog} */
-export function useConfirm() {
-	const [state, setState] = useState<{ title: string; message?: string; confirmText?: string; resolve: (v: boolean) => void } | null>(null);
+/**
+ * 確認對話框的語氣：
+ * - danger（預設）：破壞性操作（刪除、放棄）。確認鈕是紅色 danger，預設焦點在「取消」，連按 Enter 不會誤刪。
+ * - primary：一般的確認（例如「要一併完成任務嗎？」）。確認鈕是 primary，預設焦點在確認鈕，Enter 直接確認。
+ * 觸控裝置兩者都不自動 focus（同 Dialog）。
+ */
+export type ConfirmTone = 'danger' | 'primary';
 
-	const confirm = useCallback(
-		(opts: { title: string; message?: string; confirmText?: string }) => new Promise<boolean>((resolve) => setState({ ...opts, resolve })),
-		[],
-	);
+export type ConfirmOptions = {
+	title: string;
+	/** 說明文字；danger 省略時顯示「刪除後無法復原。」，primary 省略時不顯示 */
+	message?: string;
+	/** 確認鈕文字；danger 預設「刪除」，primary 預設「確定」 */
+	confirmText?: string;
+	/** 取消鈕文字，預設「取消」 */
+	cancelText?: string;
+	/** 預設 'danger'（也可以在 useConfirm({ tone }) 設定整個 hook 的預設值） */
+	tone?: ConfirmTone;
+};
+
+/**
+ * 用法：const [confirm, confirmDialog] = useConfirm(); if (await confirm({...})) ... ；並渲染 {confirmDialog}
+ * 非破壞性的確認：confirm({ title: '要一併完成任務嗎？', confirmText: '完成任務', tone: 'primary' })。
+ */
+export function useConfirm(defaults: { tone?: ConfirmTone } = {}) {
+	const [state, setState] = useState<(ConfirmOptions & { resolve: (v: boolean) => void }) | null>(null);
+
+	const confirm = useCallback((opts: ConfirmOptions) => new Promise<boolean>((resolve) => setState({ ...opts, resolve })), []);
 	const close = (v: boolean) => {
 		state?.resolve(v);
 		setState(null);
 	};
 
+	const danger = (state?.tone ?? defaults.tone ?? 'danger') === 'danger';
+	const message = state?.message ?? (danger ? '刪除後無法復原。' : undefined);
 	const element = (
 		<Dialog
 			open={!!state}
@@ -543,17 +634,17 @@ export function useConfirm() {
 			title={state?.title ?? ''}
 			footer={
 				<>
-					{/* 破壞性操作：預設焦點放在「取消」，避免連按 Enter 就刪除 */}
-					<Button onClick={() => close(false)} autoFocus>
-						取消
+					{/* 破壞性操作：預設焦點放在「取消」，避免連按 Enter 就刪除；一般確認的焦點放在確認鈕 */}
+					<Button onClick={() => close(false)} autoFocus={danger}>
+						{state?.cancelText ?? '取消'}
 					</Button>
-					<Button variant="danger" onClick={() => close(true)}>
-						{state?.confirmText ?? '刪除'}
+					<Button variant={danger ? 'danger' : 'primary'} onClick={() => close(true)} autoFocus={!danger}>
+						{state?.confirmText ?? (danger ? '刪除' : '確定')}
 					</Button>
 				</>
 			}
 		>
-			<p className="text-sm text-ink-2">{state?.message ?? '刪除後無法復原。'}</p>
+			{message && <p className="text-sm text-ink-2">{message}</p>}
 		</Dialog>
 	);
 	return [confirm, element] as const;
@@ -617,7 +708,11 @@ export function ProgressBar(props: ProgressProps & { size?: 'sm' | 'md' }) {
 	);
 }
 
-/** 進度環（role="progressbar"），children 放在圓心（例如數字或圖示）。trackColor 可在底色與軌道相同時改用別的顏色。 */
+/**
+ * 進度環（role="progressbar"），children 放在圓心（例如數字或圖示）。trackColor 可在底色與軌道相同時改用別的顏色。
+ * children 是純展示：progressbar 的子元素在無障礙樹裡是 presentational，螢幕報讀器不會念，
+ * 要報讀的內容請放在 label／valueText；圓心也不要放按鈕、連結等可互動元素。
+ */
 export function ProgressRing(props: ProgressProps & { size?: number; stroke?: number; trackColor?: string; children?: ReactNode }) {
 	const { value, max = 100, tone = 'accent', color, size = 40, stroke = 4, trackColor, className, children } = props;
 	const ratio = max > 0 ? clamp01(value / max) : 0;
@@ -730,7 +825,31 @@ type ToggleProps = {
 	'aria-describedby'?: string;
 };
 
-export function Switch({ checked, onChange, label, disabled, id, className, ...aria }: ToggleProps) {
+/**
+ * 開關（role="switch"）。整列可點、至少 44px。
+ * description：標籤下方的說明（13px ink-3），以 aria-describedby 連到開關；無障礙名稱仍只有 label。
+ */
+export function Switch({
+	checked,
+	onChange,
+	label,
+	description,
+	disabled,
+	id,
+	className,
+	...aria
+}: ToggleProps & { description?: ReactNode }) {
+	const uid = useId();
+	const labelId = `${uid}-label`;
+	const descId = `${uid}-desc`;
+	const ariaProps = description
+		? {
+				...aria,
+				// 說明放在按鈕裡，名稱改用 aria-labelledby 只取標籤，說明另外用 aria-describedby 報讀
+				'aria-labelledby': aria['aria-labelledby'] ?? (label && !aria['aria-label'] ? labelId : undefined),
+				'aria-describedby': [aria['aria-describedby'], descId].filter(Boolean).join(' '),
+			}
+		: aria;
 	return (
 		<button
 			type="button"
@@ -740,11 +859,12 @@ export function Switch({ checked, onChange, label, disabled, id, className, ...a
 			disabled={disabled}
 			onClick={() => onChange(!checked)}
 			className={cn(
-				'inline-flex min-h-11 min-w-11 items-center gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50',
+				'inline-flex min-h-11 min-w-11 gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50',
+				description ? 'items-start py-2.5' : 'items-center',
 				!label && 'justify-center',
 				className,
 			)}
-			{...aria}
+			{...ariaProps}
 		>
 			<span
 				aria-hidden
@@ -760,7 +880,20 @@ export function Switch({ checked, onChange, label, disabled, id, className, ...a
 					)}
 				/>
 			</span>
-			{label && <span className="min-w-0 text-dense text-ink">{label}</span>}
+			{description ? (
+				<span className="flex min-w-0 flex-col gap-0.5">
+					{label && (
+						<span id={labelId} className="text-dense text-ink">
+							{label}
+						</span>
+					)}
+					<span id={descId} className="text-meta text-ink-3">
+						{description}
+					</span>
+				</span>
+			) : (
+				label && <span className="min-w-0 text-dense text-ink">{label}</span>
+			)}
 		</button>
 	);
 }
@@ -865,4 +998,87 @@ export function Countdown({ seconds, size = 'xl', className }: { seconds: number
 			{formatDuration(Math.max(0, seconds))}
 		</span>
 	);
+}
+
+/** 數字後面的單位：文字字型、14px、ink-2（和 NumDisplay 的 unit 一致）。放在 font-num 的數值裡，例如 `12<Unit>天</Unit>` */
+export function Unit({ children }: { children: ReactNode }) {
+	return <span className="mr-1.5 ml-1 font-sans text-sm font-normal text-ink-2 last:mr-0">{children}</span>;
+}
+
+/** 分鐘數 → [{ value, unit }]：45 分鐘、2 小時、1 小時 20 分 */
+function minuteParts(min: number): { value: number; unit: string }[] {
+	const m = Math.round(min);
+	if (m < 60) return [{ value: m, unit: '分鐘' }];
+	const h = Math.floor(m / 60);
+	const rest = m % 60;
+	return rest ? [{ value: h, unit: '小時' }, { value: rest, unit: '分' }] : [{ value: h, unit: '小時' }];
+}
+
+/** 分鐘數：數字沿用外層的數字字型，單位用 Unit（例如放在 StatStrip 的數值裡：1 小時 20 分） */
+export function Duration({ minutes }: { minutes: number }) {
+	return (
+		<>
+			{minuteParts(minutes).map((p) => (
+				<Fragment key={p.unit}>
+					{p.value}
+					<Unit>{p.unit}</Unit>
+				</Fragment>
+			))}
+		</>
+	);
+}
+
+/**
+ * 一格數字：dt 標籤（14px ink-2）＋ dd 數值 ＋ 可選的 dd 補充說明（13px ink-3）。
+ * 必須放在 <dl> 裡；卡片內用分隔線分格時，第二格起加 `className="border-l border-line"`。
+ */
+export function Figure({ label, sub, children, className }: { label: string; sub?: string; children: ReactNode; className?: string }) {
+	return (
+		<div className={cn('min-w-0 px-4 py-3.5 sm:px-5', className)}>
+			<dt className="truncate text-sm text-ink-2">{label}</dt>
+			<dd className="mt-1">{children}</dd>
+			{sub && <dd className="mt-0.5 text-meta text-ink-3">{sub}</dd>}
+		</div>
+	);
+}
+
+/** 圖表／表格切換：每張圖都有表格檢視（dataviz）。aria-pressed 表示目前是表格檢視；文字與 aria-label 寫出按下去會切到哪一種 */
+export function TableToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+	return (
+		<Button size="sm" variant="ghost" onClick={onToggle} aria-pressed={on} aria-label={on ? '改用圖表檢視' : '改用表格檢視'}>
+			{on ? <ChartColumn className="size-4" aria-hidden /> : <Table2 className="size-4" aria-hidden />}
+			{on ? '圖表' : '表格'}
+		</Button>
+	);
+}
+
+// ---- 鍵盤 ----
+
+/**
+ * 排成格狀的 radiogroup（圖示、主題色、色格）的方向鍵，跟著畫面上的排列移動：
+ * - 左右：前一個／下一個，頭尾相接（同 WAI-ARIA radio group）。
+ * - 上下：同一欄的上一列／下一列，到邊界就停住。
+ * - Home／End：第一個／最後一個。
+ * 欄數直接讀 CSS grid 實際排出來的欄（grid-template-columns 的計算值），所以 auto-fill、斷點都不用另外同步。
+ * 不是這些按鍵時回傳 null（交給瀏覽器處理，例如 Tab）。
+ */
+export function gridKeyTarget(e: KeyboardEvent, index: number, count: number, grid: HTMLElement | null): number | null {
+	if (count <= 0) return null;
+	const cols = grid ? Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length) : 1;
+	switch (e.key) {
+		case 'ArrowRight':
+			return (index + 1) % count;
+		case 'ArrowLeft':
+			return (index - 1 + count) % count;
+		case 'ArrowDown':
+			return index + cols < count ? index + cols : index;
+		case 'ArrowUp':
+			return index - cols >= 0 ? index - cols : index;
+		case 'Home':
+			return 0;
+		case 'End':
+			return count - 1;
+		default:
+			return null;
+	}
 }

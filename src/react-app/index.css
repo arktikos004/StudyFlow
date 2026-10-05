@@ -379,8 +379,8 @@
 	button:disabled {
 		cursor: not-allowed;
 	}
-	/* 按下時的通用回饋（Button 元件有自己的下沉與加深，不套用這條） */
-	:where(a[href], button:not(.sf-btn), [role='button'], [role='link'], summary):active:not(:disabled, [aria-disabled='true']) {
+	/* 按下時的通用回饋（Button／ButtonLink 有自己的下沉與加深，不套用這條） */
+	:where(a[href]:not(.sf-btn), button:not(.sf-btn), [role='button'], [role='link'], summary):active:not(:disabled, [aria-disabled='true']) {
 		opacity: 0.72;
 	}
 	dialog {
