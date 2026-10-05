@@ -6,7 +6,7 @@ import { ApiError } from '../../lib/api';
 import { cramPool, cramQueue, cramTags, retryQueue, tally, type ReviewResult } from '../../lib/notes-cram';
 import { useNotes, useReviewNote, useSubjectMap } from '../../lib/queries';
 import { SubjectSelect, SubjectTag } from '../subjects';
-import { Badge, Button, Card, CardHeader, cn, EmptyState, ErrorNote, Field, NumDisplay, PageLoader, ProgressBar, Segmented, Select, Switch } from '../ui';
+import { Badge, Button, Card, cn, EmptyState, ErrorNote, Field, NumDisplay, PageLoader, ProgressBar, Segmented, Select, Switch } from '../ui';
 import { KindBadge, MistakeAnswer, MistakeQuestion, NoteBody } from './content';
 
 // 複習（NOTE-2）：「今天到期」走間隔複習（呼叫 /notes/:id/review），
@@ -403,10 +403,14 @@ function DueReview({
 
 // ---- 考前衝刺 ----
 
+/** queue 是這一輪實際作答的題目；pool 是這次衝刺的完整題目（「再練還不熟」之後「整輪重來」仍用完整題目） */
 type CramStage =
 	| { step: 'setup' }
-	| { step: 'run'; queue: NoteItem[]; round: number }
-	| { step: 'done'; queue: NoteItem[]; results: Results; complete: boolean };
+	| { step: 'run'; queue: NoteItem[]; pool: NoteItem[]; round: number }
+	| { step: 'done'; queue: NoteItem[]; pool: NoteItem[]; results: Results; complete: boolean };
+
+/** 後端列表最多回傳 500 則（routes/notes.ts 的 limit） */
+const LIST_LIMIT = 500;
 
 function CramReview({
 	subjectId,
@@ -430,6 +434,19 @@ function CramReview({
 	const [stage, setStage] = useState<CramStage>({ step: 'setup' });
 	const [round, setRound] = useState(0);
 
+	// 從一輪回到設定時，焦點放在設定卡的標題（按鈕會消失，焦點不能掉到 body）
+	const setupHeading = useRef<HTMLHeadingElement>(null);
+	const focusSetup = useRef(false);
+	const toSetup = () => {
+		focusSetup.current = true;
+		setStage({ step: 'setup' });
+	};
+	useEffect(() => {
+		if (stage.step !== 'setup' || !focusSetup.current) return;
+		focusSetup.current = false;
+		setupHeading.current?.focus();
+	}, [stage]);
+
 	// 從別的連結換了科目或標籤：回到設定
 	const scope = `${subjectId}|${tag}`;
 	const [seenScope, setSeenScope] = useState(scope);
@@ -446,11 +463,14 @@ function CramReview({
 	const tags = cramTags(notes, includeMastered);
 	if (tag && !tags.some((t) => t.tag === tag)) tags.unshift({ tag, count: 0 });
 
-	const run = (queue: NoteItem[]) => {
+	const run = (queue: NoteItem[], all: NoteItem[]) => {
 		setRound((r) => r + 1);
-		setStage({ step: 'run', queue, round: round + 1 });
+		setStage({ step: 'run', queue, pool: all, round: round + 1 });
 	};
-	const start = () => run(cramQueue(pool, random));
+	const start = () => {
+		const queue = cramQueue(pool, random);
+		run(queue, queue);
+	};
 
 	if (stage.step === 'run')
 		return (
@@ -466,16 +486,18 @@ function CramReview({
 					)
 				}
 				autoFocus
-				onDone={(results) => setStage({ step: 'done', queue: stage.queue, results, complete: true })}
+				onDone={(results) => setStage({ step: 'done', queue: stage.queue, pool: stage.pool, results, complete: true })}
 				onExit={(results) =>
-					setStage(Object.keys(results).length ? { step: 'done', queue: stage.queue, results, complete: false } : { step: 'setup' })
+					Object.keys(results).length
+						? setStage({ step: 'done', queue: stage.queue, pool: stage.pool, results, complete: false })
+						: toSetup()
 				}
 				exitLabel="結束衝刺"
 			/>
 		);
 
 	if (stage.step === 'done') {
-		const { queue, results, complete } = stage;
+		const { queue, pool: all, results, complete } = stage;
 		const forgot = retryQueue(queue, results);
 		const answered = Object.keys(results).length;
 		return (
@@ -491,15 +513,15 @@ function CramReview({
 					onOpenNote={onOpenNote}
 					actions={
 						<>
-							<Button variant="ghost" onClick={() => setStage({ step: 'setup' })}>
+							<Button variant="ghost" onClick={toSetup}>
 								調整範圍
 							</Button>
-							<Button variant={forgot.length ? 'secondary' : 'primary'} onClick={() => run(cramQueue(queue, random))}>
+							<Button variant={forgot.length ? 'secondary' : 'primary'} onClick={() => run(cramQueue(all, random), all)}>
 								{random ? <Shuffle className="size-4" aria-hidden /> : <Repeat className="size-4" aria-hidden />}
-								整輪重來
+								整輪重來（{all.length} 題）
 							</Button>
 							{forgot.length > 0 && (
-								<Button variant="primary" onClick={() => run(forgot)}>
+								<Button variant="primary" onClick={() => run(forgot, all)}>
 									<RotateCcw className="size-4" aria-hidden />
 									再練還不熟的 {forgot.length} 題
 								</Button>
@@ -518,7 +540,12 @@ function CramReview({
 				<ModeSwitch value="cram" onChange={onMode} />
 			</div>
 			<Card>
-				<CardHeader title="考前衝刺" icon={<Zap className="size-[18px] text-ink-3" aria-hidden />} />
+				<div className="flex items-center gap-2 px-4 pt-4 pb-2 sm:px-5 sm:pt-5">
+					<Zap className="size-[18px] shrink-0 text-ink-3" aria-hidden />
+					<h2 ref={setupHeading} tabIndex={-1} className="rounded-sm text-h2 font-semibold outline-offset-4">
+						考前衝刺
+					</h2>
+				</div>
 				<div className="space-y-4 px-4 pb-4 sm:px-5 sm:pb-5">
 					<p className="text-sm text-ink-2">
 						把某一科或某個標籤的錯題一次複習完。衝刺的作答只記在這一輪，不會改變間隔複習的排程。
@@ -546,6 +573,9 @@ function CramReview({
 						<Switch checked={random} onChange={setRandom} label="隨機排序" />
 						<Switch checked={includeMastered} onChange={setIncludeMastered} label="包含已掌握的題目" />
 					</div>
+					{notes.length >= LIST_LIMIT && (
+						<p className="text-meta text-ink-3">錯題超過 {LIST_LIMIT} 題，這裡只包含最近更新的 {LIST_LIMIT} 題。</p>
+					)}
 				</div>
 				<div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 sm:px-5">
 					{error ? (
