@@ -23,8 +23,8 @@ function SpentHint({ spent, estimate }: { spent: number; estimate: number | null
 	if (!time.spentText) return null;
 	if (!time.over) return <>{time.spentText}</>;
 	return (
-		<span className="inline-flex items-center gap-1 font-semibold text-warning">
-			<TriangleAlert className="size-3.5 shrink-0" aria-hidden />
+		<span className="inline-flex items-start gap-1 font-semibold text-warning">
+			<TriangleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
 			{time.spentText}，超過預估 {time.overText}
 		</span>
 	);
