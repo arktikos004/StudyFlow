@@ -1,5 +1,5 @@
 import { ListChecks, Plus, SearchX } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import type { Task, TaskItem } from '../../shared/api-types';
 import { today as todayOf } from '../../shared/dates';
@@ -90,12 +90,19 @@ export function TasksPage() {
 		if (ok) patch.mutate({ id: task.id, status: 'done', errorTitle: `沒有完成「${task.title}」，請再試一次` });
 	};
 
-	const all = tasks ?? [];
-	const summary = taskSummary(all, today);
-	const searched = filterTasks(all, query);
-	const listed = searched.filter((t) => status === 'all' || (status === 'done' ? t.status === 'done' : t.status !== 'done'));
+	// 搜尋、篩選、排序與分組只在相關的值改變時重算；輸入框用即時的 query，清單用延後的值，打字不會卡
+	const q = useDeferredValue(query);
+	const all = useMemo(() => tasks ?? [], [tasks]);
+	const summary = useMemo(() => taskSummary(all, today), [all, today]);
+	const searched = useMemo(() => filterTasks(all, q), [all, q]);
+	const listed = useMemo(
+		() => searched.filter((t) => status === 'all' || (status === 'done' ? t.status === 'done' : t.status !== 'done')),
+		[searched, status],
+	);
+	const groups = useMemo(() => (view === 'list' ? groupTasks(listed, today, sort) : []), [view, listed, today, sort]);
+	const columns = useMemo(() => (view === 'board' ? boardColumns(searched, sort) : null), [view, searched, sort]);
 	const shown = view === 'board' ? searched : listed;
-	const searching = query.trim().length > 0;
+	const searching = q.trim().length > 0;
 	const empty = !!tasks && all.length === 0;
 
 	const addButton = (label = '新增任務', variant: 'primary' | 'secondary' = 'primary') => (
@@ -127,29 +134,22 @@ export function TasksPage() {
 					<EmptyState
 						icon={<SearchX />}
 						title="找不到符合的任務"
-						description={`目前只顯示${status === 'done' ? '已完成' : '未完成'}的任務；有 ${searched.length} 項符合「${query.trim()}」的任務${status === 'done' ? '還沒完成' : '已經完成'}。`}
+						description={`目前只顯示${status === 'done' ? '已完成' : '未完成'}的任務；有 ${searched.length} 項符合「${q.trim()}」的任務${status === 'done' ? '還沒完成' : '已經完成'}。`}
 						action={<Button onClick={() => setStatus('all')}>顯示全部狀態</Button>}
 					/>
 				) : (
 					<EmptyState
 						icon={<SearchX />}
 						title="找不到符合的任務"
-						description={`沒有任務的標題或說明包含「${query.trim()}」，換個關鍵字試試。`}
+						description={`沒有任務的標題或說明包含「${q.trim()}」，換個關鍵字試試。`}
 						action={<Button onClick={() => setQuery('')}>清除搜尋</Button>}
 					/>
 				)}
 			</Card>
 		);
-	else if (view === 'board')
+	else if (columns)
 		content = (
-			<TaskBoard
-				columns={boardColumns(searched, sort)}
-				today={today}
-				eventMap={eventMap}
-				query={query}
-				onOpen={(task) => setDialog({ task })}
-				onMove={moveTask}
-			/>
+			<TaskBoard columns={columns} today={today} eventMap={eventMap} query={q} onOpen={(task) => setDialog({ task })} onMove={moveTask} />
 		);
 	else if (listed.length === 0)
 		content = (
@@ -169,10 +169,10 @@ export function TasksPage() {
 	else
 		content = (
 			<TaskList
-				groups={groupTasks(listed, today, sort)}
+				groups={groups}
 				today={today}
 				eventMap={eventMap}
-				query={query}
+				query={q}
 				onOpen={(task) => setDialog({ task })}
 				onToggleItem={toggleItem}
 			/>
@@ -205,7 +205,7 @@ export function TasksPage() {
 				{searching &&
 					(shown.length > 0 ? (
 						<>
-							找到 <span className="font-num tabular-nums">{shown.length}</span> 項符合「{query.trim()}」的任務
+							找到 <span className="font-num tabular-nums">{shown.length}</span> 項符合「{q.trim()}」的任務
 						</>
 					) : (
 						'找不到符合的任務'
