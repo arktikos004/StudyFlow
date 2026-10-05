@@ -4,7 +4,8 @@ import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import type { ChecklistItem, TaskItem } from '../../shared/api-types';
 import { api } from './api';
-import { completedAtFor, DEFAULT_SORT, parseSort, type TaskSort, type TaskStatus } from './task-sort';
+import { applyTaskPatch, revertTaskPatch } from './task-patch';
+import { DEFAULT_SORT, parseSort, type TaskSort, type TaskStatus } from './task-sort';
 
 // 任務頁（s2/tasks）的資料 hook：樂觀更新、網址上的搜尋與排序、檢視方式。
 // lib/queries.ts 屬於後端；這裡只用同樣的 API 與 query key，快取與 invalidate 和 queries.ts 共用。
@@ -25,7 +26,7 @@ export type TaskPatch = {
 /**
  * 樂觀更新任務的狀態或子項目（看板拖曳、清單上直接勾子項目）：
  * - 送出前先改掉所有 ['tasks', …] 快取裡的那一筆（改狀態時一併算好完成時間，規則和後端相同）。
- * - 失敗：還原快取（卡片退回原欄、勾選還原）並用 toast 說明原因。
+ * - 失敗：只還原這一筆、這次改到的欄位（卡片退回原欄、勾選還原），同時在送的其他更新不受影響；並用 toast 說明原因。
  * - 成功：用回應的那一筆換掉快取；同時有好幾個更新在送時，等最後一個結束才重新整理，畫面不會跳回舊值。
  */
 export function useTaskPatch() {
@@ -36,23 +37,22 @@ export function useTaskPatch() {
 		mutationFn: ({ id, status, checklist }: TaskPatch) => api.patch<{ task: TaskItem }>(`/tasks/${id}`, { status, checklist }),
 		onMutate: async ({ id, status, checklist }) => {
 			await qc.cancelQueries({ queryKey: ['tasks'] });
-			const snapshots = qc.getQueriesData<TaskItem[]>({ queryKey: ['tasks'] });
+			// 送出前的那一筆（各個 ['tasks', …] 快取裡是同一筆資料，取第一個找到的）
+			const original = qc
+				.getQueriesData<TaskItem[]>({ queryKey: ['tasks'] })
+				.flatMap(([, data]) => data ?? [])
+				.find((t) => t.id === id);
 			const now = Date.now();
-			qc.setQueriesData<TaskItem[]>({ queryKey: ['tasks'] }, (old) =>
-				old?.map((t) =>
-					t.id === id
-						? {
-								...t,
-								...(status && { status, completedAt: completedAtFor(t, status, now) }),
-								...(checklist && { checklist }),
-							}
-						: t,
-				),
-			);
-			return { snapshots };
+			qc.setQueriesData<TaskItem[]>({ queryKey: ['tasks'] }, (old) => old && applyTaskPatch(old, id, { status, checklist }, now));
+			return { original };
 		},
 		onError: (e, vars, ctx) => {
-			ctx?.snapshots.forEach(([queryKey, data]) => qc.setQueryData(queryKey, data));
+			const original = ctx?.original;
+			if (original)
+				qc.setQueriesData<TaskItem[]>(
+					{ queryKey: ['tasks'] },
+					(old) => old && revertTaskPatch(old, original, { status: vars.status, checklist: vars.checklist }),
+				);
 			toast.error(vars.errorTitle, { description: e instanceof Error ? e.message : '請稍後再試' });
 		},
 		onSuccess: ({ task }) => {
