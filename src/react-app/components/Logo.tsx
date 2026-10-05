@@ -1,8 +1,7 @@
 import { Link } from 'react-router';
 
 /** S 的筆畫（藍筆一筆寫成），LogoMark 與 public/logo.svg 共用同一條路徑 */
-const S_PATH =
-	'M43 18.5c-2.8-2.6-6.6-3.9-10.7-3.9-6.6 0-11 3.5-11 8.4 0 11.2 22.4 7 22.4 18 0 5.3-4.9 9.2-11.6 9.2-4.6 0-8.6-1.6-11.3-4.5';
+const S_PATH = 'M43 18.5c-2.8-2.6-6.6-3.9-10.7-3.9-6.6 0-11 3.5-11 8.4 0 11.2 22.4 7 22.4 18 0 5.3-4.9 9.2-11.6 9.2-4.6 0-8.6-1.6-11.3-4.5';
 
 /**
  * 品牌標誌：一筆寫成的 S 加上一道螢光筆。顏色用 index.css 的 --logo-* token：
@@ -26,7 +25,9 @@ export function Logo() {
 	return (
 		<Link to="/" className="inline-flex items-center gap-2.5 rounded-lg" aria-label="StudyFlow 首頁">
 			<LogoMark />
-			<span className="text-[17px] font-bold tracking-tight">StudyFlow</span>
+			<span className="text-[17px] font-bold tracking-tight" translate="no">
+				StudyFlow
+			</span>
 		</Link>
 	);
 }

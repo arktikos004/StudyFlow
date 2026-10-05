@@ -32,7 +32,9 @@ function BrandPanel() {
 		>
 			<div className="flex items-center gap-2.5">
 				<LogoMark />
-				<span className="text-[17px] font-bold tracking-tight">StudyFlow</span>
+				<span className="text-[17px] font-bold tracking-tight" translate="no">
+					StudyFlow
+				</span>
 			</div>
 
 			<div className="max-w-md">
@@ -63,7 +65,9 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle: str
 				<div className="w-full sm:max-w-sm">
 					<div className="mb-8 flex items-center gap-2.5 lg:hidden">
 						<LogoMark />
-						<span className="text-[17px] font-bold tracking-tight">StudyFlow</span>
+						<span className="text-[17px] font-bold tracking-tight" translate="no">
+							StudyFlow
+						</span>
 					</div>
 					<h1 className="text-[1.75rem] leading-[1.3] font-bold text-balance">{title}</h1>
 					<p className="mt-1.5 text-sm text-ink-2">{subtitle}</p>
@@ -189,6 +193,7 @@ export function LoginPage() {
 					{(id, aria) => (
 						<Input
 							ref={fields.bind('email')}
+							name="email"
 							id={id}
 							{...aria}
 							type="email"
@@ -205,6 +210,7 @@ export function LoginPage() {
 					{(id, aria) => (
 						<PasswordInput
 							ref={fields.bind('password')}
+							name="password"
 							id={id}
 							{...aria}
 							autoComplete="current-password"
@@ -256,6 +262,7 @@ export function RegisterPage() {
 					{(id, aria) => (
 						<Input
 							ref={fields.bind('displayName')}
+							name="nickname"
 							id={id}
 							{...aria}
 							autoComplete="nickname"
@@ -269,6 +276,7 @@ export function RegisterPage() {
 					{(id, aria) => (
 						<Input
 							ref={fields.bind('email')}
+							name="email"
 							id={id}
 							{...aria}
 							type="email"
@@ -284,6 +292,7 @@ export function RegisterPage() {
 					{(id, aria) => (
 						<PasswordInput
 							ref={fields.bind('password')}
+							name="password"
 							id={id}
 							{...aria}
 							autoComplete="new-password"
@@ -296,6 +305,7 @@ export function RegisterPage() {
 					{(id, aria) => (
 						<PasswordInput
 							ref={fields.bind('confirm')}
+							name="password-confirm"
 							id={id}
 							{...aria}
 							autoComplete="new-password"

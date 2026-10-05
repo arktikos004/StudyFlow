@@ -294,7 +294,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 				downOnBackdrop.current = false;
 			}}
 		>
-			<div className="group flex h-14 shrink-0 items-center gap-3 border-b border-line pr-2 pl-4">
+			<div className="group flex h-14 shrink-0 items-center gap-3 border-b border-line pr-2 pl-4 transition-colors duration-120 has-[input:focus]:border-b-accent">
 				<Search className="size-5 shrink-0 text-ink-3 transition-colors duration-120 group-focus-within:text-accent-ink" aria-hidden />
 				<input
 					ref={inputRef}
