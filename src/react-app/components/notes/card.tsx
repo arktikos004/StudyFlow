@@ -85,14 +85,15 @@ export function NoteCard({
 					<span className="ml-auto text-meta text-ink-3">更新於 {dayLabel(note.updatedAt, timeZone, today)}</span>
 				</div>
 				{note.tags.length > 0 && (
-					<ul className="relative z-10 mt-2.5 flex flex-wrap gap-1.5" aria-label="標籤">
+					// 清單本身不接點擊（空白處仍然開啟卡片），只有標籤按鈕浮在卡片上面
+					<ul className="pointer-events-none relative z-10 mt-2.5 flex flex-wrap gap-1.5" aria-label="標籤">
 						{note.tags.map((t) => (
 							<li key={t}>
 								<button
 									type="button"
 									onClick={() => onTag(t)}
 									aria-label={`只看標籤「${t}」`}
-									className="relative inline-flex h-6 items-center gap-0.5 rounded-sm px-1.5 text-xs text-ink-2 ring-1 ring-line-strong transition-colors duration-120 ease-out ring-inset after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:bg-subtle hover:text-ink"
+									className="pointer-events-auto relative inline-flex h-6 items-center gap-0.5 rounded-sm px-1.5 text-xs text-ink-2 ring-1 ring-line-strong transition-colors duration-120 ease-out ring-inset after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:bg-subtle hover:text-ink"
 								>
 									<Hash className="size-3 shrink-0" aria-hidden />
 									<Highlight text={t} query={terms} />
