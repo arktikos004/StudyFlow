@@ -165,7 +165,7 @@ export function ChecklistEditor({
 						enterKeyHint="enter"
 						aria-invalid={shownError ? true : undefined}
 						aria-describedby={shownError || full || length > 0 ? noteId : undefined}
-						className={cn(length > 0 && 'pr-16')}
+						className={cn(length > 0 && 'pr-20')}
 					/>
 					{length > 0 && (
 						<span

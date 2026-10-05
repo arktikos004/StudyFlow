@@ -84,7 +84,7 @@ export function TasksPage() {
 		if (task.status === 'done' || !justCompleted(task.checklist, next)) return;
 		const ok = await confirm({
 			title: '要一併完成任務嗎？',
-			message: `「${task.title}」的子項目都勾完了。`,
+			message: `「${task.title}」的子項目都勾完了。選「完成任務」會把這個任務標為已完成。`,
 			confirmText: '完成任務',
 		});
 		if (ok) patch.mutate({ id: task.id, status: 'done', errorTitle: `沒有完成「${task.title}」，請再試一次` });
