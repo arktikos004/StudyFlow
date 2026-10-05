@@ -1,16 +1,21 @@
-import { Brain, CheckCircle2, Image as ImageIcon, NotebookPen, Plus, Search, Sparkles, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Hash, NotebookPen, Pin, Plus, Search, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
+import { toast } from 'sonner';
 import type { NoteItem } from '../../shared/api-types';
-import { localDate, today as todayOf } from '../../shared/dates';
-import { MistakeBody, MarkdownView, NoteDetail, NoteEditor, PhotoGrid } from '../components/notes';
-import { SubjectSelect, SubjectTag } from '../components/subjects';
-import { Badge, Button, Card, cn, EmptyState, ErrorNote, Input, PageHeader, PageLoader, Segmented } from '../components/ui';
-import { attachmentUrl } from '../lib/api';
-import { formatDate } from '../lib/format';
-import { useNote, useNotes, useReviewNote, useUser, type NoteFilters } from '../lib/queries';
+import { today as todayOf } from '../../shared/dates';
+import { NoteCard, NoteDetail, NoteEditor, ReviewView, type ReviewMode } from '../components/notes';
+import { SubjectSelect } from '../components/subjects';
+import { Button, Card, cn, EmptyState, ErrorNote, Input, PageHeader, PageLoader, Segmented } from '../components/ui';
+import { REVIEW_INTERVALS } from '../../shared/schemas';
+import { ApiError } from '../lib/api';
+import { usePinNote } from '../lib/notes-queries';
+import { useNote, useNotes, useSubjects, useSummary, useUser, type NoteFilters } from '../lib/queries';
+import { useDeepLink } from '../lib/timer-queries';
 
 type View = 'all' | 'mistake' | 'note' | 'review';
+const VIEWS: readonly View[] = ['all', 'mistake', 'note', 'review'];
+type Kind = 'note' | 'mistake';
 
 function useDebounced<T>(value: T, ms = 300) {
 	const [v, setV] = useState(value);
@@ -21,174 +26,140 @@ function useDebounced<T>(value: T, ms = 300) {
 	return v;
 }
 
-function snippet(n: NoteItem) {
-	const text = (n.kind === 'mistake' ? (n.question ?? n.reason ?? n.content) : n.content) ?? '';
-	return text.replace(/[#>*`_~-]/g, '').slice(0, 120);
-}
-
-function NoteCard({
-	note,
-	today,
-	tz,
-	onOpen,
-	onTag,
-}: {
-	note: NoteItem;
-	today: string;
-	tz: string;
-	onOpen: () => void;
-	onTag: (t: string) => void;
-}) {
-	const cover = note.attachments[0];
+function Section({ title, icon, count, children }: { title: string; icon?: ReactNode; count?: number; children: ReactNode }) {
 	return (
-		<Card as="article" className="flex flex-col overflow-hidden transition-shadow hover:shadow-md">
-			<button onClick={onOpen} className="flex flex-1 flex-col text-left">
-				{cover && (
-					<div className="relative h-32 bg-subtle">
-						<img src={attachmentUrl(cover.id)} alt="" loading="lazy" className="size-full object-cover" />
-						{note.attachments.length > 1 && (
-							<span className="absolute right-2 bottom-2 inline-flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[11px] text-white">
-								<ImageIcon className="size-3" aria-hidden />
-								{note.attachments.length}
-							</span>
-						)}
-					</div>
-				)}
-				<div className="flex flex-1 flex-col p-4">
-					<div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-						<Badge tone={note.kind === 'mistake' ? 'danger' : 'accent'}>{note.kind === 'mistake' ? '錯題' : '筆記'}</Badge>
-						{note.mastered && (
-							<Badge tone="success">
-								<CheckCircle2 className="size-3" aria-hidden />
-								已掌握
-							</Badge>
-						)}
-						{!note.mastered && note.nextReviewDate && note.nextReviewDate <= today && (
-							<Badge tone="warning">
-								<Brain className="size-3" aria-hidden />
-								待複習
-							</Badge>
-						)}
-					</div>
-					<h3 className="line-clamp-2 font-semibold break-words">{note.title}</h3>
-					{snippet(note) && <p className="mt-1 line-clamp-2 text-sm text-ink-2">{snippet(note)}</p>}
-					<div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs text-ink-3">
-						<SubjectTag subjectId={note.subjectId} />
-						<span className="shrink-0">{formatDate(localDate(note.updatedAt, tz))}</span>
-					</div>
-				</div>
-			</button>
-			{note.tags.length > 0 && (
-				<div className="flex flex-wrap gap-1 px-4 pb-3">
-					{note.tags.map((t) => (
-						<button key={t} onClick={() => onTag(t)} className="rounded bg-subtle px-1.5 py-0.5 text-xs text-ink-2 hover:text-ink">
-							#{t}
-						</button>
-					))}
-				</div>
-			)}
-		</Card>
+		<section className="space-y-2.5">
+			<h2 className="flex items-center gap-1.5 text-meta font-semibold text-ink-2 [&_svg]:size-4">
+				{icon}
+				{title}
+				{count !== undefined && <span className="font-num font-normal text-ink-3 tabular-nums">{count}</span>}
+			</h2>
+			{children}
+		</section>
 	);
 }
 
-/** 複習模式：一次一題，先想答案再翻開 */
-function ReviewSession({ subjectId, onExit }: { subjectId: string | null; onExit: () => void }) {
-	const { data, isPending, error } = useNotes({ review: 'due', ...(subjectId ? { subjectId } : {}) });
+/** 筆記列表：釘選的在前（後端排序，前端只依 pinned 分段，不重排） */
+function NotesList({
+	filters,
+	query,
+	filtered,
+	view,
+	today,
+	timeZone,
+	onOpen,
+	onTag,
+	onNew,
+	onClear,
+}: {
+	filters: NoteFilters;
+	query: string;
+	filtered: boolean;
+	view: Exclude<View, 'review'>;
+	today: string;
+	timeZone: string;
+	onOpen: (note: NoteItem) => void;
+	onTag: (tag: string) => void;
+	onNew: (kind: Kind) => void;
+	onClear: () => void;
+}) {
+	const { data: notes, isPending, error, isPlaceholderData } = useNotes(filters);
+	const pin = usePinNote();
+	const pinning = pin.isPending ? pin.variables?.id : undefined;
+
+	// 釘選後卡片會移到別的位置（重新掛載），焦點會掉到 body：清單更新後放回同一則的釘選按鈕
+	const refocus = useRef<string | null>(null);
+	useEffect(() => {
+		const id = refocus.current;
+		if (!id || pin.isPending) return;
+		refocus.current = null;
+		if (document.activeElement && document.activeElement !== document.body) return;
+		document.querySelector<HTMLElement>(`[data-pin-id="${CSS.escape(id)}"]`)?.focus();
+	}, [notes, pin.isPending]);
+
 	if (isPending) return <PageLoader />;
 	if (error) return <ErrorNote error={error} />;
-	return <ReviewRunner initial={data} onExit={onExit} />;
-}
 
-function ReviewRunner({ initial, onExit }: { initial: NoteItem[]; onExit: () => void }) {
-	const review = useReviewNote();
-	// 開始時固定題目順序，避免作答後清單重新整理造成跳題
-	const [queue] = useState(initial);
-	const [index, setIndex] = useState(0);
-	const [revealed, setRevealed] = useState(false);
-	const [stats, setStats] = useState({ remembered: 0, forgot: 0 });
-
-	if (queue.length === 0)
+	if (notes.length === 0) {
+		if (filtered)
+			return (
+				<Card>
+					<EmptyState
+						icon={<Search />}
+						title="找不到符合的筆記"
+						description={query ? `沒有標題、內容或題目包含「${query}」的筆記，換個關鍵字試試。` : '換個科目或標籤試試。'}
+						action={<Button onClick={onClear}>清除篩選</Button>}
+					/>
+				</Card>
+			);
+		const note = view === 'note';
 		return (
 			<Card>
 				<EmptyState
-					icon={<Sparkles />}
-					title="今天沒有需要複習的題目"
-					description="新增的錯題會在隔天開始出現在這裡。"
-					action={<Button onClick={onExit}>回到列表</Button>}
+					icon={<NotebookPen />}
+					title={note ? '還沒有筆記' : view === 'mistake' ? '還沒有錯題' : '還沒有筆記或錯題'}
+					description={
+						note
+							? '整理上課重點或公式，之後用搜尋就能找到。'
+							: `把寫錯的題目記下來，系統會在第 ${REVIEW_INTERVALS.join('、')} 天提醒你複習。`
+					}
+					action={
+						<Button variant="primary" onClick={() => onNew(note ? 'note' : 'mistake')}>
+							<Plus className="size-4" aria-hidden />
+							{note ? '新增第一則筆記' : '新增第一題錯題'}
+						</Button>
+					}
 				/>
 			</Card>
 		);
+	}
 
-	if (index >= queue.length)
-		return (
-			<Card className="p-8 text-center">
-				<Sparkles className="mx-auto mb-3 size-10 text-accent" aria-hidden />
-				<h2 className="text-xl font-semibold">今天的複習完成了！</h2>
-				<p className="mt-2 text-ink-2">
-					記住 {stats.remembered} 題・還不熟 {stats.forgot} 題
-				</p>
-				<p className="mt-1 text-sm text-ink-3">還不熟的題目明天會再出現，記住的會隔更久再複習。</p>
-				<Button variant="primary" className="mt-6" onClick={onExit}>
-					回到列表
-				</Button>
-			</Card>
-		);
-
-	const note = queue[index];
-	const answer = async (result: 'remembered' | 'forgot') => {
-		await review.mutateAsync({ id: note.id, result }).catch(() => {});
-		setStats((s) => ({ ...s, [result]: s[result] + 1 }));
-		setRevealed(false);
-		setIndex((i) => i + 1);
-	};
+	const pinned = notes.filter((n) => n.pinned);
+	const rest = notes.filter((n) => !n.pinned);
+	const grid = (list: NoteItem[]) => (
+		<ul className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+			{list.map((n) => (
+				<li key={n.id} className="min-w-0">
+					<NoteCard
+						note={n}
+						today={today}
+						timeZone={timeZone}
+						query={query}
+						pinBusy={pinning === n.id}
+						onOpen={() => onOpen(n)}
+						onPin={() => {
+							refocus.current = n.id;
+							pin.mutate({ id: n.id, pinned: !n.pinned });
+						}}
+						onTag={onTag}
+					/>
+				</li>
+			))}
+		</ul>
+	);
 
 	return (
-		<div className="mx-auto max-w-2xl">
-			<div className="mb-3 flex items-center justify-between">
-				<span className="text-sm text-ink-2 tabular-nums">
-					第 {index + 1} / {queue.length} 題
-				</span>
-				<Button size="sm" variant="ghost" onClick={onExit}>
-					<X className="size-4" aria-hidden />
-					結束複習
-				</Button>
-			</div>
-			<div className="mb-4 h-1.5 overflow-hidden rounded-full bg-subtle">
-				<div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(index / queue.length) * 100}%` }} />
-			</div>
-			<Card className="p-5 sm:p-6">
-				<div className="mb-2 flex items-center gap-2">
-					<SubjectTag subjectId={note.subjectId} />
-					<span className="text-xs text-ink-3">第 {note.reviewStage + 1} 輪</span>
-				</div>
-				<h2 className="mb-4 text-lg font-semibold break-words">{note.title}</h2>
-				{note.kind === 'mistake' ? (
-					<MistakeBody note={note} revealAnswer={revealed} />
-				) : revealed ? (
-					<div className="space-y-4">
-						{note.content && <MarkdownView>{note.content}</MarkdownView>}
-						<PhotoGrid attachments={note.attachments} />
-					</div>
+		<div className={cn('space-y-6 transition-opacity duration-120', isPlaceholderData && 'opacity-60')} aria-busy={isPlaceholderData || undefined}>
+			<p role="status" className="text-meta text-ink-3">
+				{filtered ? '找到' : '共'} <span className="font-num tabular-nums">{notes.length}</span> 則
+				{notes.length >= 500 && '，只顯示最近更新的 500 則'}
+			</p>
+			{pinned.length > 0 && (
+				<Section title="已釘選" icon={<Pin className="fill-current" aria-hidden />} count={pinned.length}>
+					{grid(pinned)}
+				</Section>
+			)}
+			{rest.length > 0 &&
+				(pinned.length > 0 ? (
+					<Section title="其他" count={rest.length}>
+						{grid(rest)}
+					</Section>
 				) : (
-					<p className="text-sm text-ink-2">先回想這則筆記的重點，再翻開確認。</p>
-				)}
-			</Card>
-			<div className="sticky bottom-20 mt-4 flex gap-3 md:bottom-4">
-				{!revealed ? (
-					<Button variant="primary" className="h-12 flex-1 text-base" onClick={() => setRevealed(true)}>
-						顯示答案
-					</Button>
-				) : (
-					<>
-						<Button className="h-12 flex-1 text-base" onClick={() => answer('forgot')} disabled={review.isPending}>
-							還不熟
-						</Button>
-						<Button variant="primary" className="h-12 flex-1 text-base" onClick={() => answer('remembered')} disabled={review.isPending}>
-							記住了
-						</Button>
-					</>
-				)}
-			</div>
+					<section>
+						<h2 className="sr-only">筆記列表</h2>
+						{grid(rest)}
+					</section>
+				))}
 		</div>
 	);
 }
@@ -197,13 +168,60 @@ export function NotesPage() {
 	const user = useUser();
 	const today = todayOf(user.timezone);
 	const [params, setParams] = useSearchParams();
-	const view = (params.get('view') as View) || 'all';
-	const [subjectId, setSubjectId] = useState<string | null>(null);
+	const subjects = useSubjects();
+	const summary = useSummary();
+
+	// 畫面狀態放在網址：view、mode（複習方式）、subject、tag（單科頁與考試頁的「複習這科錯題」會帶 mode=cram&subject=）
+	const viewParam = params.get('view') as View | null;
+	const view: View = viewParam && VIEWS.includes(viewParam) ? viewParam : 'all';
+	const mode: ReviewMode = params.get('mode') === 'cram' ? 'cram' : 'due';
+	const subjectParam = params.get('subject');
+	const subjectId = subjectParam && subjects.data?.some((s) => s.id === subjectParam) ? subjectParam : null;
+	const subjectMissing = !!subjectParam && !!subjects.data && !subjectId;
+	const tag = params.get('tag') || null;
+
+	const updateParams = useCallback(
+		(patch: Record<string, string | null | undefined>) =>
+			setParams(
+				(prev) => {
+					for (const [k, v] of Object.entries(patch)) {
+						if (v === undefined) continue;
+						if (v === null) prev.delete(k);
+						else prev.set(k, v);
+					}
+					return prev;
+				},
+				{ replace: true },
+			),
+		[setParams],
+	);
+	const setView = (v: View) => updateParams({ view: v === 'all' ? null : v, mode: v === 'review' ? undefined : null });
+
 	const [search, setSearch] = useState('');
-	const [tag, setTag] = useState<string | null>(null);
 	const q = useDebounced(search.trim());
-	const [openId, setOpenId] = useState<string | null>(null);
-	const [editor, setEditor] = useState<{ note?: NoteItem; kind?: 'note' | 'mistake' } | null>(null);
+	const [opened, setOpened] = useState<{ id: string; note?: NoteItem } | null>(null);
+	const [editor, setEditor] = useState<{ note?: NoteItem; kind?: Kind } | null>(null);
+
+	// 深連結：?open=<id> 開啟筆記、?new=mistake|note 新增；處理後由 useDeepLink 用 replace 清掉
+	const link = useDeepLink(['open', 'new']);
+	const [seenLink, setSeenLink] = useState(0);
+	if (link.seq !== seenLink) {
+		setSeenLink(link.seq);
+		if (link.values.open) setOpened({ id: link.values.open });
+		if (link.values.new) setEditor({ kind: link.values.new === 'note' ? 'note' : 'mistake' });
+	}
+
+	const { data: openNote, error: openError } = useNote(opened?.id);
+	// 深連結的筆記打不開（被刪除、不是本人的、離線）：說明原因；對話框因為沒有內容不會打開
+	const openFailed = !!opened && !opened.note && !!openError;
+	useEffect(() => {
+		if (!openFailed) return;
+		toast.error(
+			openError instanceof ApiError && openError.status === 404
+				? '找不到這則筆記，可能已經刪除了'
+				: `打不開這則筆記：${openError instanceof Error ? openError.message : '請稍後再試'}`,
+		);
+	}, [openFailed, opened, openError]);
 
 	const filters: NoteFilters = useMemo(
 		() => ({
@@ -214,33 +232,31 @@ export function NotesPage() {
 		}),
 		[view, subjectId, q, tag],
 	);
-	const { data: notes, isPending, error, isPlaceholderData } = useNotes(filters);
-	const { data: dueNotes } = useNotes({ review: 'due' });
-	const { data: openNote } = useNote(openId ?? undefined);
-	const setView = (v: View) => setParams(v === 'all' ? {} : { view: v }, { replace: true });
+	const filtered = !!(subjectId || q || tag);
+	const due = summary.data?.reviewDueCount;
 
 	return (
 		<div>
 			<PageHeader
 				title="筆記與錯題"
-				description="整理重點、記錄錯題，並用間隔複習把弱點變強項"
+				description={due === undefined ? undefined : due > 0 ? `今天有 ${due} 題待複習` : '今天沒有待複習的題目'}
 				actions={
 					view !== 'review' && (
 						<>
 							<Button onClick={() => setEditor({ kind: 'note' })}>
 								<NotebookPen className="size-4" aria-hidden />
-								筆記
+								新增筆記
 							</Button>
 							<Button variant="primary" onClick={() => setEditor({ kind: 'mistake' })}>
 								<Plus className="size-4" aria-hidden />
-								錯題
+								新增錯題
 							</Button>
 						</>
 					)
 				}
 			/>
 
-			<div className="mb-4 flex flex-wrap items-center gap-2">
+			<div className="mb-5 flex flex-wrap items-center gap-2">
 				<Segmented
 					label="分類"
 					value={view}
@@ -252,84 +268,105 @@ export function NotesPage() {
 						{
 							value: 'review',
 							label: (
-								<span className="inline-flex items-center gap-1">
+								<span className="inline-flex items-center gap-1.5">
 									複習
-									{!!dueNotes?.length && (
-										<span className="rounded-full bg-danger px-1.5 text-[11px] leading-4 text-white">{dueNotes.length}</span>
+									{!!due && (
+										<span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-soft px-1.5 font-num text-caption font-semibold text-warning tabular-nums">
+											{due}
+											<span className="sr-only">題待複習</span>
+										</span>
 									)}
 								</span>
 							),
 						},
 					]}
 				/>
-				<div className="w-36">
-					<SubjectSelect value={subjectId} onChange={setSubjectId} emptyLabel="所有科目" />
-				</div>
 				{view !== 'review' && (
-					<div className="relative min-w-48 flex-1 sm:max-w-xs">
-						<Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-3" aria-hidden />
-						<Input
-							className="pl-9"
-							type="search"
-							placeholder="搜尋標題、內容、題目"
-							value={search}
-							onChange={(e) => setSearch(e.target.value)}
-							aria-label="搜尋筆記"
-						/>
-					</div>
-				)}
-				{tag && view !== 'review' && (
-					<button
-						onClick={() => setTag(null)}
-						className="inline-flex h-8 items-center gap-1 rounded-full bg-accent-soft px-3 text-sm text-accent-ink"
-					>
-						#{tag}
-						<X className="size-3.5" aria-label="清除標籤篩選" />
-					</button>
+					<>
+						<div className="w-36">
+							<SubjectSelect aria-label="科目" value={subjectId} onChange={(v) => updateParams({ subject: v })} emptyLabel="所有科目" />
+						</div>
+						<div className="relative min-w-48 flex-1 sm:max-w-xs">
+							<Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-3" aria-hidden />
+							<Input
+								className="pl-9"
+								type="search"
+								placeholder="搜尋筆記"
+								value={search}
+								onChange={(e) => setSearch(e.target.value)}
+								maxLength={100}
+								aria-label="搜尋筆記"
+							/>
+						</div>
+						{tag && (
+							<button
+								type="button"
+								onClick={() => updateParams({ tag: null })}
+								aria-label={`清除標籤「${tag}」的篩選`}
+								className="inline-flex h-9 items-center gap-1 rounded-full bg-accent-soft pr-2.5 pl-3 text-sm text-accent-ink transition-colors duration-120 ease-out hover:bg-accent-soft/70 pointer-coarse:h-11"
+							>
+								<Hash className="size-3.5" aria-hidden />
+								{tag}
+								<X className="ml-0.5 size-4" aria-hidden />
+							</button>
+						)}
+					</>
 				)}
 			</div>
 
-			{view === 'review' ? (
-				<ReviewSession key={subjectId ?? 'all'} subjectId={subjectId} onExit={() => setView('mistake')} />
-			) : isPending ? (
+			{subjectMissing && (
+				<p role="status" className="mb-4 text-meta text-ink-3">
+					找不到連結裡的科目，可能已經刪除了，先顯示所有科目。
+				</p>
+			)}
+
+			{subjectParam && subjects.isPending ? (
 				<PageLoader />
-			) : error ? (
-				<ErrorNote error={error} />
-			) : notes.length === 0 ? (
-				<Card>
-					<EmptyState
-						icon={<NotebookPen />}
-						title={q || tag ? '找不到符合的內容' : '還沒有筆記或錯題'}
-						description={q || tag ? '換個關鍵字試試看。' : '考完試後把錯的題目拍照記下來，系統會提醒你定期複習。'}
-						action={
-							!q &&
-							!tag && (
-								<Button size="sm" onClick={() => setEditor({ kind: 'mistake' })}>
-									<Plus className="size-4" aria-hidden />
-									新增第一題錯題
-								</Button>
-							)
-						}
-					/>
-				</Card>
+			) : view === 'review' ? (
+				<ReviewView
+					mode={mode}
+					subjectId={subjectId}
+					tag={tag}
+					onParams={updateParams}
+					onOpenNote={(id) => setOpened({ id })}
+					onNewMistake={() => setEditor({ kind: 'mistake' })}
+					onBack={() => setView('mistake')}
+				/>
 			) : (
-				<div className={cn('grid gap-3 sm:grid-cols-2 lg:grid-cols-3', isPlaceholderData && 'opacity-60')}>
-					{notes.map((n) => (
-						<NoteCard key={n.id} note={n} today={today} tz={user.timezone} onOpen={() => setOpenId(n.id)} onTag={setTag} />
-					))}
-				</div>
+				<NotesList
+					filters={filters}
+					query={q}
+					filtered={filtered}
+					view={view}
+					today={today}
+					timeZone={user.timezone}
+					onOpen={(note) => setOpened({ id: note.id, note })}
+					onTag={(t) => updateParams({ tag: t })}
+					onNew={(kind) => setEditor({ kind })}
+					onClear={() => {
+						setSearch('');
+						updateParams({ subject: null, tag: null });
+					}}
+				/>
 			)}
 
 			<NoteDetail
-				note={openId ? (openNote ?? null) : null}
+				note={opened ? (openNote ?? opened.note ?? null) : null}
 				today={today}
-				onClose={() => setOpenId(null)}
+				timeZone={user.timezone}
+				onClose={() => setOpened(null)}
 				onEdit={(n) => {
-					setOpenId(null);
+					setOpened(null);
 					setEditor({ note: n });
 				}}
 			/>
-			<NoteEditor open={!!editor} note={editor?.note} defaultKind={editor?.kind} onClose={() => setEditor(null)} />
+			<NoteEditor
+				open={!!editor}
+				note={editor?.note}
+				defaultKind={editor?.kind}
+				defaultSubjectId={subjectId}
+				onClose={() => setEditor(null)}
+			/>
 		</div>
 	);
 }
