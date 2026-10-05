@@ -45,6 +45,16 @@ const collision: CollisionDetection = (args) => {
 };
 
 type DragData = { task: TaskItem };
+
+const cardTitle = (id: string) => document.querySelector<HTMLElement>(`[data-task-card="${CSS.escape(id)}"] [data-task-title]`);
+const columnOfCard = (id: string) =>
+	document.querySelector(`[data-task-card="${CSS.escape(id)}"]`)?.closest<HTMLElement>('[data-board-column]')?.dataset.boardColumn;
+/** 焦點掉到 body（原本的按鈕不見了）時，把焦點放到卡片標題；焦點在別處時不搶 */
+function focusCardIfLost(id: string) {
+	const active = document.activeElement;
+	if (active && active !== document.body) return;
+	cardTitle(id)?.focus();
+}
 const taskOf = (data: { current?: unknown } | undefined) => (data?.current as DragData | undefined)?.task;
 const isStatus = (id: unknown): id is TaskStatus => TASK_STATUS_ORDER.includes(id as TaskStatus);
 
@@ -67,7 +77,8 @@ export function TaskBoard({
 	eventMap: Map<string, EventItem>;
 	query: string;
 	onOpen: (task: TaskItem) => void;
-	onMove: (task: TaskItem, to: TaskStatus) => void;
+	/** 移動卡片；onSettled 在儲存完成時呼叫（failed：是否失敗、已退回原欄），用來處理焦點 */
+	onMove: (task: TaskItem, to: TaskStatus, onSettled?: (failed: boolean) => void) => void;
 }) {
 	const reduced = usePrefersReducedMotion();
 	const sensors = useSensors(
@@ -78,23 +89,40 @@ export function TaskBoard({
 	// 放到別欄時卡片會直接出現在新的欄，不播放「飛回原位」的動畫
 	const [skipDropAnimation, setSkipDropAnimation] = useState(false);
 	const [message, setMessage] = useState('');
-	// 用按鈕移動的卡片：之後幾秒內卡片換欄（移過去，或儲存失敗退回原欄）、焦點因此掉到 body 時，把焦點放回這張卡片的標題
-	const follow = useRef<{ id: string; until: number } | null>(null);
+	// 用按鈕移動的卡片：卡片第一次換到新的欄時處理一次；儲存失敗、退回原欄時再處理一次，之後就清掉。
+	// 「處理」是指：原本的按鈕跟著卡片消失、焦點掉到 body 時，把焦點放到這張卡片的標題（焦點在別處時不動）。
+	const follow = useRef<{ id: string; from: TaskStatus; to: TaskStatus; moved: boolean; failed: boolean } | null>(null);
 	useEffect(() => {
-		const target = follow.current;
-		if (!target) return;
-		if (Date.now() > target.until) {
+		const f = follow.current;
+		if (!f) return;
+		const column = columnOfCard(f.id);
+		if (!f.moved && column === f.to) {
+			follow.current = { ...f, moved: true };
+			focusCardIfLost(f.id);
+		} else if (f.failed && column === f.from) {
 			follow.current = null;
-			return;
+			focusCardIfLost(f.id);
 		}
-		if (document.activeElement && document.activeElement !== document.body) return;
-		document.querySelector<HTMLElement>(`[data-task-card="${CSS.escape(target.id)}"] [data-task-title]`)?.focus();
 	}, [columns]);
 
 	const moveByButton = (task: TaskItem, to: TaskStatus) => {
-		follow.current = { id: task.id, until: Date.now() + 10_000 };
+		follow.current = { id: task.id, from: task.status, to, moved: false, failed: false };
 		setMessage(`已把「${task.title}」移到「${STATUS_LABEL[to]}」`);
-		onMove(task, to);
+		onMove(task, to, (failed) => {
+			const f = follow.current;
+			if (f?.id !== task.id) return;
+			if (!failed) {
+				follow.current = null;
+				return;
+			}
+			// 失敗：等退回原欄的重繪由上面的 effect 處理；那次重繪沒有發生時，這裡補做一次
+			follow.current = { ...f, failed: true };
+			window.setTimeout(() => {
+				if (follow.current?.id !== task.id || !follow.current.failed) return;
+				follow.current = null;
+				focusCardIfLost(task.id);
+			}, 100);
+		});
 	};
 
 	const onDragStart = ({ active }: DragStartEvent) => {

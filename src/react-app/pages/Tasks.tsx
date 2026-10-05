@@ -73,8 +73,11 @@ export function TasksPage() {
 		if (missingOpen) toast.error('找不到這個任務', { description: '可能已經刪除了，請從清單重新選擇' });
 	}, [missingOpen]);
 
-	const moveTask = (task: TaskItem, to: TaskStatus) =>
-		patch.mutate({ id: task.id, status: to, errorTitle: `沒有移動成功，「${task.title}」已放回「${STATUS_LABEL[task.status]}」` });
+	const moveTask = (task: TaskItem, to: TaskStatus, onSettled?: (failed: boolean) => void) =>
+		patch.mutate(
+			{ id: task.id, status: to, errorTitle: `沒有移動成功，「${task.title}」已放回「${STATUS_LABEL[task.status]}」` },
+			onSettled && { onSuccess: () => onSettled(false), onError: () => onSettled(true) },
+		);
 
 	// 在清單上直接勾子項目（樂觀更新）；全部勾完時詢問要不要一併完成任務，不會自動完成
 	const toggleItem = async (task: Task | TaskItem, itemId: string) => {
