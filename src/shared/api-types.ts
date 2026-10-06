@@ -105,7 +105,7 @@ export type AchievementsResponse = { achievements: Achievement[] };
 
 /** GET /api/profile/summary：個人檔案的累積數字，只有本人；和 GET /api/achievements 用同一份計算 */
 export type ProfileSummary = {
-	/** 全部學習紀錄的分鐘數（四捨五入到分鐘）與筆數 */
+	/** 全部學習紀錄的分鐘數（無條件捨去到分鐘，和成就頁的時數一致）與筆數 */
 	totalMinutes: number;
 	totalSessions: number;
 	/**
