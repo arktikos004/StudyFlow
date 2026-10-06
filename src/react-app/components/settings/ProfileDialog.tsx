@@ -1,4 +1,6 @@
+import { onlineManager } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { toast } from 'sonner';
 import type { PublicUser } from '../../../shared/api-types';
 import { registerSchema } from '../../../shared/schemas';
 import { useDeleteAvatar, useUpdateProfile, useUploadAvatar } from '../../lib/queries';
@@ -7,6 +9,7 @@ import { Button, Dialog, Field, Input } from '../ui';
 import { ProfilePhotoField } from './ProfilePhotoField';
 
 const nameSchema = registerSchema.shape.displayName;
+const OFFLINE_MESSAGE = '目前離線，連上網路後再儲存';
 
 /**
  * 「編輯個人資料」對話框：照片與暱稱（時區是設定，在「帳號與安全」卡）。
@@ -14,6 +17,7 @@ const nameSchema = registerSchema.shape.displayName;
  * - 照片失敗：什麼都沒存，對話框留著（新選的照片還在），可以再按一次。
  * - 照片成功、暱稱失敗（部分成功）：照片已經換好（預覽就是新的照片），焦點回到暱稱，再按「儲存」只會存暱稱。
  * 暱稱的格式錯誤（空白、太長）在送出前檢查，顯示在欄位旁邊。
+ * 離線時不送出（TanStack Query 離線時會把 mutation 暫停、連線後才補送，按鈕會一直轉圈，使用者放棄後也會被存），直接提示。
  * 狀態在每次打開時重設；新選照片的預覽網址（blob:）在換掉、關閉時 revoke。
  */
 export function ProfileDialog({
@@ -74,6 +78,10 @@ export function ProfileDialog({
 			return;
 		}
 		setNameError(undefined);
+		if (!onlineManager.isOnline()) {
+			toast.error(OFFLINE_MESSAGE);
+			return;
+		}
 		setSaving(true);
 		try {
 			if (draft.kind === 'set') await uploadAvatar.mutateAsync(draft.blob);

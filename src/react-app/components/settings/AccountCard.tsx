@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query';
 import { ChevronDown, CircleAlert } from 'lucide-react';
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -11,7 +12,10 @@ import { EmailText } from './ProfileEmail';
 
 const isFinePointer = () => window.matchMedia('(pointer: fine)').matches;
 
-/** 時區：常用清單＋目前的時區，選項附上 GMT 偏移；改了才能按「儲存」（不在選單變動時自動儲存：鍵盤上下鍵會直接改值） */
+/**
+ * 時區：常用清單＋目前的時區，選項附上 GMT 偏移；改了才能按「儲存」（不在選單變動時自動儲存：鍵盤上下鍵會直接改值）。
+ * 離線時不送出、直接提示（TanStack Query 離線時會把 mutation 暫停，連線後才補送）。
+ */
 function TimezoneForm({ user }: { user: PublicUser }) {
 	const update = useUpdateProfile();
 	const [timezone, setTimezone] = useState(user.timezone);
@@ -21,7 +25,9 @@ function TimezoneForm({ user }: { user: PublicUser }) {
 			className="px-4 py-4 sm:px-5"
 			onSubmit={(e) => {
 				e.preventDefault();
-				if (changed) update.mutate({ timezone });
+				if (!changed) return;
+				if (!onlineManager.isOnline()) toast.error('目前離線，連上網路後再儲存');
+				else update.mutate({ timezone });
 			}}
 		>
 			<Field label="時區" hint="用來判斷「今天」與統計每天的學習時間">
