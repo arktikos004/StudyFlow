@@ -45,5 +45,5 @@
 
 | Lane | Agent | 故事 | 狀態 |
 |---|---|---|---|
-| s4/profile-api | backend-engineer | PRO-1：頭像上傳 API、個人檔案摘要 API、migration 0002、hook 與整合測試 | 進行中 |
+| s4/profile-api | backend-engineer | PRO-1：頭像上傳 API、個人檔案摘要 API、migration 0002、hook 與整合測試 | 已合併（review：修正後合併；順手修好筆記照片上傳的同一個大小檢查漏洞） |
 | s4/profile-ui | ui-designer | PRO-1：設定頁頂端的個人檔案、Avatar 元件、帳號與安全卡、側欄與手機選單的帳號區塊 | 進行中 |
