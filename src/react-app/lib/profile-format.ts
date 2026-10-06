@@ -1,22 +1,6 @@
 // 個人檔案（PRO-1）的純邏輯：加入時間、累積數字的文字、一列放得下幾個徽章、時區選單。
+// 累積數字的型別是 src/shared/api-types.ts 的 ProfileSummary（GET /api/profile/summary）。
 // 不碰 DOM 與 React，test/profile-ui-format.spec.ts 直接測。
-
-/**
- * GET /api/profile/summary 的回應：本人的累積數字（後端一次算好）。
- * 第一階段先放在這裡；s4/profile-api 合併後改成 re-export src/shared/api-types.ts 的 ProfileSummary。
- */
-export type ProfileSummary = {
-	totalMinutes: number;
-	totalSessions: number;
-	currentStreak: number;
-	longestStreak: number;
-	tasksDone: number;
-	mistakesMastered: number;
-	achievements: { unlocked: number; total: number; badges: ProfileBadge[] };
-};
-
-/** 已解鎖的徽章（後端的固定順序）；icon 是 lucide 名稱，用 lib/shell-icons.ts 對應 */
-export type ProfileBadge = { id: string; title: string; icon: string };
 
 const COUNT = new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 1 });
 

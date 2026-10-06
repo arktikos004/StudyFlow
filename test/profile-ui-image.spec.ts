@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AVATAR_MAX_EDGE, AvatarImageError, squareCrop } from '../src/react-app/lib/profile-crop';
+import { AVATAR_MAX_BYTES } from '../src/shared/schemas';
+import { AVATAR_MAX_EDGE, AVATAR_TOO_LARGE, AvatarImageError, squareCrop, withinAvatarLimit } from '../src/react-app/lib/profile-crop';
 
 describe('頭像的正方形裁切（squareCrop）', () => {
 	it('橫的照片：取高度為邊長，左右平均裁掉', () => {
@@ -59,5 +60,24 @@ describe('頭像的正方形裁切（squareCrop）', () => {
 			expect(() => squareCrop(w, h)).toThrow(AvatarImageError);
 		}
 		expect(() => squareCrop(0, 0)).toThrow('無法讀取這張照片的尺寸，請換一張照片');
+	});
+});
+
+describe('送出前的大小檢查（withinAvatarLimit）', () => {
+	it('以後端的 AVATAR_MAX_BYTES（1MB）為上限，剛好 1MB 可以', () => {
+		expect(AVATAR_MAX_BYTES).toBe(1024 * 1024);
+		expect(withinAvatarLimit(80_000)).toBe(true);
+		expect(withinAvatarLimit(AVATAR_MAX_BYTES)).toBe(true);
+		expect(withinAvatarLimit(AVATAR_MAX_BYTES + 1)).toBe(false);
+	});
+
+	it('空的或不合法的大小不算通過', () => {
+		expect(withinAvatarLimit(0)).toBe(false);
+		expect(withinAvatarLimit(-1)).toBe(false);
+		expect(withinAvatarLimit(Number.NaN)).toBe(false);
+	});
+
+	it('訊息和後端同一種說法（zh-TW），並說明怎麼辦', () => {
+		expect(AVATAR_TOO_LARGE).toBe('照片太大（上限 1MB），請換一張照片');
 	});
 });

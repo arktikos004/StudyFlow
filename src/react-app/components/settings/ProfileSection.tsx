@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useUser } from '../../lib/queries';
-import { avatarUrl, useProfileSummary } from '../../lib/profile-queries';
+import { avatarUrl } from '../../lib/api';
+import { useProfileSummary, useUser } from '../../lib/queries';
 import { ProfileDialog } from './ProfileDialog';
 import { ProfileHeader } from './ProfileHeader';
 

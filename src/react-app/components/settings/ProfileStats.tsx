@@ -1,16 +1,8 @@
 import { ChevronRight, Flame, Hourglass, ListChecks, Trophy, type LucideIcon } from 'lucide-react';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import {
-	badgeCapacity,
-	formatCount,
-	masteredNote,
-	sessionsNote,
-	streakNote,
-	studyTotal,
-	type ProfileBadge,
-	type ProfileSummary,
-} from '../../lib/profile-format';
+import type { ProfileSummary } from '../../../shared/api-types';
+import { badgeCapacity, formatCount, masteredNote, sessionsNote, streakNote, studyTotal } from '../../lib/profile-format';
 import { AchievementIcon } from '../../lib/shell-icons';
 import { cn, MoreLink, Unit } from '../ui';
 
@@ -69,7 +61,7 @@ function useWidth<T extends HTMLElement>(enabled: boolean) {
  * 已解鎖的徽章：和成就頁一樣是藍筆塗滿的章（accent 底、on-accent 圖示、外圈 accent-soft），縮小成 28px。
  * 一列放不下時最後一格是「+N」。徽章名稱給螢幕報讀器（sr-only），看得到的人點整格到成就頁看名稱。
  */
-function BadgeRow({ badges }: { badges: ProfileBadge[] }) {
+function BadgeRow({ badges }: { badges: ProfileSummary['achievements']['badges'] }) {
 	const [ref, width] = useWidth<HTMLUListElement>(badges.length > 0);
 	// 沒有徽章時的文字和徽章列同高（28px），載入完、解鎖第一個時都不會跳動
 	if (!badges.length) return <p className="flex min-h-7 items-center text-meta text-ink-3">還沒有解鎖的徽章</p>;

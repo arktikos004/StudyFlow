@@ -1,6 +1,6 @@
 import { Pencil } from 'lucide-react';
-import type { PublicUser } from '../../../shared/api-types';
-import { joinedLabel, type ProfileSummary } from '../../lib/profile-format';
+import type { ProfileSummary, PublicUser } from '../../../shared/api-types';
+import { joinedLabel } from '../../lib/profile-format';
 import { Avatar, Button, Card, ErrorNote } from '../ui';
 import { EmailText } from './ProfileEmail';
 import { ProfileStats } from './ProfileStats';

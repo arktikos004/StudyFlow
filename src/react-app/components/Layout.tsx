@@ -14,8 +14,7 @@ import {
 } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router';
 import { toast } from 'sonner';
-import { api } from '../lib/api';
-import { avatarUrl } from '../lib/profile-queries';
+import { api, avatarUrl } from '../lib/api';
 import { useAchievements, useSummary, useUser } from '../lib/queries';
 import { diffUnlocked, parseSeen, seenKey } from '../lib/shell-achievements';
 import { achievementIcon } from '../lib/shell-icons';

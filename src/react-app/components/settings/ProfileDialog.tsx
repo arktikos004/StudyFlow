@@ -1,9 +1,8 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { PublicUser } from '../../../shared/api-types';
 import { registerSchema } from '../../../shared/schemas';
-import { useUpdateProfile } from '../../lib/queries';
+import { useDeleteAvatar, useUpdateProfile, useUploadAvatar } from '../../lib/queries';
 import { KEEP_PHOTO, type PhotoDraft } from '../../lib/profile-photo';
-import { useDeleteAvatar, useUploadAvatar } from '../../lib/profile-queries';
 import { Button, Dialog, Field, Input } from '../ui';
 import { ProfilePhotoField } from './ProfilePhotoField';
 
