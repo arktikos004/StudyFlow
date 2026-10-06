@@ -355,6 +355,48 @@
   - 堆疊段之間留 2px 空隙。
   - 顏色跟著科目走。
 
+### 跨頁慣例（Sprint 3 設計審查定案）
+
+設計審查發現各頁各做各的地方，統一成下面的規則。改頁面時照這裡做；需要新的例外，先寫進這一節再做。
+
+- **頁首**：一律用 `PageHeader`，不自己寫 `<header>`。
+  - 標題上方的小字（例如總覽的日期）用 `eyebrow`；即時摘要用 `description`；動作用 `actions`。
+  - PageHeader 自帶下方間距（手機 24、桌面 32），後面的第一個區塊不要再加 `mt-*`。
+- **區塊間距**（§5：手機 24、桌面 32）：
+  - 直向堆疊用 `<PageStack>`；兩欄以上的格線用 `gap-section`（例如 `grid items-start gap-section lg:grid-cols-5`），欄內再用 `<PageStack>`。
+  - 兩者都讀 `--section-gap`（24px，md 以上 32px）。不再手寫 `space-y-5`、`gap-5`、`space-y-6`、`mt-6 md:mt-8`。
+  - 卡片內部不算區塊：照 §5 的「組內 4–12、組與組之間 16–24」。
+- **每個畫面只有一個 primary**：
+  - 有資料時：primary 在頁首的 `actions`，其他動作用 secondary／ghost。
+  - **資料為空時**：頁首不放主要動作，由 `EmptyState` 的 primary 負責；篩選列也隱藏（沒有東西可以篩）。
+  - 篩選後沒有結果不算「資料為空」：頁首的 primary 與篩選列照常顯示，EmptyState 的動作用 secondary（例如「清除篩選」）。
+- **篩選列**：
+  - 順序固定：搜尋（`flex-1`）→ 檢視或種類的 Segmented → 狀態 → 科目 → 排序。沒有的項目直接跳過，其餘順序不變。
+  - 篩選列到內容一律 `mb-5`（20px：篩選列和它篩的內容是同一個區塊，所以不用區塊間距）。容器是 `mb-5 flex flex-wrap items-center gap-2`。
+  - 搜尋框用 `SearchInput`（放大鏡、清除鈕、Esc 清空），不自己組。
+- **倒數磚**（考試、截止日、任務期限的「還有幾天」）：
+  - 紅色（`bg-danger-soft text-danger`）只給 **3 天內（含今天）的考試**，而且一定加 `AlarmClock` 圖示。
+  - 截止日與任務期限在 3 天內用 warning（`bg-warning-soft text-warning`），加 `CalendarClock` 圖示。
+  - 其他是中性：`bg-subtle`，數字 ink、說明 ink-2；已經過去的整塊 ink-3。
+  - 文案全站統一：「今天」「明天」「N 天後」「已結束」。不用「還有 N 天」「D-N」「D-Day」「已過 N 天」。
+  - 24 小時內而且有時間的項目可以改成即時倒數（h:mm:ss 加「後開始」「後截止」）。
+  - 數字用 `NumDisplay`／`Countdown`（font-num、等寬數字）。
+- **CardHeader**：
+  - 圖示：同一頁要嘛每張卡片都有、要嘛都沒有。直接傳 lucide 元件（`icon={Clock}`），大小與顏色由 CardHeader 決定，不在呼叫端寫 `size-[18px] text-ink-3`。
+  - 附註放 `meta`（「3 項」「近 7 天」），不寫在標題的括號裡。
+- **小標**：卡片外的分組標題（「已釘選 2」「已逾期 1」）和卡片內的欄位小標（「題目」「正確答案」）用 `SectionLabel`，不自己組 class。
+- **日期範圍**：寫成「9/7（一）至 10/6（二）」，用「至」，不用破折號（–、—、~）。
+- **載入失敗**：`ErrorNote` 傳 `onRetry`（通常是 query 的 `refetch`），讓使用者不必重新整理頁面。
+- **例外**（只有這幾個）：
+  - 外觀設定的深淺色預覽可以有邊框：它是畫面的縮圖，不算卡片裡的卡片。
+  - raw 的 `white`／`black` 只允許出現在選色器的把手（`ColorPicker.tsx`：把手必須在任何顏色上都看得見）。照片燈箱的背景用 `bg-scrim`，不用 `black`。
+  - 指令面板的輸入框用 `outline-none`，改以輸入列的下緣線變 accent 表示焦點。其他輸入框都用 `Input`／`SearchInput` 的邊框加光環。
+  - 整格或整張卡可點（標題按鈕的 `::after` 蓋滿容器）一律用 `StretchedButton`，不自己寫。非自己寫不可時：
+    - 按鈕本身的焦點框用 `focus-visible:outline-0`（寬度歸零）關掉，全站統一這個寫法，不用 `outline-none`。
+    - 焦點框畫在 `::after` 上（`focus-visible:after:outline-2 focus-visible:after:outline-accent`）。
+    - 容器有 `overflow-hidden` 時加 `focus-visible:after:-outline-offset-2`，否則焦點框畫在容器外面會被裁掉。
+    - 容器要 `relative`；同一格裡其他可以點的元素加 `relative z-10` 才會疊在上面。
+
 ### 元件 API（Sprint 1 定案，給 Sprint 2 各 lane）
 
 元件的預設樣式放在 `index.css` 的 `@layer components`（`.sf-btn`、`.sf-field`、`.sf-dialog`），頁面傳入的 `className` 工具類一定蓋得過（例如 `className="h-12 text-base"`、`text-danger`）。頁面不要直接寫 `.sf-*`，請用元件。
