@@ -122,7 +122,7 @@ export function StatsPage() {
 					label: '每日目標',
 					icon: <Target aria-hidden />,
 					value: (
-						<MoreLink to="/settings" className="font-sans text-dense">
+						<MoreLink to="/settings#goals" className="font-sans text-dense">
 							設定每日目標
 						</MoreLink>
 					),
