@@ -35,6 +35,8 @@
 
 | 項目 | Agent | 狀態 |
 |---|---|---|
-| QA：全套檢查、截圖、a11y 抽查、匯出檔驗證 | qa-engineer | 待辦 |
-| 設計審查 | ui-designer | 待辦 |
+| QA：全套檢查、截圖、a11y 抽查、匯出檔驗證 | qa-engineer（Sonnet） | 進行中 |
+| 設計審查 | ui-designer（Sonnet，只讀） | 進行中 |
+| s3/polish：backlog 累積的頁面修正、共用元件遷移 | frontend-engineer | 進行中 |
+| s3/design：共用元件與設計系統的修正 | ui-designer | 待辦（等設計審查結果） |
 | 逐條驗收、README、Sprint review、回顧 | product-owner | 待辦 |
