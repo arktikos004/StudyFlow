@@ -1,6 +1,6 @@
 import { SELF } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
-import { AVATAR_MAX_BYTES } from '../src/shared/schemas';
+import { ATTACHMENT_MAX_BYTES, AVATAR_MAX_BYTES } from '../src/shared/schemas';
 import { BASE, PNG_1X1, registeredClient, type Client } from './helpers';
 
 // code review 1：沒有 Content-Length（chunked）的上傳，也要在整個 body 讀進記憶體之前擋下
@@ -78,5 +78,54 @@ describe('沒有 Content-Length 的上傳：頭像（review 1）', () => {
 		const over = await chunkedUpload(c, 'PUT', '/api/auth/avatar', PNG_1X1, AVATAR_MAX_BYTES - PNG_1X1.byteLength + 1);
 		expect(over.status).toBe(413);
 		expect(over.data.error).toBe('照片太大（上限 1MB）');
+	});
+});
+
+describe('沒有 Content-Length 的上傳：筆記照片（review 1）', () => {
+	async function makeNote(c: Client): Promise<{ id: string }> {
+		const res = await c.post('/api/notes', { kind: 'note', title: '有照片的筆記' });
+		expect(res.status).toBe(201);
+		return res.data.note;
+	}
+
+	it('24MB 的串流在讀到上限附近就回 413，不會整個讀進記憶體；筆記沒有多出照片', async () => {
+		const c = await registeredClient();
+		const note = await makeNote(c);
+		const res = await chunkedUpload(c, 'POST', `/api/notes/${note.id}/attachments`, PNG_1X1, 24 * MB);
+		expect(res.status).toBe(413);
+		expect(res.data.error).toBe('照片太大（上限 5MB）');
+		expect(res.pulled).toBeLessThan(8 * MB);
+		expect((await c.get(`/api/notes/${note.id}`)).data.note.attachments).toEqual([]);
+	});
+
+	it('小的 chunked 合法圖片仍然上傳成功；別人的筆記仍回 404', async () => {
+		const c = await registeredClient();
+		const note = await makeNote(c);
+		const res = await chunkedUpload(c, 'POST', `/api/notes/${note.id}/attachments`, PNG_1X1);
+		expect(res.status, JSON.stringify(res.data)).toBe(201);
+		expect(res.data.attachment).toMatchObject({ contentType: 'image/png', size: PNG_1X1.byteLength });
+		const photo = await c.get(`/api/attachments/${res.data.attachment!.id}`);
+		expect(new Uint8Array(photo.data)).toEqual(PNG_1X1);
+
+		const other = await registeredClient();
+		const stolen = await chunkedUpload(other, 'POST', `/api/notes/${note.id}/attachments`, PNG_1X1);
+		expect(stolen.status).toBe(404);
+		expect(stolen.data.error).toBe('找不到此筆記');
+		expect((await c.get(`/api/notes/${note.id}`)).data.note.attachments).toHaveLength(1);
+	});
+
+	it('有 Content-Length 時：超過上限 1 byte 與遠超過上限都回 413', async () => {
+		const c = await registeredClient();
+		const note = await makeNote(c);
+		for (const size of [ATTACHMENT_MAX_BYTES + 1, ATTACHMENT_MAX_BYTES + MB]) {
+			const bytes = new Uint8Array(size);
+			bytes.set(PNG_1X1);
+			const form = new FormData();
+			form.append('file', new File([bytes], 'big.png', { type: 'image/png' }));
+			const res = await c.post(`/api/notes/${note.id}/attachments`, form);
+			expect(res.status, String(size)).toBe(413);
+			expect(res.data.error).toBe('照片太大（上限 5MB）');
+		}
+		expect((await c.get(`/api/notes/${note.id}`)).data.note.attachments).toEqual([]);
 	});
 });
