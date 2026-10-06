@@ -68,11 +68,14 @@ type ShortcutEvent = { key: string; code?: string; metaKey: boolean; ctrlKey: bo
  * 開關指令面板的快速鍵：
  * - Windows／Linux：Ctrl+K。
  * - macOS：⌘K；Ctrl+K 只在不是輸入欄位時有效（macOS 文字欄位的 Ctrl+K 是「刪到行尾」，不能搶走）。
- * 加了 Alt 或 Shift 的組合不算。key 在注音等輸入法下可能不是 'k'，所以也看實體鍵 code。
+ * 加了 Alt 或 Shift 的組合不算。
+ * 先看 key（Dvorak 等佈局的 K 不在 QWERTY 的位置，實體 KeyK 打出來的是 T）；
+ * 只有 key 不是單一拉丁字母時（注音等輸入法的 'Process'、'Unidentified'、俄文等非拉丁佈局）才改看實體鍵 code。
  */
 export function isPaletteShortcut(e: ShortcutEvent, apple: boolean, inEditable: boolean): boolean {
 	if (e.altKey || e.shiftKey) return false;
-	if (e.key.toLowerCase() !== 'k' && e.code !== 'KeyK') return false;
+	const key = e.key.toLowerCase();
+	if (/^[a-z]$/.test(key) ? key !== 'k' : e.code !== 'KeyK') return false;
 	if (apple) return (e.metaKey && !e.ctrlKey) || (e.ctrlKey && !e.metaKey && !inEditable);
 	return e.ctrlKey && !e.metaKey;
 }

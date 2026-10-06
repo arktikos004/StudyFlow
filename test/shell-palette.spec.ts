@@ -85,6 +85,19 @@ describe('指令面板：快速鍵', () => {
 		expect(isPaletteShortcut(key('Process', { ctrlKey: true }, 'KeyK'), false, false)).toBe(true);
 	});
 
+	it('先看 key：Dvorak 的實體 KeyK 打出 t，不開；Dvorak 的 K（實體 KeyV）要開', () => {
+		expect(isPaletteShortcut(key('t', { ctrlKey: true }, 'KeyK'), false, false)).toBe(false);
+		expect(isPaletteShortcut(key('t', { metaKey: true }, 'KeyK'), true, false)).toBe(false);
+		expect(isPaletteShortcut(key('k', { ctrlKey: true }, 'KeyV'), false, false)).toBe(true);
+	});
+
+	it('key 不是拉丁字母時才用實體鍵當後備', () => {
+		expect(isPaletteShortcut(key('Unidentified', { ctrlKey: true }, 'KeyK'), false, false)).toBe(true);
+		expect(isPaletteShortcut(key('л', { ctrlKey: true }, 'KeyK'), false, false)).toBe(true);
+		expect(isPaletteShortcut(key('Process', { ctrlKey: true }, 'KeyJ'), false, false)).toBe(false);
+		expect(isPaletteShortcut(key('л', { ctrlKey: true }), false, false)).toBe(false);
+	});
+
 	it('平台判斷', () => {
 		expect(isApplePlatform('MacIntel')).toBe(true);
 		expect(isApplePlatform('iPhone')).toBe(true);
