@@ -1,0 +1,37 @@
+// 頭像照片的前端處理（PRO-1）：置中裁成正方形、縮到最大 512×512、轉成 JPEG（透明的地方鋪白）。
+// 裁切範圍的計算是 lib/profile-crop.ts 的純函式（有單元測試）；這裡需要瀏覽器的 createImageBitmap 與 canvas。
+import { AvatarImageError, squareCrop } from './profile-crop';
+
+export { AVATAR_MAX_EDGE, AvatarImageError, squareCrop } from './profile-crop';
+
+/** 檔案選擇器只列出這些格式（後端只收 JPEG、PNG、WebP；送出的一律是轉好的 JPEG） */
+export const AVATAR_ACCEPT = 'image/jpeg,image/png,image/webp';
+const QUALITY = 0.86;
+
+/**
+ * 把使用者選的照片做成頭像：置中裁成正方形、最大 512×512、JPEG（品質 0.86，通常 30–120KB，遠低於後端的 1MB 上限）。
+ * 依 EXIF 轉正（手機直拍的照片不會躺著）。不是圖片、讀不出來或轉檔失敗時丟出 AvatarImageError（zh-TW 訊息）。
+ */
+export async function prepareAvatar(file: Blob): Promise<Blob> {
+	if (file.type && !file.type.startsWith('image/')) throw new AvatarImageError('請選擇照片檔（JPEG、PNG 或 WebP）');
+	const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => null);
+	if (!bitmap) throw new AvatarImageError('無法讀取這張照片，請改用 JPEG、PNG 或 WebP');
+	try {
+		const { sx, sy, side, out } = squareCrop(bitmap.width, bitmap.height);
+		const canvas = document.createElement('canvas');
+		canvas.width = out;
+		canvas.height = out;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) throw new AvatarImageError('照片處理失敗，請再試一次');
+		// JPEG 沒有透明度：先鋪白底，透明的 PNG、WebP 才不會變成黑底
+		ctx.fillStyle = '#ffffff';
+		ctx.fillRect(0, 0, out, out);
+		ctx.imageSmoothingQuality = 'high';
+		ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, out, out);
+		const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', QUALITY));
+		if (!blob) throw new AvatarImageError('照片處理失敗，請再試一次');
+		return blob;
+	} finally {
+		bitmap.close();
+	}
+}
