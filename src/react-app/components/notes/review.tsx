@@ -370,7 +370,7 @@ function DueReview({
 			<Card>
 				<EmptyState
 					icon={<Sparkles />}
-					title={subjectId ? '這一科今天沒有要複習的題目' : '今天沒有要複習的題目'}
+					title={subjectId ? '這一科的複習都完成了' : '今天的複習都完成了'}
 					description="新增的錯題隔天會出現在這裡。想多練習，可以改用考前衝刺。"
 					action={
 						<Button variant="primary" onClick={() => onMode('cram')}>

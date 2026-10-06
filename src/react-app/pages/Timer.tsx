@@ -130,14 +130,14 @@ function OptionField({ option, value, hint }: { option: NumericOption; value: nu
 }
 
 /** 番茄鐘設定：平常只顯示一行摘要，按「調整」展開（專注空間保持安靜） */
-function PomodoroSettings({ s }: { s: TimerState }) {
+function PomodoroSettings({ s, className }: { s: TimerState; className?: string }) {
 	const [open, setOpen] = useState(false);
 	const id = useId();
 	return (
-		<section aria-labelledby={`${id}-title`} className="w-full max-w-xl border-t border-line pt-5">
+		<section aria-labelledby={`${id}-title`} className={cn('w-full max-w-xl border-t border-line pt-5', className)}>
 			<div className="flex items-center justify-between gap-3">
 				<div className="min-w-0">
-					<h2 id={`${id}-title`} className="text-h3 font-semibold">
+					<h2 id={`${id}-title`} className="text-h2 font-semibold">
 						番茄鐘設定
 					</h2>
 					<p className="text-meta text-pretty text-ink-3">
@@ -217,7 +217,7 @@ function NoiseControls({ focusRunning }: { focusRunning: boolean }) {
 	return (
 		<section aria-labelledby={`${id}-title`} className="w-full max-w-xl border-t border-line pt-5">
 			<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-				<h2 id={`${id}-title`} className="text-h3 font-semibold">
+				<h2 id={`${id}-title`} className="text-h2 font-semibold">
 					白噪音
 				</h2>
 				{on && (
@@ -269,6 +269,7 @@ function SessionLog({
 	onEdit,
 	onCreate,
 	errorShownAbove,
+	className,
 }: {
 	date: string;
 	today: string;
@@ -276,6 +277,7 @@ function SessionLog({
 	onEdit: (session: StudySession) => void;
 	onCreate: () => void;
 	errorShownAbove: boolean;
+	className?: string;
 }) {
 	const user = useUser();
 	const tz = user.timezone;
@@ -299,7 +301,7 @@ function SessionLog({
 	};
 
 	return (
-		<Card className="self-start">
+		<Card className={cn('self-start', className)}>
 			<CardHeader
 				title="學習紀錄"
 				action={
@@ -533,9 +535,13 @@ export function TimerPage() {
 					/>
 				</div>
 			)}
-			<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
+			{/*
+			 * 桌面：左欄是計時器與番茄鐘設定，右欄是學習紀錄（跨兩列）。
+			 * 手機依 DOM 順序：計時器 → 學習紀錄 → 番茄鐘設定（紀錄比調整設定常用，不要排在最底下）。
+			 */}
+			<div className="grid grid-cols-1 gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
 				{/* 專注空間：沒有卡片外框，只有計時環與操作 */}
-				<section aria-label="計時器" className="flex min-w-0 flex-col items-center gap-6">
+				<section aria-label="計時器" className="flex min-w-0 flex-col items-center gap-6 lg:col-start-1 lg:row-start-1">
 					<Segmented<TimerMode>
 						label="計時模式"
 						value={s.mode}
@@ -651,8 +657,6 @@ export function TimerPage() {
 					</div>
 
 					<NoiseControls focusRunning={s.phase === 'focus' && s.running} />
-
-					{pomodoro && !active && <PomodoroSettings s={s} />}
 				</section>
 
 				<SessionLog
@@ -662,7 +666,10 @@ export function TimerPage() {
 					onEdit={(session) => setDialog({ session })}
 					onCreate={() => setDialog({})}
 					errorShownAbove={!!todayQuery.error}
+					className="lg:col-start-2 lg:row-span-2 lg:row-start-1"
 				/>
+
+				{pomodoro && !active && <PomodoroSettings s={s} className="justify-self-center lg:col-start-1 lg:row-start-2" />}
 			</div>
 			<SessionDialog open={!!dialog} session={dialog?.session} defaultDate={logDate} onClose={() => setDialog(null)} />
 			{confirmDialog}

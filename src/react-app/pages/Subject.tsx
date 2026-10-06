@@ -3,7 +3,6 @@ import {
 	Brain,
 	CalendarClock,
 	CalendarDays,
-	ChevronDown,
 	ChevronRight,
 	CircleAlert,
 	CircleCheck,
@@ -43,7 +42,9 @@ import {
 	NumDisplay,
 	PageHeader,
 	PageLoader,
+	PageStack,
 	ProgressBar,
+	ShowAllToggle,
 	TextLink,
 } from '../components/ui';
 import { ApiError } from '../lib/api';
@@ -63,16 +64,23 @@ const TASK_LIMIT = 6;
 
 // ---- 小元件 ----
 
-function ShowMore({ open, onToggle, hidden, unit }: { open: boolean; onToggle: () => void; hidden: number; unit: string }) {
+/** 卡片底部的「顯示全部 N 項／只顯示前 N 項」（共用的 ShowAllToggle） */
+function ShowMore({
+	open,
+	onToggle,
+	total,
+	limit,
+	unit,
+}: {
+	open: boolean;
+	onToggle: () => void;
+	total: number;
+	limit: number;
+	unit: string;
+}) {
 	return (
 		<div className="border-t border-line px-2 py-1.5 sm:px-3">
-			<Button variant="ghost" size="sm" aria-expanded={open} onClick={onToggle}>
-				{open ? '收起' : `再顯示 ${hidden} ${unit}`}
-				<ChevronDown
-					className={cn('size-4 transition-transform duration-180 ease-out motion-reduce:transition-none', open && 'rotate-180')}
-					aria-hidden
-				/>
-			</Button>
+			<ShowAllToggle expanded={open} onToggle={onToggle} total={total} limit={limit} unit={unit} />
 		</div>
 	);
 }
@@ -146,7 +154,19 @@ function EventMeta({ event, today }: { event: EventItem; today: string }) {
 }
 
 /** 下一場考試或截止日：倒數磚、名稱、時間地點、準備進度（連結到這場的任務完成數） */
-function NextEvent({ event, today, timeZone, color, onOpen }: { event: EventItem; today: string; timeZone: string; color: string; onOpen: () => void }) {
+function NextEvent({
+	event,
+	today,
+	timeZone,
+	color,
+	onOpen,
+}: {
+	event: EventItem;
+	today: string;
+	timeZone: string;
+	color: string;
+	onOpen: () => void;
+}) {
 	const labelId = useId();
 	const pct = event.taskTotal ? Math.round((event.taskDone / event.taskTotal) * 100) : 0;
 	const progressText = `${event.taskDone}／${event.taskTotal} 項任務，${pct}%`;
@@ -156,7 +176,11 @@ function NextEvent({ event, today, timeZone, color, onOpen }: { event: EventItem
 			<div className="min-w-0 flex-1 space-y-3">
 				<div>
 					<KindBadge kind={event.kind} />
-					<button type="button" onClick={onOpen} className="mt-1 block text-left text-h3 font-semibold wrap-anywhere text-ink hover:underline">
+					<button
+						type="button"
+						onClick={onOpen}
+						className="mt-1 block text-left text-h3 font-semibold wrap-anywhere text-ink hover:underline"
+					>
 						{event.title}
 					</button>
 					<EventMeta event={event} today={today} />
@@ -171,7 +195,14 @@ function NextEvent({ event, today, timeZone, color, onOpen }: { event: EventItem
 								<span className="font-semibold text-ink">{event.taskDone}</span>／{event.taskTotal} 項任務，{pct}%
 							</span>
 						</div>
-						<ProgressBar value={event.taskDone} max={event.taskTotal} labelledBy={labelId} valueText={progressText} color={color} size="sm" />
+						<ProgressBar
+							value={event.taskDone}
+							max={event.taskTotal}
+							labelledBy={labelId}
+							valueText={progressText}
+							color={color}
+							size="sm"
+						/>
 					</div>
 				) : (
 					<p className="text-meta text-ink-3">還沒有準備任務：新增任務時選擇這場{EVENT_KIND_LABEL[event.kind]}，就會計入準備進度。</p>
@@ -183,7 +214,11 @@ function NextEvent({ event, today, timeZone, color, onOpen }: { event: EventItem
 
 function EventRow({ event, today, timeZone, onOpen }: { event: EventItem; today: string; timeZone: string; onOpen: () => void }) {
 	const date = formatDate(event.date, event.date.slice(0, 4) !== today.slice(0, 4));
-	const meta = [EVENT_KIND_LABEL[event.kind], event.time ? `${date} ${event.time}` : date, event.taskTotal ? `準備 ${event.taskDone}／${event.taskTotal}` : null];
+	const meta = [
+		EVENT_KIND_LABEL[event.kind],
+		event.time ? `${date} ${event.time}` : date,
+		event.taskTotal ? `準備 ${event.taskDone}／${event.taskTotal}` : null,
+	];
 	return (
 		<button
 			type="button"
@@ -220,11 +255,7 @@ function UpcomingCard({
 	const visible = showAll ? rest : rest.slice(0, EVENT_LIMIT);
 	return (
 		<Card>
-			<CardHeader
-				title="即將到來"
-				icon={GraduationCap}
-				meta={events.length ? `${events.length} 場` : undefined}
-			/>
+			<CardHeader title="即將到來" icon={GraduationCap} meta={events.length ? `${events.length} 場` : undefined} />
 			{next ? (
 				<>
 					<NextEvent event={next} today={today} timeZone={timeZone} color={color} onOpen={() => onOpen(next)} />
@@ -238,7 +269,7 @@ function UpcomingCard({
 						</ul>
 					)}
 					{rest.length > EVENT_LIMIT && (
-						<ShowMore open={showAll} onToggle={() => setShowAll((v) => !v)} hidden={rest.length - EVENT_LIMIT} unit="場" />
+						<ShowMore open={showAll} onToggle={() => setShowAll((v) => !v)} total={rest.length} limit={EVENT_LIMIT} unit="場" />
 					)}
 				</>
 			) : (
@@ -289,7 +320,10 @@ function TaskLine({ task, today, onOpen }: { task: TaskItem; today: string; onOp
 	const done = task.status === 'done';
 	const checked = task.checklist.filter((c) => c.done).length;
 	const over = !!task.estimatedMinutes && task.spentMinutes > task.estimatedMinutes;
-	const time = [task.spentMinutes > 0 && `已投入 ${formatMinutes(task.spentMinutes)}`, task.estimatedMinutes && `預估 ${formatMinutes(task.estimatedMinutes)}`]
+	const time = [
+		task.spentMinutes > 0 && `已投入 ${formatMinutes(task.spentMinutes)}`,
+		task.estimatedMinutes && `預估 ${formatMinutes(task.estimatedMinutes)}`,
+	]
 		.filter(Boolean)
 		.join('／');
 	return (
@@ -413,7 +447,7 @@ function TasksCard({
 						))}
 					</ul>
 					{shown.length > TASK_LIMIT && (
-						<ShowMore open={showAll} onToggle={() => setShowAll((v) => !v)} hidden={shown.length - TASK_LIMIT} unit="項" />
+						<ShowMore open={showAll} onToggle={() => setShowAll((v) => !v)} total={shown.length} limit={TASK_LIMIT} unit="項" />
 					)}
 				</>
 			) : (
@@ -441,7 +475,7 @@ function StudyTimeCard({
 	return (
 		<Card>
 			<CardHeader title="讀書時間" icon={Clock} />
-			<dl className="grid grid-cols-2 border-t border-line">
+			<dl className="grid grid-cols-2">
 				<Figure label="本週" sub="週一起算">
 					<MinutesFigure minutes={week} />
 				</Figure>
@@ -487,7 +521,7 @@ function MistakesCard({ mistakes, subjectId, color }: { mistakes: SubjectOvervie
 				/>
 			) : (
 				<>
-					<dl className="grid grid-cols-3 border-t border-line">
+					<dl className="grid grid-cols-3">
 						<Figure label="總數">
 							<NumDisplay unit="題">{total}</NumDisplay>
 						</Figure>
@@ -588,8 +622,8 @@ function Overview({ data }: { data: SubjectOverview }) {
 			/>
 
 			{/* 桌面兩欄（3：2）；手機依 DOM 順序：考試、任務、讀書時間、錯題 */}
-			<div className="grid items-start gap-5 lg:grid-cols-5">
-				<div className="min-w-0 space-y-5 lg:col-span-3">
+			<div className="grid grid-cols-1 items-start gap-section lg:grid-cols-5">
+				<PageStack className="min-w-0 lg:col-span-3">
 					<UpcomingCard
 						events={upcomingEvents}
 						today={today}
@@ -605,11 +639,17 @@ function Overview({ data }: { data: SubjectOverview }) {
 						onOpen={(task) => setTaskDialog({ task })}
 						onAdd={() => setTaskDialog({})}
 					/>
-				</div>
-				<div className="min-w-0 space-y-5 lg:col-span-2">
-					<StudyTimeCard week={minutes.week} last30={minutes.last30} goal={subject.weeklyGoalMinutes} color={mark} onSetGoal={() => setEditing(true)} />
+				</PageStack>
+				<PageStack className="min-w-0 lg:col-span-2">
+					<StudyTimeCard
+						week={minutes.week}
+						last30={minutes.last30}
+						goal={subject.weeklyGoalMinutes}
+						color={mark}
+						onSetGoal={() => setEditing(true)}
+					/>
 					<MistakesCard mistakes={mistakes} subjectId={subject.id} color={mark} />
-				</div>
+				</PageStack>
 			</div>
 
 			<SubjectDialog
@@ -620,7 +660,12 @@ function Overview({ data }: { data: SubjectOverview }) {
 				onDeleted={() => navigate('/settings', { replace: true })}
 			/>
 			<TaskDialog open={!!taskDialog} task={taskDialog?.task} defaults={{ subjectId: subject.id }} onClose={() => setTaskDialog(null)} />
-			<EventDialog open={!!eventDialog} event={eventDialog?.event} defaults={{ subjectId: subject.id }} onClose={() => setEventDialog(null)} />
+			<EventDialog
+				open={!!eventDialog}
+				event={eventDialog?.event}
+				defaults={{ subjectId: subject.id }}
+				onClose={() => setEventDialog(null)}
+			/>
 		</div>
 	);
 }
