@@ -148,7 +148,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 				},
 				{
 					key: 'events',
-					label: '考試與截止',
+					label: '考試與截止日',
 					options: data.events.slice(0, GROUP_LIMIT).map((ev) => {
 						const Icon = ev.kind === 'exam' ? GraduationCap : CalendarClock;
 						return {

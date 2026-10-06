@@ -25,7 +25,7 @@ export const NAV_GROUPS: NavItem[][] = [
 	[
 		{ to: '/', label: '總覽', icon: LayoutDashboard, end: true },
 		{ to: '/calendar', label: '月曆', icon: CalendarDays },
-		{ to: '/events', label: '考試與截止', icon: GraduationCap },
+		{ to: '/events', label: '考試與截止日', icon: GraduationCap },
 		{ to: '/tasks', label: '學習任務', short: '任務', icon: ListChecks },
 	],
 	[

@@ -62,6 +62,30 @@ export function groupAchievements<T extends Pick<Achievement, 'id'>>(list: reado
 	return groups.filter((g) => g.items.length > 0);
 }
 
+/**
+ * 把依序排列的區塊分成左右兩欄，各欄自己往下堆疊（兩欄的卡片不必等高，不會留白）。
+ * 左欄是前面連續的幾個、右欄是其餘的，所以單欄（手機）時照原本的順序讀；
+ * 切點選讓兩欄的估計高度最接近的位置（weight 是每個區塊的估計高度，例如列數＋標題）。
+ */
+export function splitColumns<T>(items: readonly T[], weight: (item: T) => number): [T[], T[]] {
+	if (items.length < 2) return [[...items], []];
+	const w = items.map(weight);
+	const total = w.reduce((a, b) => a + b, 0);
+	let best = 1;
+	let bestDiff = Infinity;
+	let left = 0;
+	for (let k = 1; k < items.length; k++) {
+		left += w[k - 1];
+		const diff = Math.abs(total - 2 * left);
+		// 差距一樣時讓左欄多一些（左欄是先讀的那一欄）
+		if (diff <= bestDiff) {
+			best = k;
+			bestDiff = diff;
+		}
+	}
+	return [items.slice(0, best), items.slice(best)];
+}
+
 /** 進度數字：小時數保留一位小數（後端已無條件捨去），其他是整數 */
 export function formatProgress(n: number): string {
 	return Number.isInteger(n) ? String(n) : n.toFixed(1);

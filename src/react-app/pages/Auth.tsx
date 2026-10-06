@@ -14,7 +14,7 @@ import { useIsDark } from '../lib/theme';
 
 /** 品牌欄的筆記頁預覽（裝飾）：三列筆記，科目用推薦色的螢光筆 chip 標出 */
 const PREVIEW = [
-	{ subject: '微積分', color: RECOMMENDED[0].hex, title: '期中考', meta: 'D-5' },
+	{ subject: '微積分', color: RECOMMENDED[0].hex, title: '期中考', meta: '5 天後' },
 	{ subject: '英文', color: RECOMMENDED[1].hex, title: '單字 Unit 5', meta: '今天' },
 	{ subject: '物理', color: RECOMMENDED[2].hex, title: '實驗報告專注中', meta: '24:13' },
 ] as const;
@@ -69,7 +69,7 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle: str
 							StudyFlow
 						</span>
 					</div>
-					<h1 className="text-[1.75rem] leading-[1.3] font-bold text-balance">{title}</h1>
+					<h1 className="text-[1.375rem] leading-[1.3] font-bold text-balance sm:text-h1">{title}</h1>
 					<p className="mt-1.5 text-sm text-ink-2">{subtitle}</p>
 					<div className="mt-8">{children}</div>
 				</div>
