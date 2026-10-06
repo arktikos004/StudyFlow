@@ -59,6 +59,11 @@
 	--dur-sheet: 320ms;
 	--dur-moment: 600ms;
 
+	/* 品牌標誌（Logo.tsx）：淺色是主題色的底、紙色的 S；螢光筆黃只用在標誌裡 */
+	--logo-tile: var(--accent);
+	--logo-ink: var(--card);
+	--logo-mark: #ffd84a;
+
 	/* Sprint 1 相容：舊 token 名稱保留為別名 */
 	--chart-grid: var(--line);
 	--chart-axis: var(--line-strong);
@@ -102,6 +107,11 @@
 	--elevation-sm: 0 1px 0 rgb(0 0 0 / 0.35);
 	--elevation-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 20px -6px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.04);
 	--elevation-lg: 0 2px 8px rgb(0 0 0 / 0.5), 0 28px 56px -12px rgb(0 0 0 / 0.7);
+
+	/* 深色反過來：紙色的底、深藍（accent-soft）的 S */
+	--logo-tile: var(--ink);
+	--logo-ink: var(--accent-soft);
+	--logo-mark: #ffcf33;
 }
 
 /*
@@ -379,8 +389,8 @@
 	button:disabled {
 		cursor: not-allowed;
 	}
-	/* 按下時的通用回饋（Button 元件有自己的下沉與加深，不套用這條） */
-	:where(a[href], button:not(.sf-btn), [role='button'], [role='link'], summary):active:not(:disabled, [aria-disabled='true']) {
+	/* 按下時的通用回饋（Button／ButtonLink 有自己的下沉與加深，不套用這條） */
+	:where(a[href]:not(.sf-btn), button:not(.sf-btn), [role='button'], [role='link'], summary):active:not(:disabled, [aria-disabled='true']) {
 		opacity: 0.72;
 	}
 	dialog {
@@ -618,6 +628,52 @@
 		}
 	}
 
+	/* ---- 指令面板（CommandPalette）：上方錨定，進場時由上方輕微落下淡入；關閉時立即消失（內容同時卸載） ---- */
+	.sf-palette[open] {
+		transition-property: opacity, transform, overlay, display;
+		transition-duration: var(--dur-pop);
+		transition-timing-function: var(--ease-out);
+		transition-behavior: allow-discrete;
+	}
+	.sf-palette[open]::backdrop {
+		transition-property: opacity, overlay, display;
+		transition-duration: var(--dur-pop);
+		transition-timing-function: var(--ease-out);
+		transition-behavior: allow-discrete;
+	}
+	@starting-style {
+		.sf-palette[open] {
+			opacity: 0;
+			transform: translateY(-0.5rem) scale(0.98);
+		}
+		.sf-palette[open]::backdrop {
+			opacity: 0;
+		}
+	}
+
+	/* ---- 手機底部導覽：目前頁面的膠囊底由中間展開（::before 當底色，圖示不跟著縮放） ---- */
+	.sf-tab-pill {
+		position: relative;
+		isolation: isolate;
+	}
+	.sf-tab-pill::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		border-radius: 9999px;
+		background-color: var(--accent-soft);
+		opacity: 0;
+		transform: scaleX(0.5);
+		transition-property: opacity, transform;
+		transition-duration: var(--dur-toggle);
+		transition-timing-function: var(--ease-out);
+	}
+	.sf-tab-pill[data-active]::before {
+		opacity: 1;
+		transform: none;
+	}
+
 	/* ---- 圖表：軸線數字用數字字型、等寬 ---- */
 	.recharts-cartesian-axis-tick-value {
 		font-family: var(--font-num);
@@ -632,14 +688,21 @@
 		--animate-complete: sf-fade-in 120ms var(--ease-out) both;
 	}
 	.sf-dialog[open],
-	.sf-dialog[open]::backdrop {
+	.sf-dialog[open]::backdrop,
+	.sf-palette[open],
+	.sf-palette[open]::backdrop {
 		transition-duration: 120ms;
 	}
 	@starting-style {
-		.sf-dialog[open] {
+		.sf-dialog[open],
+		.sf-palette[open] {
 			opacity: 0;
 			transform: none;
 		}
+	}
+	.sf-tab-pill::before {
+		transform: none;
+		transition-duration: 120ms;
 	}
 	html {
 		scroll-behavior: auto;
@@ -684,6 +747,30 @@
 }
 :root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] :is([data-button], [data-close-button]):focus-visible {
 	box-shadow: 0 0 0 2px var(--accent);
+}
+/* toast 的動作鈕（例如成就的「查看」）：和 Button primary 一致；觸控裝置用 ::after 把點擊範圍撐到 44px 高 */
+:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-button] {
+	position: relative;
+	height: 2rem;
+	padding-inline: 0.75rem;
+	border-radius: var(--radius-md);
+	background: var(--accent);
+	color: var(--on-accent);
+	font-size: 0.875rem;
+	font-weight: 600;
+	transition: background-color var(--dur-press) var(--ease-out);
+}
+@media (hover: hover) {
+	:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-button]:hover {
+		background: var(--accent-hover);
+	}
+}
+@media (pointer: coarse) {
+	:root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-button]::after {
+		content: '';
+		position: absolute;
+		inset: -0.375rem -0.25rem;
+	}
 }
 
 /* Markdown 筆記內容 */
