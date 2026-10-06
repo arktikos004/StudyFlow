@@ -334,20 +334,21 @@
   - 開啟：任何頁面按 Ctrl+K（macOS ⌘K；macOS 的 Ctrl+K 在輸入欄位裡保留給「刪到行尾」）；桌面側欄 Logo 下方的「搜尋」鈕、手機頁首的搜尋圖示鈕。其他對話框開著時不開，避免離開頁面遺失表單。
   - 外觀：上方錨定（桌面距頂 12dvh、寬 36rem；手機貼齊上緣、左右 8px），card 底、圓角 2xl、陰影 lg；輸入列 56px，focus 時下緣線變 accent；目前選項是 accent-soft 底，圖示方塊轉成 card 底 accent-ink；關鍵字用 `<mark>`。
   - 無障礙：WAI-ARIA combobox（input `role="combobox"`、`aria-expanded`、`aria-controls`、`aria-activedescendant`、`aria-autocomplete="list"`），listbox 內 `role="group"`＋`aria-labelledby` 分組；焦點一直在輸入框。上下鍵循環、Enter 開啟、Esc 關閉；注音選字中（isComposing）不攔截上下鍵、Enter、Esc。結果數以 `role="status"` 報讀。
-  - 內容：空白時「快捷動作」（開始專注／計時中改成回到計時、新增任務、新增錯題、新增科目）與「前往」各頁；有輸入時先列本機比對到的動作與頁面，再列任務、考試與截止、筆記與錯題、科目，每組最多 5 筆。搜尋防抖 160ms。
+  - 內容：空白時「快捷動作」（開始專注／計時中改成回到計時、新增任務、新增錯題、新增科目）與「前往」各頁；有輸入時先列本機比對到的動作與頁面，再列任務、考試與截止日、筆記與錯題、科目，每組最多 5 筆。搜尋防抖 160ms。
   - 焦點：沒有選項就關閉時還給打開前的元素；選了項目就移到新頁面的 `#main-content`（目標頁用 `?open=` 開對話框時，對話框會接手焦點）。
   - 指令面板是「觸控裝置不自動 focus」的例外：使用者明確按了搜尋，輸入框直接聚焦。
   - 載入失敗（部署新版後的舊分頁、網路中斷）：錯誤邊界只關閉面板並 toast「搜尋載入失敗…」，Layout 不受影響；下次打開會重新下載（加上 `?retry=N` 繞過瀏覽器對失敗模組的快取）。
   - 輸入中、結果還沒更新時，上一個關鍵字的後端結果淡化並 `aria-disabled`，不能選，也不標示新關鍵字；本機的動作與頁面照常可選。
 
 **App 專屬元件**
-- **SubjectTag**：
-  - chip 版：ink 文字、科目 tint 底、1px ring、8px 圓點。
-  - compact 版：圓點加名稱。
-  - icon 版（單科總覽頁的標題方塊）：科目 mark 底、onMark 圖示，**純裝飾**（aria-hidden），旁邊一定要有可見的科目名稱；不可放進按鈕或連結當唯一內容。
-    - 對比：onMark／mark 在 48 色中最低 4.24（淺色）／4.39（深色）。圖示是圖形（≥ 3:1）全部通過；沒有圖示時顯示的「名稱第一個字」是文字，6／48（淺色）與 8／48（深色）低於 4.5:1，所以第一個字要用 large text（≥ 19px 粗體）或改顯示通用圖示。
-    - 第一個字要以字素（`Intl.Segmenter`）切，避免 emoji、組合字被切半。
-  - 科目圖示只透過 SubjectTag 顯示。
+- **SubjectTag**（`components/subjects.tsx`）：
+  - chip 版（`SubjectChip`）：22px 高、ink 文字、科目 tint 底、1px ring（科目 mark 35%）、8px 圓點，有科目圖示時接在圓點後面（12px）；名稱太長時截斷並附 `title`。
+  - compact 版：8px 圓點＋圖示＋名稱（12px ink-2），用在空間很擠的地方。
+  - `asLink`：連到 `/subjects/:id`，名稱後加 sr-only「的科目總覽」；觸控裝置用 `::after` 把點擊範圍上下延伸到 44px。已經在按鈕或連結裡時不要加。
+  - icon 版（`SubjectIconTile`，單科總覽頁的標題方塊）：40px、圓角 lg、科目 mark 底、onMark 圖示（20px），**純裝飾**（aria-hidden、沒有 `title`），旁邊一定要有可見的科目名稱；不可放進按鈕或連結當唯一內容。
+    - 沒有科目圖示時顯示名稱的第一個字：**19px 粗體**（WCAG 的大字，門檻 3:1），以字素切（`Intl.Segmenter`，`lib/polish-format.ts` 的 `firstGrapheme`），emoji、組合字不會被切半。
+    - 對比（`test/polish-subject-tile.spec.ts` 實際計算）：onMark／mark 在 48 色中最低 4.24（淺色）／4.39（深色），6／48 與 8／48 低於 4.5:1，但以大字的 3:1 計算全部通過；「未分類」的灰色與任意自訂色（抽樣 4000 色）也都 ≥ 3:1。圖示是圖形（≥ 3:1），同樣全部通過。
+  - 科目圖示只透過 `components/subjects.tsx` 的元件顯示。
 - **成就（Achievements 頁）**（Sprint 2，APP-2）：
   - 徽章：已解鎖是藍筆塗滿（accent 底、on-accent 圖示、外圈 4px accent-soft 像蓋章）＋ success 的「已解鎖」badge；未解鎖是 1.5px line-field 虛線框、ink-3 圖示（還沒描上墨的鉛筆稿）＋進度條與「3／25 個」。狀態都有文字，不只靠顏色。
   - 這頁的焦點是「下一個目標」：最接近解鎖的成就、還差多少、一個前往的動作。其餘依讀書時數／連續天數／番茄鐘／錯題與任務分組，每組一張卡片、列之間用分隔線（不做一排一樣的卡片）。
@@ -563,5 +564,4 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 - **成就 toast**：已看過的紀錄存在各瀏覽器的 localStorage，換裝置或清除網站資料後，第一次載入會把當時已解鎖的視為「已看過」而不跳 toast；徽章被收回後再解鎖也不會再跳（成就頁仍顯示目前的真實狀態）。同時開兩個分頁時，兩邊可能各跳一次。
 - **指令面板的「開始專注」**只前往計時頁，不會自動開始計時（避免誤觸就開始記錄）。
 - **指令面板的深連結**：`?open=<id>`、`?new=1`、`?new=mistake` 都已由各頁的 `useDeepLink` 實作（任務、考試、筆記、設定、月曆），選了搜尋結果會直接開啟該項目。
-- **SubjectTag icon 版的第一個字**：目前 16px 字重 600，6／48（淺色）、8／48（深色）的科目色上對比低於 4.5:1（最低 4.24），修正方式見 §7；Sprint 3 仍未修（`components/subjects.tsx` 屬於功能元件，不在 s3/design 的範圍）。
 - **Field 舊寫法的自動 aria**：只補在 children 回傳的那個元素上；自訂元件（例如 `SubjectSelect`）沒有把 aria 屬性傳給內部欄位時不會生效，Sprint 2 請改成 `(id, aria)` 並往下傳。
