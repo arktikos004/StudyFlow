@@ -105,7 +105,8 @@ function AchievementsCell({ achievements }: { achievements: ProfileSummary['achi
 				<Trophy className="size-4 shrink-0" aria-hidden />
 				<Link
 					to="/achievements"
-					className="min-w-0 truncate after:absolute after:inset-0 focus-visible:outline-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
+					// 這一格永遠在卡片的右下角（2×2 與一列 4 格都是）：::after 的右下角跟著卡片的內圓角（xl − 1px 邊框），焦點框才不會被裁掉
+					className="min-w-0 truncate after:absolute after:inset-0 after:rounded-br-[calc(var(--radius-xl)-1px)] focus-visible:outline-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
 				>
 					成就<span className="sr-only">，查看全部成就</span>
 				</Link>
