@@ -103,6 +103,24 @@ export type Achievement = {
 /** GET /api/achievements：固定順序的成就清單 */
 export type AchievementsResponse = { achievements: Achievement[] };
 
+/** GET /api/profile/summary：個人檔案的累積數字，只有本人；和 GET /api/achievements 用同一份計算 */
+export type ProfileSummary = {
+	/** 全部學習紀錄的分鐘數（四捨五入到分鐘）與筆數 */
+	totalMinutes: number;
+	totalSessions: number;
+	/**
+	 * 目前連續天數（和 dashboard.streak 相同的算法：今天還沒讀書時從昨天算起）與最長連續天數，依使用者時區。
+	 * 這裡看全部歷史；總覽只讀近一年，只有連續超過 366 天時兩邊才會不同。
+	 */
+	currentStreak: number;
+	longestStreak: number;
+	/** 已完成的任務數、已掌握的錯題數（一般筆記不算） */
+	tasksDone: number;
+	mistakesMastered: number;
+	/** 成就：已解鎖數、總數，以及已解鎖的成就（順序同 GET /api/achievements；icon 是 lucide 圖示名稱） */
+	achievements: { unlocked: number; total: number; badges: { id: string; title: string; icon: string }[] };
+};
+
 export type StatsResponse = {
 	range: { from: string; to: string; days: number };
 	totals: {
