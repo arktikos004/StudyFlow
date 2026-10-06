@@ -1,7 +1,19 @@
-import { CircleCheck } from 'lucide-react';
+import { CircleCheck, Trophy } from 'lucide-react';
 import { useId } from 'react';
 import type { Achievement } from '../../shared/api-types';
-import { ButtonLink, Badge, Card, CardHeader, cn, ErrorNote, PageHeader, PageLoader, ProgressBar, TextLink } from '../components/ui';
+import {
+	ButtonLink,
+	Badge,
+	Card,
+	CardHeader,
+	cn,
+	EmptyState,
+	ErrorNote,
+	PageHeader,
+	PageLoader,
+	ProgressBar,
+	TextLink,
+} from '../components/ui';
 import { useAchievements, useUser } from '../lib/queries';
 import { achievementUnit, formatProgress, groupAchievements, nextMilestone } from '../lib/shell-achievements';
 import { AchievementIcon } from '../lib/shell-icons';
@@ -126,6 +138,24 @@ export function AchievementsPage() {
 
 	if (isPending) return <PageLoader />;
 	if (error || !data) return <ErrorNote error={error} />;
+	if (data.length === 0)
+		return (
+			<div>
+				<PageHeader title="成就" />
+				<Card>
+					<EmptyState
+						icon={<Trophy />}
+						title="還沒有可以解鎖的成就"
+						description="開始記錄讀書時間、完成任務或複習錯題，達到里程碑就會解鎖徽章。"
+						action={
+							<ButtonLink to="/timer" variant="primary">
+								開始專注
+							</ButtonLink>
+						}
+					/>
+				</Card>
+			</div>
+		);
 
 	const unlocked = data.filter((a) => a.unlocked).length;
 	const next = nextMilestone(data);
@@ -138,7 +168,7 @@ export function AchievementsPage() {
 				description={
 					<>
 						已解鎖 <span className="font-num font-semibold text-ink tabular-nums">{unlocked}</span>／{data.length} 個
-						{unlocked === data.length && '，全部達成'}
+						{data.length > 0 && unlocked === data.length && '，全部達成'}
 					</>
 				}
 			/>
