@@ -1,3 +1,4 @@
+import { Ban } from 'lucide-react';
 import { useRef, type KeyboardEvent } from 'react';
 import type { SubjectTone } from '../../../shared/color';
 import type { SubjectIcon } from '../../../shared/schemas';
@@ -6,7 +7,7 @@ import { cn, gridKeyTarget } from '../ui';
 
 type Option = { key: SubjectIcon | null } & Partial<SubjectIconDef> & { label: string };
 
-// 第一格是「無圖示」；可見文字「無」包含在無障礙名稱裡（WCAG 2.5.3 label in name）
+// 第一格是「無圖示」：和其他格一樣只放圖示（Ban），名稱由 aria-label「無圖示」提供，滑鼠停留時 title 也會顯示
 const OPTIONS: readonly Option[] = [{ key: null, label: '無圖示' }, ...SUBJECT_ICON_OPTIONS];
 
 /**
@@ -71,7 +72,7 @@ export function IconPicker({
 						)}
 						style={on ? { background: tone.tint } : undefined}
 					>
-						{o.Icon ? <o.Icon className="size-5" aria-hidden /> : <span className="text-meta">無</span>}
+						{o.Icon ? <o.Icon className="size-5" aria-hidden /> : <Ban className="size-5" aria-hidden />}
 					</button>
 				);
 			})}
