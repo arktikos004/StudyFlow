@@ -260,6 +260,7 @@ function NoiseControls({ focusRunning }: { focusRunning: boolean }) {
 /**
  * 學習紀錄列表：可以切換日期，每筆都能編輯（整列）與刪除。
  * 時間依 user.timezone 顯示。
+ * errorShownAbove：今天的紀錄載入失敗時，頁面上方已經顯示錯誤與「重新載入」，這裡只說明，不重複一個錯誤橫幅。
  */
 function SessionLog({
 	date,
@@ -267,17 +268,19 @@ function SessionLog({
 	onDateChange,
 	onEdit,
 	onCreate,
+	errorShownAbove,
 }: {
 	date: string;
 	today: string;
 	onDateChange: (date: string) => void;
 	onEdit: (session: StudySession) => void;
 	onCreate: () => void;
+	errorShownAbove: boolean;
 }) {
 	const user = useUser();
 	const tz = user.timezone;
 	const subjectMap = useSubjectMap();
-	const { data: sessions, isPending, error } = useStudySessions({ from: date, to: date });
+	const { data: sessions, isPending, error, refetch, isRefetching } = useStudySessions({ from: date, to: date });
 	const remove = useDeleteSession();
 	const [confirm, confirmDialog] = useConfirm();
 	const list = sessions ?? [];
@@ -324,13 +327,17 @@ function SessionLog({
 					</Button>
 				)}
 			</div>
-			<div className="flex items-baseline gap-3 px-4 pb-3 sm:px-5">
-				<span className="font-num text-num-lg font-semibold tabular-nums">{formatMinutes(total)}</span>
-				<span className="text-meta text-ink-3">{list.length} 段學習</span>
-			</div>
-			{error ? (
+			{!error && (
+				<div className="flex items-baseline gap-3 px-4 pb-3 sm:px-5">
+					<span className="font-num text-num-lg font-semibold tabular-nums">{formatMinutes(total)}</span>
+					<span className="text-meta text-ink-3">{list.length} 段學習</span>
+				</div>
+			)}
+			{error && date === today && errorShownAbove ? (
+				<p className="border-t border-line px-4 py-3 text-meta text-ink-3 sm:px-5">學習紀錄沒有載入，請按頁面上方的「重新載入」</p>
+			) : error ? (
 				<div className="px-4 pb-4 sm:px-5">
-					<ErrorNote error={error} />
+					<ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />
 				</div>
 			) : isPending ? (
 				<PageLoader />
@@ -397,8 +404,12 @@ export function TimerPage() {
 	const today = todayOf(user.timezone);
 	const subjectMap = useSubjectMap();
 	const toneOf = useSubjectTone();
-	const { data: tasks = [] } = useTasks();
-	const { data: todaySessions = [] } = useStudySessions({ from: today, to: today });
+	const tasksQuery = useTasks();
+	const todayQuery = useStudySessions({ from: today, to: today });
+	const tasks = tasksQuery.data ?? [];
+	const todaySessions = todayQuery.data ?? [];
+	// 今天的紀錄或任務載入失敗：頁首摘要不能說「今天還沒有學習紀錄」，任務選單也會是空的，所以在上方說明並提供重新載入
+	const failed = [todayQuery, tasksQuery].filter((q) => q.error);
 	const [confirm, confirmDialog] = useConfirm();
 	const [logDate, setLogDate] = useState(today);
 	const [dialog, setDialog] = useState<{ session?: StudySession } | null>(null);
@@ -506,9 +517,22 @@ export function TimerPage() {
 			<PageHeader
 				title="學習計時"
 				description={
-					todayMinutes > 0 || round.done > 0 ? `今天已讀 ${formatMinutes(todayMinutes)}，完成 ${round.done} 個番茄` : '今天還沒有學習紀錄'
+					todayQuery.error
+						? undefined
+						: todayMinutes > 0 || round.done > 0
+							? `今天已讀 ${formatMinutes(todayMinutes)}，完成 ${round.done} 個番茄`
+							: '今天還沒有學習紀錄'
 				}
 			/>
+			{failed.length > 0 && (
+				<div className="mb-section">
+					<ErrorNote
+						error={failed[0].error}
+						onRetry={() => failed.forEach((q) => void q.refetch())}
+						retrying={failed.some((q) => q.isRefetching)}
+					/>
+				</div>
+			)}
 			<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
 				{/* 專注空間：沒有卡片外框，只有計時環與操作 */}
 				<section aria-label="計時器" className="flex min-w-0 flex-col items-center gap-6">
@@ -637,6 +661,7 @@ export function TimerPage() {
 					onDateChange={setLogDate}
 					onEdit={(session) => setDialog({ session })}
 					onCreate={() => setDialog({})}
+					errorShownAbove={!!todayQuery.error}
 				/>
 			</div>
 			<SessionDialog open={!!dialog} session={dialog?.session} defaultDate={logDate} onClose={() => setDialog(null)} />

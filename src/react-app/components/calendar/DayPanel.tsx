@@ -5,12 +5,14 @@ import { EVENT_KIND_LABEL, formatDate, formatMinutes, MODE_LABEL } from '../../l
 import { formatClockRange, relativeDateLabel } from '../../lib/timer-format';
 import { SubjectTag } from '../subjects';
 import { TaskCheckbox } from '../TaskItem';
-import { Badge, Button, Card, cn, EmptyState } from '../ui';
+import { Badge, Button, Card, CardHeader, cn, EmptyState } from '../ui';
 import { EVENT_ICON } from './icons';
 
 /**
  * 選取那天的明細：考試與截止日、任務期限、學習紀錄（依開始時間算在這天）。
  * 也是月格與時間軸的清單版本：每一列都是 44px 以上的按鈕。
+ * itemsFailed／sessionsFailed：那一類資料載入失敗（錯誤與「重新載入」由頁面顯示），
+ * 這裡不能說「沒有…」，免得使用者以為資料不見了。
  */
 export function DayPanel({
 	date,
@@ -26,6 +28,8 @@ export function DayPanel({
 	onNewEvent,
 	onNewTask,
 	onNewSession,
+	itemsFailed = false,
+	sessionsFailed = false,
 }: {
 	date: string;
 	today: string;
@@ -40,6 +44,8 @@ export function DayPanel({
 	onNewEvent: () => void;
 	onNewTask: () => void;
 	onNewSession: () => void;
+	itemsFailed?: boolean;
+	sessionsFailed?: boolean;
 }) {
 	const titleId = useId();
 	const sessionsId = useId();
@@ -49,38 +55,37 @@ export function DayPanel({
 	return (
 		<section aria-labelledby={titleId} className={className}>
 			<Card as="div">
-				<div className="flex items-center justify-between gap-2 border-b border-line py-2 pr-2 pl-4 sm:pl-5">
-					<h2 id={titleId} className="flex min-w-0 items-center gap-2 text-h2 font-semibold">
-						{formatDate(date, date.slice(0, 4) !== today.slice(0, 4))}
-						{label === '今天' && <Badge tone="accent">今天</Badge>}
-					</h2>
-					<div className="flex shrink-0 gap-0.5">
-						<Button size="icon" variant="ghost" onClick={onNewTask} aria-label={`${label === '今天' ? '今天' : formatDate(date)}新增任務`}>
-							<ListPlus className="size-4" />
-						</Button>
-						<Button
-							size="icon"
-							variant="ghost"
-							onClick={onNewEvent}
-							aria-label={`${label === '今天' ? '今天' : formatDate(date)}新增考試或截止日`}
-						>
-							<CalendarPlus className="size-4" />
-						</Button>
-					</div>
-				</div>
+				<CardHeader
+					title={
+						<span id={titleId} className="inline-flex items-center gap-2 whitespace-nowrap">
+							{formatDate(date, date.slice(0, 4) !== today.slice(0, 4))}
+							{label === '今天' && <Badge tone="accent">今天</Badge>}
+						</span>
+					}
+					action={
+						<>
+							{/* 有文字的按鈕（原本只有圖示，看不出差別）；無障礙名稱「新增任務」包含看得到的「任務」。側欄只有 20rem，左右內距縮成 8px */}
+							<Button size="sm" variant="ghost" className="px-2" onClick={onNewTask}>
+								<ListPlus className="size-4" aria-hidden />
+								<span className="sr-only">新增</span>任務
+							</Button>
+							<Button size="sm" variant="ghost" className="px-2" onClick={onNewEvent}>
+								<CalendarPlus className="size-4" aria-hidden />
+								<span className="sr-only">新增</span>考試
+							</Button>
+						</>
+					}
+				/>
 
 				{events.length + tasks.length === 0 ? (
 					<EmptyState
 						variant="inline"
-						title="沒有考試或任務期限"
-						action={
-							<Button size="sm" variant="ghost" onClick={onNewEvent}>
-								新增考試
-							</Button>
-						}
+						className="border-t border-line"
+						title={itemsFailed ? '考試與任務沒有載入' : '沒有考試或任務期限'}
+						description={itemsFailed ? '請按頁面上方的「重新載入」' : undefined}
 					/>
 				) : (
-					<ul className="divide-y divide-line">
+					<ul className="divide-y divide-line border-t border-line">
 						{events.map((e) => {
 							const Icon = EVENT_ICON[e.kind];
 							return (
@@ -131,7 +136,9 @@ export function DayPanel({
 						</Button>
 					</div>
 					{sessions.length === 0 ? (
-						<p className="px-4 pb-4 text-meta text-ink-3 sm:px-5">{date > today ? '還沒到這天' : '這天沒有學習紀錄'}</p>
+						<p className="px-4 pb-4 text-meta text-ink-3 sm:px-5">
+							{sessionsFailed ? '學習紀錄沒有載入，請按頁面上方的「重新載入」' : date > today ? '還沒到這天' : '這天沒有學習紀錄'}
+						</p>
 					) : (
 						<ul className="divide-y divide-line border-t border-line">
 							{sessions.map((s) => {
