@@ -110,7 +110,8 @@ export type ProfileSummary = {
 	totalSessions: number;
 	/**
 	 * 目前連續天數（和 dashboard.streak 相同的算法：今天還沒讀書時從昨天算起）與最長連續天數，依使用者時區。
-	 * 這裡看全部歷史；總覽只讀近一年，只有連續超過 366 天時兩邊才會不同。
+	 * 這裡看全部歷史；總覽只讀近 366 天（今天與前 365 天）：今天已經讀書時連續 367 天以上、
+	 * 今天還沒讀書時連續 366 天以上，總覽的數字會比這裡少（最多 366／365）。
 	 */
 	currentStreak: number;
 	longestStreak: number;

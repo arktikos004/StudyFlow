@@ -20,7 +20,9 @@ export type Progress = {
 	pomodoros: number;
 	/**
 	 * 連續讀書天數，依使用者時區的當地日期分組（和 dashboard.streak 同一個 streaks()）。
-	 * 這裡用全部歷史；總覽只讀近一年，所以只有連續超過 366 天時，總覽會停在 366。
+	 * 這裡用全部歷史；總覽只讀近 366 天（今天與前 365 天），連續很久時總覽的數字會比較少：
+	 * - 今天已經讀書：連續 367 天以上才不同（總覽最多 366）。
+	 * - 今天還沒讀書（從昨天算起）：連續 366 天以上就不同（總覽最多 365）。
 	 */
 	currentStreak: number;
 	longestStreak: number;

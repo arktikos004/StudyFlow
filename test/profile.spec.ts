@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Achievement, ProfileSummary } from '../src/shared/api-types';
-import { addDays, today, zonedTime } from '../src/shared/dates';
+import { addDays, startOfLocalDay, today, zonedTime } from '../src/shared/dates';
 import { AVATAR_MAX_BYTES } from '../src/shared/schemas';
 import { createClient, logSession, noonClient, PNG_1X1, registeredClient, type Client } from './helpers';
 
@@ -213,6 +213,52 @@ describe('頭像（PRO-1）', () => {
 			expect(res.status).toBe(401);
 			expect(res.data.error).toBe('請先登入');
 		}
+	});
+});
+
+describe('頭像的併發與時鐘（review 3）', () => {
+	it('同時送出 6 次上傳：全部成功、avatarUpdatedAt 都不同、R2 只留資料庫指向的那一個', async () => {
+		const c = await registeredClient();
+		const results = await Promise.all(Array.from({ length: 6 }, () => c.put('/api/auth/avatar', avatarForm(PNG_1X1))));
+		expect(results.map((r) => r.status)).toEqual(Array(6).fill(200));
+		const stamps: number[] = results.map((r) => r.data.user.avatarUpdatedAt);
+		expect(new Set(stamps).size).toBe(6);
+		const key = await storedKey(c.user.id);
+		expect(key).toMatch(keyPattern(c.user.id));
+		expect(await avatarObjects(c.user.id)).toEqual([key]);
+		// 嚴格遞增：最後寫入資料庫的就是最大的那一個
+		expect((await c.get('/api/auth/me')).data.user.avatarUpdatedAt).toBe(Math.max(...stamps));
+	});
+
+	it('上傳與移除同時送出：資料庫與 R2 的結果一致', async () => {
+		const c = await registeredClient();
+		await uploadAvatar(c);
+		for (let round = 0; round < 5; round++) {
+			const [put, del] = await Promise.all([c.put('/api/auth/avatar', avatarForm(JPEG)), c.del('/api/auth/avatar')]);
+			expect([put.status, del.status], `第 ${round} 輪`).toEqual([200, 200]);
+			const key = await storedKey(c.user.id);
+			expect(await avatarObjects(c.user.id), `第 ${round} 輪`).toEqual(key ? [key] : []);
+			expect((await c.get('/api/auth/me')).data.user.avatarUpdatedAt === null, `第 ${round} 輪`).toBe(key === null);
+			expect((await c.get('/api/auth/avatar')).status, `第 ${round} 輪`).toBe(key ? 200 : 404);
+		}
+	});
+
+	it('同一毫秒內連續上傳、時鐘倒退時，avatarUpdatedAt 仍然嚴格遞增', async () => {
+		const c = await registeredClient();
+		const T = Date.now();
+		const now = vi.spyOn(Date, 'now').mockReturnValue(T);
+		try {
+			const stamps: number[] = [];
+			for (let i = 0; i < 3; i++) stamps.push((await uploadAvatar(c)).avatarUpdatedAt);
+			expect(stamps).toEqual([T, T + 1, T + 2]);
+			now.mockReturnValue(T - 60_000); // 時鐘倒退一分鐘
+			expect((await uploadAvatar(c)).avatarUpdatedAt).toBe(T + 3);
+			now.mockReturnValue(T + 10_000); // 時鐘超過之後就用現在的時間
+			expect((await uploadAvatar(c)).avatarUpdatedAt).toBe(T + 10_000);
+		} finally {
+			now.mockRestore();
+		}
+		expect(await avatarObjects(c.user.id)).toHaveLength(1);
 	});
 });
 
@@ -445,5 +491,29 @@ describe('個人檔案摘要的跨使用者隔離', () => {
 		const res = await createClient().get('/api/profile/summary');
 		expect(res.status).toBe(401);
 		expect(res.data.error).toBe('請先登入');
+	});
+});
+
+describe('連續天數超過一年（review 3）', () => {
+	it('個人檔案看全部歷史；總覽只讀近 366 天，今天有讀書時最多 366、還沒讀書時最多 365', async () => {
+		const c = await noonClient();
+		// 直接寫入今天到 399 天前、每天 9:00 開始 10 分鐘的紀錄
+		const insert = env.DB.prepare(
+			"INSERT INTO study_sessions (id, user_id, mode, started_at, ended_at, duration_sec, created_at) VALUES (?, ?, 'manual', ?, ?, 600, ?)",
+		);
+		const startOf = (daysAgo: number) => startOfLocalDay(addDays(c.today, -daysAgo), c.tz) + 9 * 3_600_000;
+		await env.DB.batch(
+			Array.from({ length: 400 }, (_, i) => insert.bind(crypto.randomUUID(), c.user.id, startOf(i), startOf(i) + 600_000, startOf(i))),
+		);
+
+		expect(await summary(c)).toMatchObject({ totalSessions: 400, totalMinutes: 4000, currentStreak: 400, longestStreak: 400 });
+		expect((await c.get('/api/dashboard')).data.streak).toBe(366);
+
+		// 今天還沒讀書：從昨天算起
+		await env.DB.prepare('DELETE FROM study_sessions WHERE user_id = ? AND started_at >= ?')
+			.bind(c.user.id, startOf(0) - 9 * 3_600_000)
+			.run();
+		expect(await summary(c)).toMatchObject({ totalSessions: 399, currentStreak: 399, longestStreak: 399 });
+		expect((await c.get('/api/dashboard')).data.streak).toBe(365);
 	});
 });
