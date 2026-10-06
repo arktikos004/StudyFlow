@@ -1,5 +1,5 @@
-import { AlarmClock, Brain, CalendarClock, CalendarDays, ChevronDown, GraduationCap, ListPlus, MapPin, Pencil, Plus } from 'lucide-react';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { Brain, CalendarClock, CalendarDays, ChevronDown, GraduationCap, ListPlus, MapPin, Pencil, Plus } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
 import { toast } from 'sonner';
 import type { EventItem } from '../../shared/api-types';
 import { localDate } from '../../shared/dates';
@@ -7,65 +7,22 @@ import { PrepProgress } from '../components/dashboard/exams';
 import { useSubjectMark } from '../components/dashboard/hooks';
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SubjectSelect, SubjectTag } from '../components/subjects';
-import { Badge, Button, Card, cn, Countdown, EmptyState, ErrorNote, NumDisplay, PageHeader, PageLoader, TextLink } from '../components/ui';
-import { eventStartMs } from '../lib/dashboard-format';
+import { CountdownTile } from '../components/countdown';
+import { Badge, Button, Card, cn, EmptyState, ErrorNote, PageHeader, PageLoader, TextLink } from '../components/ui';
 import { EVENT_KIND_LABEL, formatDate } from '../lib/format';
-import { countdownState, eventsSummary, type CountdownTone } from '../lib/notes-exams';
+import { eventsSummary } from '../lib/notes-exams';
 import { useEvents, useSubjectMap, useSubjects, useUser } from '../lib/queries';
-import { useNow } from '../lib/timer';
 import { useDeepLink, useMinuteClock } from '../lib/timer-queries';
-
-const DAY_MS = 86_400_000;
-
-const TILE: Record<CountdownTone, string> = {
-	urgent: 'bg-danger-soft text-danger',
-	today: 'bg-warning-soft text-warning',
-	normal: 'bg-subtle text-ink',
-	past: 'bg-subtle text-ink-3',
-};
-
-/**
- * 倒數磚：幾天後（或幾天前）；24 小時內而且有時間的改成即時倒數（h:mm:ss）。
- * 紅色只給 3 天內的考試（DESIGN.md §1 第 5 條），並加上鬧鐘圖示，不只靠顏色；今天截止的截止日用 warning。
- * 「今天」與考試時間都依使用者時區。
- */
-function CountdownTile({ event, today, timeZone, clock }: { event: EventItem; today: string; timeZone: string; clock: number }) {
-	// 只有開始前 24 小時內才每 250ms 更新（即時倒數）；其他時候用頁面每 30 秒更新的時鐘
-	const start = eventStartMs(event.date, event.time, timeZone);
-	const live = start !== null && start - clock > 0 && start - clock < DAY_MS;
-	// 停止更新後 tick 會停在最後一次的值，取兩者較新的，倒數結束時才會換成「已開始」
-	const now = Math.max(useNow(live), clock);
-	const s = countdownState(event, today, now, timeZone);
-
-	let value: ReactNode;
-	if (s.secondsLeft !== null) value = <Countdown seconds={s.secondsLeft} size="md" />;
-	else if (s.days === 0) value = <span className="text-h2 font-bold">今天</span>;
-	else value = <NumDisplay size="lg">{Math.abs(s.days)}</NumDisplay>;
-
-	const icon = s.tone === 'urgent' ? <AlarmClock aria-hidden /> : s.tone === 'today' ? <CalendarClock aria-hidden /> : null;
-	return (
-		<div className={cn('flex w-[5.25rem] shrink-0 flex-col items-center justify-center rounded-lg px-2 py-2.5 text-center', TILE[s.tone])}>
-			{value}
-			<span className={cn('mt-1 inline-flex items-center gap-1 text-meta [&_svg]:size-3.5 [&_svg]:shrink-0', s.tone === 'normal' && 'text-ink-2')}>
-				{icon}
-				{s.label}
-			</span>
-		</div>
-	);
-}
 
 function EventCard({
 	event,
 	today,
-	clock,
 	timeZone,
 	onEdit,
 	onAddTask,
 }: {
 	event: EventItem;
 	today: string;
-	/** 頁面每 30 秒更新的現在時間 */
-	clock: number;
 	timeZone: string;
 	onEdit: () => void;
 	onAddTask: () => void;
@@ -79,7 +36,8 @@ function EventCard({
 	return (
 		<Card as="article" variant={past ? 'plain' : 'default'} className="flex h-full flex-col p-4 sm:p-5">
 			<div className="flex items-start gap-3 sm:gap-4">
-				<CountdownTile event={event} today={today} timeZone={timeZone} clock={clock} />
+				{/* 倒數磚：規則與文案全站統一（components/countdown.tsx）；固定寬度讓卡片之間對齊 */}
+				<CountdownTile kind={event.kind} date={event.date} time={event.time} today={today} timeZone={timeZone} className="w-[5.25rem] px-2" />
 				<div className="min-w-0 flex-1">
 					<div className="flex items-start justify-between gap-2">
 						<div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-2 pointer-coarse:pt-3">
@@ -189,7 +147,6 @@ export function EventsPage() {
 			<EventCard
 				event={e}
 				today={today}
-				clock={clock}
 				timeZone={user.timezone}
 				onEdit={() => setDialog({ event: e })}
 				onAddTask={() => setTaskFor(e)}

@@ -1,31 +1,18 @@
 import { CalendarDays, Plus } from 'lucide-react';
 import { Link } from 'react-router';
 import type { EventItem } from '../../../shared/api-types';
-import { diffDays } from '../../../shared/dates';
-import { dDay, EVENT_KIND_LABEL, formatDate } from '../../lib/format';
+import { EVENT_KIND_LABEL, formatDate } from '../../lib/format';
+import { useUser } from '../../lib/queries';
+import { CountdownTile } from '../countdown';
 import { SubjectTag } from '../subjects';
-import { Button, Card, CardHeader, cn, EmptyState } from '../ui';
+import { Button, Card, CardHeader, EmptyState } from '../ui';
 import { PrepProgress } from './exams';
 import { useSubjectMark } from './hooks';
-
-/** D-3 這類倒數：3 天內用紅筆（文字本身就是倒數，不只靠顏色） */
-function DayChip({ date, today }: { date: string; today: string }) {
-	const urgent = diffDays(today, date) <= 3;
-	return (
-		<span
-			className={cn(
-				'grid h-9 w-14 shrink-0 place-items-center rounded-lg font-num text-sm font-semibold tabular-nums',
-				urgent ? 'bg-danger-soft text-danger' : 'bg-subtle text-ink-2',
-			)}
-		>
-			{dDay(date, today)}
-		</span>
-	);
-}
 
 /** 總覽的「即將到來」：考試與截止日、準備任務的完成數與進度條（DASH-1），點一下到考試頁開啟該項目 */
 export function UpcomingCard({ events, today, onNew, hasNextExam }: { events: EventItem[]; today: string; onNew: () => void; hasNextExam: boolean }) {
 	const markOf = useSubjectMark();
+	const { timezone } = useUser();
 	return (
 		<Card>
 			<CardHeader
@@ -42,7 +29,8 @@ export function UpcomingCard({ events, today, onNew, hasNextExam }: { events: Ev
 					{events.map((e) => (
 						<li key={e.id}>
 							<Link to={`/events?open=${e.id}`} className="flex items-start gap-3 rounded-lg px-2 py-2 transition-colors duration-120 ease-out hover:bg-subtle">
-								<DayChip date={e.date} today={today} />
+								{/* 倒數的規則與文案全站統一（components/countdown.tsx）：今天、明天、N 天後；3 天內的考試紅色＋鬧鐘 */}
+								<CountdownTile kind={e.kind} date={e.date} today={today} timeZone={timezone} size="sm" className="w-[4.75rem]" />
 								<div className="min-w-0 flex-1">
 									<p className="truncate text-dense text-ink">{e.title}</p>
 									<div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-ink-3">

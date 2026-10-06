@@ -25,12 +25,10 @@ export type CountdownState = {
 	label: string;
 };
 
-/** 倒數磚的語氣只看種類與距離今天幾天（考試頁、單科總覽共用同一條規則） */
-export function countdownTone(kind: EventItem['kind'], days: number): CountdownTone {
-	const exam = kind === 'exam';
-	return days < 0 ? 'past' : exam && days <= 3 ? 'urgent' : !exam && days === 0 ? 'today' : 'normal';
-}
-
+/**
+ * @deprecated 倒數磚已經改用 lib/countdown.ts 的 countdown()（Sprint 3 跨頁慣例：截止日 3 天內也用 warning、
+ * 文案統一「今天」「明天」「N 天後」「已結束」）。這裡保留舊規則只給既有的 test/notes-ui-exams.spec.ts，頁面不要再用。
+ */
 export function countdownState(
 	event: Pick<EventItem, 'kind' | 'date' | 'time'>,
 	today: string,
@@ -41,7 +39,8 @@ export function countdownState(
 	const exam = event.kind === 'exam';
 	const start = eventStartMs(event.date, event.time, timeZone);
 	const left = start === null ? null : start - now;
-	const tone = countdownTone(event.kind, days);
+	const tone: CountdownTone =
+		days < 0 ? 'past' : exam && days <= 3 ? 'urgent' : !exam && days === 0 ? 'today' : 'normal';
 
 	if (days < 0) return { tone, days, secondsLeft: null, label: '天前' };
 	if (left !== null && left > 0 && left < DAY_MS) return { tone, days, secondsLeft: left / 1000, label: exam ? '後開始' : '後截止' };

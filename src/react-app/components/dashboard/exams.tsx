@@ -1,55 +1,11 @@
-import { AlarmClock, CircleCheck, GraduationCap, MapPin, Plus } from 'lucide-react';
+import { CircleCheck, GraduationCap, MapPin, Plus } from 'lucide-react';
 import { useId } from 'react';
 import type { EventItem } from '../../../shared/api-types';
-import { diffDays } from '../../../shared/dates';
-import { eventStartMs } from '../../lib/dashboard-format';
 import { formatDate } from '../../lib/format';
-import { useNow } from '../../lib/timer';
+import { CountdownTile } from '../countdown';
 import { SubjectTag } from '../subjects';
-import { Button, Card, CardHeader, cn, Countdown, MoreLink, NumDisplay, ProgressBar } from '../ui';
+import { Button, Card, CardHeader, cn, MoreLink, ProgressBar } from '../ui';
 import { useSubjectMark } from './hooks';
-
-const DAY_MS = 86_400_000;
-
-/**
- * 倒數磚：幾天後；24 小時內而且有時間的考試改成即時倒數（h:mm:ss）。
- * 3 天內用紅筆（DESIGN.md：紅色代表現在就要處理），並加上鬧鐘圖示，不只靠顏色。
- */
-function ExamCountdown({ date, time, today, timeZone }: { date: string; time: string | null; today: string; timeZone: string }) {
-	const days = diffDays(today, date);
-	const start = eventStartMs(date, time, timeZone);
-	// 只有今天或明天的考試才需要每秒更新
-	const now = useNow(start !== null && days <= 1);
-	const left = start === null ? null : start - now;
-	const urgent = days <= 3;
-
-	let value;
-	let label: string;
-	if (left !== null && left > 0 && left < DAY_MS) {
-		value = <Countdown seconds={left / 1000} size="lg" />;
-		label = '後開始';
-	} else if (days <= 0) {
-		value = <span className="text-h1 font-bold">今天</span>;
-		label = '考試日';
-	} else {
-		value = <NumDisplay size="lg">{days}</NumDisplay>;
-		label = '天後';
-	}
-	return (
-		<div
-			className={cn(
-				'flex min-w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-lg px-3 py-2.5 text-center',
-				urgent ? 'bg-danger-soft text-danger' : 'bg-subtle text-ink',
-			)}
-		>
-			{value}
-			<span className={cn('mt-1 inline-flex items-center gap-1 text-meta', urgent ? 'text-danger' : 'text-ink-2')}>
-				{urgent && <AlarmClock className="size-3.5 shrink-0" aria-hidden />}
-				{label}
-			</span>
-		</div>
-	);
-}
 
 /** 準備進度：已完成／全部的準備任務，進度條用科目色；全部完成時加上圖示與「全部完成」 */
 export function PrepProgress({ event, color, size = 'md', className }: { event: EventItem; color?: string; size?: 'sm' | 'md'; className?: string }) {
@@ -111,7 +67,7 @@ export function NextExamCard({
 			/>
 			<div className="px-4 pb-4 sm:px-5 sm:pb-5">
 				<div className="flex items-start gap-4">
-					<ExamCountdown date={event.date} time={event.time} today={today} timeZone={timeZone} />
+					<CountdownTile kind={event.kind} date={event.date} time={event.time} today={today} timeZone={timeZone} className="min-w-[4.75rem]" />
 					<div className="min-w-0 flex-1 pt-0.5">
 						<p className="text-h3 font-semibold wrap-anywhere text-ink">{event.title}</p>
 						<div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-meta text-ink-2">
