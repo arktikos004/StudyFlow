@@ -88,6 +88,7 @@ function TaskForm({
 			title: '要一併完成任務嗎？',
 			message: '子項目都勾完了。選「完成任務」會把狀態改成已完成，並儲存這個任務。',
 			confirmText: '完成任務',
+			tone: 'primary',
 		});
 		if (!ok) return;
 		const next = { ...form, checklist, status: 'done' as const };
