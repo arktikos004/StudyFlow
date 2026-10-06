@@ -38,5 +38,5 @@
 | QA：全套檢查、截圖、a11y 抽查、匯出檔驗證 | qa-engineer（Sonnet） | 有條件通過（無阻斷；Major 2、Minor 3 交給 s3/polish 與 s3/design；新增隔離測試已合併） |
 | 設計審查 | ui-designer（Sonnet，只讀） | 完成（高 3、中 12、低 15；交給 s3/polish 與 s3/design） |
 | s3/polish：backlog 累積的頁面修正、共用元件遷移 | frontend-engineer | 第一輪已合併（review：可合併）；第二輪（設計審查與 QA 的頁面項目）待辦 |
-| s3/design：共用元件與設計系統的修正 | ui-designer | 進行中 |
+| s3/design：共用元件與設計系統的修正 | ui-designer | 已合併（review：修正後合併；DARK_BAND 驗證後維持原值） |
 | 逐條驗收、README、Sprint review、回顧 | product-owner | 待辦 |
