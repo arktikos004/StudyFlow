@@ -27,7 +27,39 @@ import { TimerNavIcon, TimerPill } from './TimerPill';
 import { Button, cn, Dialog, Kbd } from './ui';
 
 // 指令面板會用到科目元件與 zod（搜尋字數上限），分開打包：第一次打開時才下載，閒置時先預載
-const loadPalette = () => import('./CommandPalette');
+type PaletteModule = typeof import('./CommandPalette');
+/**
+ * 載入失敗過的 chunk 網址。Chrome 會快取失敗的 dynamic import（同一個網址再 import 會直接失敗、不重新下載），
+ * 所以重試時從錯誤訊息取得網址（Chrome、Firefox 的訊息裡有），加上 query 繞過快取；只接受同源的網址。
+ */
+let failedPaletteUrl: string | null = null;
+let paletteRetry = 0;
+function rememberFailedUrl(error: unknown) {
+	const match = /https?:\/\/[^\s'"]+/.exec(error instanceof Error ? error.message : String(error));
+	if (!match) return;
+	try {
+		const url = new URL(match[0]);
+		if (url.origin === location.origin) failedPaletteUrl = url.href;
+	} catch {
+		// 不是合法網址就照原本的方式重試
+	}
+}
+// 預載與 lazy 共用同一個 promise；失敗時清掉，下一次呼叫才重新下載
+let palettePromise: Promise<PaletteModule> | null = null;
+const loadPalette = (): Promise<PaletteModule> => {
+	palettePromise ??= (
+		failedPaletteUrl
+			? (import(
+					/* @vite-ignore */ `${failedPaletteUrl}${failedPaletteUrl.includes('?') ? '&' : '?'}retry=${++paletteRetry}`
+				) as Promise<PaletteModule>)
+			: import('./CommandPalette')
+	).catch((error: unknown) => {
+		palettePromise = null;
+		rememberFailedUrl(error);
+		throw error;
+	});
+	return palettePromise;
+};
 const makeLazyPalette = () => lazy(() => loadPalette().then((m) => ({ default: m.CommandPalette })));
 // React.lazy 會快取失敗的 promise：載入失敗時換一個新的 lazy 實例，下次打開才會重新下載
 let LazyPalette = makeLazyPalette();
