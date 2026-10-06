@@ -1,7 +1,22 @@
 import clsx, { type ClassValue } from 'clsx';
-import { ChartColumn, Check, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Loader2, Minus, Table2, X } from 'lucide-react';
+import {
+	ChartColumn,
+	Check,
+	ChevronDown,
+	ChevronRight,
+	CircleAlert,
+	CircleCheck,
+	Loader2,
+	Minus,
+	RotateCw,
+	Search,
+	Table2,
+	X,
+	type LucideIcon,
+} from 'lucide-react';
 import {
 	cloneElement,
+	createElement,
 	forwardRef,
 	Fragment,
 	isValidElement,
@@ -11,7 +26,9 @@ import {
 	useLayoutEffect,
 	useRef,
 	useState,
+	useSyncExternalStore,
 	type ButtonHTMLAttributes,
+	type HTMLAttributes,
 	type InputHTMLAttributes,
 	type KeyboardEvent,
 	type PointerEvent,
@@ -26,6 +43,27 @@ export const cn = (...args: ClassValue[]) => clsx(args);
 
 // 元件的預設樣式（.sf-btn、.sf-field…）定義在 index.css 的 @layer components，
 // 頁面傳進來的 className（工具類）一定蓋得過，不需要 tailwind-merge。
+
+// ---- 圖示 prop ----
+
+/**
+ * 元件的 icon prop：傳 lucide 元件（`icon={Clock}`，建議）由元件決定大小與顏色；
+ * 傳已經組好的元素（`icon={<Clock className="…" aria-hidden />}`）則照原樣顯示，大小與顏色由呼叫端負責。
+ */
+export type IconProp = LucideIcon | ReactNode;
+
+const COMPONENT_TYPES: ReadonlySet<unknown> = new Set([Symbol.for('react.forward_ref'), Symbol.for('react.memo'), Symbol.for('react.lazy')]);
+
+/** 傳進來的是「元件」而不是元素嗎？lucide 的圖示是 forwardRef 物件（不是函式），所以兩種都要認 */
+function isIconComponent(icon: IconProp): icon is LucideIcon {
+	if (typeof icon === 'function') return true;
+	return typeof icon === 'object' && icon !== null && COMPONENT_TYPES.has((icon as { $$typeof?: unknown }).$$typeof);
+}
+
+/** icon 是元件時套上元件決定的 class 並加 aria-hidden；是元素時原樣回傳 */
+function renderIcon(icon: IconProp, className: string): ReactNode {
+	return isIconComponent(icon) ? createElement(icon, { className, 'aria-hidden': true }) : icon;
+}
 
 // ---- Button ----
 
@@ -244,12 +282,16 @@ export function Card({
 	);
 }
 
-/** 卡片標題（h2）＋ 可選的 meta（例如「3 項」）＋ 右側動作（文字加 ChevronRight） */
-export function CardHeader({ title, action, icon, meta }: { title: ReactNode; action?: ReactNode; icon?: ReactNode; meta?: ReactNode }) {
+/**
+ * 卡片標題（h2）＋ 可選的 meta（例如「3 項」）＋ 右側動作（文字加 ChevronRight）。
+ * icon：傳 lucide 元件（`icon={Clock}`）時統一 18px、ink-3；傳元素時照原樣顯示。
+ * 同一頁的卡片要嘛都有圖示、要嘛都沒有；附註放 meta，不寫在標題的括號裡。
+ */
+export function CardHeader({ title, action, icon, meta }: { title: ReactNode; action?: ReactNode; icon?: IconProp; meta?: ReactNode }) {
 	return (
 		<div className="flex items-center justify-between gap-3 px-4 pt-4 pb-2 sm:px-5 sm:pt-5">
 			<div className="flex min-w-0 items-center gap-2">
-				{icon}
+				{renderIcon(icon, 'size-[18px] shrink-0 text-ink-3')}
 				<div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
 					<h2 className="text-h2 font-semibold text-balance">{title}</h2>
 					{meta && <span className="text-meta text-ink-3">{meta}</span>}
@@ -260,16 +302,93 @@ export function CardHeader({ title, action, icon, meta }: { title: ReactNode; ac
 	);
 }
 
-/** 頁面標題（h1）＋ 即時摘要（或什麼都不放）＋ 動作 */
-export function PageHeader({ title, description, actions }: { title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+/**
+ * 頁面標題（h1）＋ 即時摘要（或什麼都不放）＋ 動作。下方自帶區塊間距（手機 24、桌面 32）。
+ * - eyebrow：標題上方的小字（13px ink-2），例如總覽的日期。
+ * - actionsClassName：套在動作列上，例如手機撐滿寬度 `w-full sm:w-auto`（裡面的主要按鈕再加 `flex-1 sm:flex-none`）。
+ */
+export function PageHeader({
+	title,
+	description,
+	actions,
+	eyebrow,
+	className,
+	actionsClassName,
+}: {
+	title: ReactNode;
+	description?: ReactNode;
+	actions?: ReactNode;
+	eyebrow?: ReactNode;
+	className?: string;
+	actionsClassName?: string;
+}) {
 	return (
-		<header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+		<header className={cn('mb-section flex flex-wrap items-end justify-between gap-3', className)}>
 			<div className="min-w-0">
+				{eyebrow && <p className="mb-1 text-meta text-ink-2">{eyebrow}</p>}
 				<h1 className="text-[1.375rem] leading-[1.3] font-bold text-balance sm:text-h1">{title}</h1>
 				{description && <p className="mt-1 text-sm text-ink-2">{description}</p>}
 			</div>
-			{actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+			{actions && <div className={cn('flex flex-wrap gap-2', actionsClassName)}>{actions}</div>}
 		</header>
+	);
+}
+
+/**
+ * 頁面裡區塊與區塊之間的直向間距（DESIGN.md §5：手機 24、桌面 32，讀 --section-gap）。
+ * 兩欄以上的格線用工具類 `gap-section`，欄內再用 PageStack。卡片內部的間距不要用它。
+ */
+export function PageStack({ as: As = 'div', className, ...props }: HTMLAttributes<HTMLElement> & { as?: 'div' | 'section' }) {
+	return <As className={cn('space-y-section', className)} {...props} />;
+}
+
+export type SectionLabelTone = 'neutral' | 'danger' | 'warning' | 'success';
+const LABEL_TONE: Record<SectionLabelTone, string | false> = { neutral: false, danger: 'text-danger', warning: 'text-warning', success: 'text-success' };
+
+/**
+ * 小標：卡片外的分組標題（「已釘選 2」「已逾期 1」）或卡片內的欄位小標（「題目」「正確答案」）。600、ink-2。
+ * - as：標題層級，預設 h2；卡片或對話框裡的欄位小標用 h3。
+ * - size：meta（13px，預設）或 sm（14px）。
+ * - icon：lucide 元件時 16px（neutral 是 ink-3，其他語氣跟著語氣色）；元素時照原樣顯示，只統一成 16px。
+ * - tone：圖示與文字一起變色（已逾期 danger、今天 warning、已完成 success），狀態仍然是圖示加文字。
+ * - count：後面的數量（數字字型、ink-3）；報讀成「，N 項」，單位用 countUnit 改（「則」「題」）。
+ * 間距由呼叫端決定（`className="mb-2 px-1"`）。
+ */
+export function SectionLabel({
+	as: As = 'h2',
+	size = 'meta',
+	tone = 'neutral',
+	icon,
+	count,
+	countUnit = '項',
+	id,
+	className,
+	children,
+}: {
+	as?: 'h2' | 'h3' | 'h4' | 'p' | 'div';
+	size?: 'meta' | 'sm';
+	tone?: SectionLabelTone;
+	icon?: IconProp;
+	count?: number;
+	countUnit?: string;
+	id?: string;
+	className?: string;
+	children: ReactNode;
+}) {
+	return (
+		<As id={id} className={cn('flex items-center gap-1.5 font-semibold text-ink-2', size === 'sm' ? 'text-sm' : 'text-meta', className)}>
+			<span className={cn('inline-flex min-w-0 items-center gap-1.5 [&_svg]:size-4 [&_svg]:shrink-0', LABEL_TONE[tone])}>
+				{renderIcon(icon, tone === 'neutral' ? 'text-ink-3' : '')}
+				{children}
+			</span>
+			{count !== undefined && (
+				<span className="font-num font-normal text-ink-3 tabular-nums">
+					<span className="sr-only">，</span>
+					{count}
+					<span className="sr-only">{countUnit}</span>
+				</span>
+			)}
+		</As>
 	);
 }
 
@@ -357,11 +476,27 @@ export function PageLoader() {
 	);
 }
 
-export function ErrorNote({ error }: { error: unknown }) {
+/**
+ * 載入失敗的提示（圖示加文字，role="alert"）。
+ * onRetry：有給就在右側顯示「重新載入」按鈕（通常傳 query 的 refetch），使用者不必重新整理頁面；
+ * retrying：重試中（query 的 isRefetching），按鈕顯示轉圈並暫停點擊。不傳 onRetry 時和原本一樣只有訊息。
+ */
+export function ErrorNote({ error, onRetry, retrying }: { error: unknown; onRetry?: () => void; retrying?: boolean }) {
 	return (
-		<div className="flex items-start gap-2 rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">
-			<CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-			<span>{error instanceof Error ? error.message : '載入失敗'}</span>
+		<div
+			className={cn('flex flex-wrap gap-x-3 gap-y-2 rounded-lg bg-danger-soft px-4 text-sm text-danger', onRetry ? 'items-center py-2' : 'items-start py-3')}
+			role="alert"
+		>
+			<span className="flex min-w-0 flex-[1_1_12rem] items-start gap-2">
+				<CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+				<span className="min-w-0">{error instanceof Error ? error.message : '載入失敗'}</span>
+			</span>
+			{onRetry && (
+				<Button size="sm" onClick={onRetry} loading={retrying}>
+					{!retrying && <RotateCw className="size-4" aria-hidden />}
+					重新載入
+				</Button>
+			)}
 		</div>
 	);
 }
@@ -1049,6 +1184,185 @@ export function TableToggle({ on, onToggle }: { on: boolean; onToggle: () => voi
 			{on ? <ChartColumn className="size-4" aria-hidden /> : <Table2 className="size-4" aria-hidden />}
 			{on ? '圖表' : '表格'}
 		</Button>
+	);
+}
+
+// ---- 切換、小按鈕、整格可點 ----
+
+type ToggleButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-pressed'> & {
+	/** 目前是否按下（aria-pressed） */
+	pressed: boolean;
+	onPressedChange: (pressed: boolean) => void;
+	/** 儲存中：aria-disabled 加 aria-busy（不用 disabled，焦點才不會掉到 body），並忽略點擊 */
+	busy?: boolean;
+	/** text（預設）：圖示加文字的 sm 按鈕；icon：只有圖示（桌面 36px、觸控 44px），一定要給 aria-label */
+	variant?: 'icon' | 'text';
+	/** lucide 元件時 16px，按下時轉成實心（fill-current）；元素時照原樣顯示 */
+	icon?: IconProp;
+	size?: ButtonSize;
+};
+
+/**
+ * 切換按鈕（釘選、收藏這類開／關）：aria-pressed 表示狀態，名稱不隨狀態改字（「釘選」，不是「取消釘選」）。
+ * 按下時是 accent-soft 底、accent-ink 字，圖示轉成實心：形狀與顏色都不同，不只靠顏色。
+ */
+export const ToggleButton = forwardRef<HTMLButtonElement, ToggleButtonProps>(function ToggleButton(
+	{ pressed, onPressedChange, busy = false, variant = 'text', icon, size, className, children, onClick, ...props },
+	ref,
+) {
+	const iconOnly = variant === 'icon';
+	return (
+		<Button
+			ref={ref}
+			variant={iconOnly ? 'ghost' : 'secondary'}
+			size={size ?? (iconOnly ? 'icon' : 'sm')}
+			aria-pressed={pressed}
+			aria-disabled={busy || undefined}
+			aria-busy={busy || undefined}
+			onClick={(e) => {
+				if (busy) return;
+				onClick?.(e);
+				if (!e.defaultPrevented) onPressedChange(!pressed);
+			}}
+			className={cn('sf-toggle', iconOnly && 'sf-toggle-icon', className)}
+			{...props}
+		>
+			{renderIcon(icon, cn('size-4 shrink-0', pressed && 'fill-current'))}
+			{iconOnly ? null : children}
+		</Button>
+	);
+});
+
+/**
+ * 小圓形圖示按鈕（照片角落的刪除、移除）：看起來 28px，點擊範圍用 ::after 擴大到 44px。
+ * label 是無障礙名稱（必填）；icon 預設是 X。位置由呼叫端決定，例如 `className="absolute top-1 right-1"`。
+ */
+export const MiniIconButton = forwardRef<
+	HTMLButtonElement,
+	Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label' | 'children'> & { label: string; icon?: LucideIcon }
+>(function MiniIconButton({ label, icon = X, className, type = 'button', ...props }, ref) {
+	return (
+		<button ref={ref} type={type} aria-label={label} className={cn('sf-mini-btn', className)} {...props}>
+			{createElement(icon, { className: 'size-4', 'aria-hidden': true })}
+		</button>
+	);
+});
+
+/**
+ * 整格可點的標題按鈕：::after 蓋滿最近的 relative 容器，焦點框畫在整格外圍（按鈕本身只是標題文字）。
+ * - cover="cell"（預設）：清單列、看板卡裡的標題格，::after 比容器往外 4px、圓角 md。
+ * - cover="card"：蓋滿整張卡（容器是 relative 的 Card），圓角 xl，焦點框內縮 2px（卡片有 overflow-hidden 也不會被裁掉）。
+ * 同一格裡其他可以點的元素要加 `relative z-10` 才會疊在上面。文字樣式由 className 決定。
+ */
+export const StretchedButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { cover?: 'cell' | 'card' }>(
+	function StretchedButton({ cover = 'cell', className, type = 'button', ...props }, ref) {
+		return <button ref={ref} type={type} className={cn('sf-stretched', cover === 'card' && 'sf-stretched-card', className)} {...props} />;
+	},
+);
+
+/**
+ * 長清單的「顯示全部 N 項／只顯示前 N 項」切換（aria-expanded）。total 不超過 limit 時不顯示。
+ * 預設撐滿寬度（放在卡片底部或欄位底部）；外層的分隔線與內距由呼叫端決定。
+ */
+export function ShowAllToggle({
+	expanded,
+	onToggle,
+	total,
+	limit,
+	unit = '項',
+	className,
+}: {
+	expanded: boolean;
+	onToggle: () => void;
+	total: number;
+	limit: number;
+	unit?: string;
+	className?: string;
+}) {
+	if (total <= limit) return null;
+	return (
+		<Button variant="ghost" size="sm" aria-expanded={expanded} onClick={onToggle} className={cn('sf-btn-block', className)}>
+			{expanded ? `只顯示前 ${limit} ${unit}` : `顯示全部 ${total} ${unit}`}
+			<ChevronDown
+				className={cn('size-4 transition-transform duration-180 ease-out motion-reduce:transition-none', expanded && 'rotate-180')}
+				aria-hidden
+			/>
+		</Button>
+	);
+}
+
+type SearchInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'aria-label'> & {
+	value: string;
+	onValueChange: (value: string) => void;
+	/** 無障礙名稱，例如「搜尋任務」 */
+	label: string;
+	/** 清除鈕的無障礙名稱 */
+	clearLabel?: string;
+};
+
+/**
+ * 搜尋框：左側放大鏡、有文字時右側出現清除鈕（44px 寬，清除後焦點回到輸入框），Esc 也會清空。
+ * - Esc：有文字時清空並攔下事件（外層的對話框不會跟著關閉）；已經是空的就交給外層。注音選字中不攔截。
+ * - **className 套在外層容器**（寬度、flex），和 Select 一樣；其餘屬性（placeholder、maxLength…）傳給 input。
+ */
+export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(function SearchInput(
+	{ value, onValueChange, label, clearLabel = '清除搜尋', className, onKeyDown, ...props },
+	ref,
+) {
+	const inner = useRef<HTMLInputElement | null>(null);
+	return (
+		<div role="search" className={cn('relative', className)}>
+			<Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-3" aria-hidden />
+			<input
+				enterKeyHint="search"
+				{...props}
+				ref={(el) => {
+					inner.current = el;
+					if (typeof ref === 'function') ref(el);
+					else if (ref) ref.current = el;
+				}}
+				type="search"
+				value={value}
+				aria-label={label}
+				onChange={(e) => onValueChange(e.target.value)}
+				onKeyDown={(e) => {
+					onKeyDown?.(e);
+					if (e.defaultPrevented || e.key !== 'Escape' || !value || e.nativeEvent.isComposing) return;
+					e.preventDefault();
+					onValueChange('');
+				}}
+				className="sf-field sf-input sf-search-input"
+			/>
+			{value && (
+				<button
+					type="button"
+					aria-label={clearLabel}
+					onClick={() => {
+						onValueChange('');
+						inner.current?.focus();
+					}}
+					className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-lg text-ink-3 transition-colors duration-120 ease-out hover:text-ink focus-visible:-outline-offset-2"
+				>
+					<X className="size-4" aria-hidden />
+				</button>
+			)}
+		</div>
+	);
+});
+
+// ---- 動效 ----
+
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
+/** 使用者是否要求減少動態。CSS 能處理的用 `motion-reduce:`；只有 JS 控制的動畫（拖曳歸位、捲動）才需要這個 hook */
+export function usePrefersReducedMotion(): boolean {
+	return useSyncExternalStore(
+		(onChange) => {
+			const media = window.matchMedia(REDUCED_MOTION);
+			media.addEventListener('change', onChange);
+			return () => media.removeEventListener('change', onChange);
+		},
+		() => window.matchMedia(REDUCED_MOTION).matches,
 	);
 }
 
