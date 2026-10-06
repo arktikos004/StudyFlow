@@ -12,6 +12,12 @@ export type PublicUser = {
 	/** 讀書目標（分鐘）；null = 沒有設定 */
 	dailyGoalMinutes: number | null;
 	weeklyGoalMinutes: number | null;
+	/**
+	 * 頭像最後更新的時間（UTC 毫秒）；null = 沒有上傳。
+	 * 前端用 lib/api.ts 的 avatarUrl() 組出 /api/auth/avatar?v=<這個值>：每次更換都會變，不會用到快取的舊圖。
+	 * R2 的儲存位置（avatarKey）只在後端使用，不會出現在任何回應裡。
+	 */
+	avatarUpdatedAt: number | null;
 };
 
 export type EventItem = StudyEvent & { taskTotal: number; taskDone: number };
@@ -96,6 +102,25 @@ export type Achievement = {
 
 /** GET /api/achievements：固定順序的成就清單 */
 export type AchievementsResponse = { achievements: Achievement[] };
+
+/** GET /api/profile/summary：個人檔案的累積數字，只有本人；和 GET /api/achievements 用同一份計算 */
+export type ProfileSummary = {
+	/** 全部學習紀錄的分鐘數（四捨五入到分鐘）與筆數 */
+	totalMinutes: number;
+	totalSessions: number;
+	/**
+	 * 目前連續天數（和 dashboard.streak 相同的算法：今天還沒讀書時從昨天算起）與最長連續天數，依使用者時區。
+	 * 這裡看全部歷史；總覽只讀近 366 天（今天與前 365 天）：今天已經讀書時連續 367 天以上、
+	 * 今天還沒讀書時連續 366 天以上，總覽的數字會比這裡少（最多 366／365）。
+	 */
+	currentStreak: number;
+	longestStreak: number;
+	/** 已完成的任務數、已掌握的錯題數（一般筆記不算） */
+	tasksDone: number;
+	mistakesMastered: number;
+	/** 成就：已解鎖數、總數，以及已解鎖的成就（順序同 GET /api/achievements；icon 是 lucide 圖示名稱） */
+	achievements: { unlocked: number; total: number; badges: { id: string; title: string; icon: string }[] };
+};
 
 export type StatsResponse = {
 	range: { from: string; to: string; days: number };
