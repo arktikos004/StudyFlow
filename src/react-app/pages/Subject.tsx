@@ -222,7 +222,7 @@ function UpcomingCard({
 		<Card>
 			<CardHeader
 				title="即將到來"
-				icon={<GraduationCap className="size-[18px] text-ink-3" aria-hidden />}
+				icon={GraduationCap}
 				meta={events.length ? `${events.length} 場` : undefined}
 			/>
 			{next ? (
@@ -401,7 +401,7 @@ function TasksCard({
 		<Card>
 			<CardHeader
 				title="未完成的任務"
-				icon={<ListChecks className="size-[18px] text-ink-3" aria-hidden />}
+				icon={ListChecks}
 				meta={tasks.length ? `${tasks.length} 項` : undefined}
 				action={shown.length > 0 && add}
 			/>
@@ -440,7 +440,7 @@ function StudyTimeCard({
 }) {
 	return (
 		<Card>
-			<CardHeader title="讀書時間" icon={<Clock className="size-[18px] text-ink-3" aria-hidden />} />
+			<CardHeader title="讀書時間" icon={Clock} />
 			<dl className="grid grid-cols-2 border-t border-line">
 				<Figure label="本週" sub="週一起算">
 					<MinutesFigure minutes={week} />
@@ -476,7 +476,7 @@ function MistakesCard({ mistakes, subjectId, color }: { mistakes: SubjectOvervie
 	const pct = total ? Math.round((mastered / total) * 100) : 0;
 	return (
 		<Card>
-			<CardHeader title="錯題" icon={<Brain className="size-[18px] text-ink-3" aria-hidden />} />
+			<CardHeader title="錯題" icon={Brain} />
 			{total === 0 ? (
 				<EmptyState
 					variant="inline"

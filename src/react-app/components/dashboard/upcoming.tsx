@@ -17,7 +17,7 @@ export function UpcomingCard({ events, today, onNew, hasNextExam }: { events: Ev
 		<Card>
 			<CardHeader
 				title="即將到來"
-				icon={<CalendarDays className="size-[18px] text-ink-3" aria-hidden />}
+				icon={CalendarDays}
 				action={
 					<Button size="icon" variant="ghost" onClick={onNew} aria-label="新增考試或截止日">
 						<Plus className="size-5" aria-hidden />

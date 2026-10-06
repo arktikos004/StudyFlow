@@ -53,7 +53,7 @@ export function TodayTasksCard({
 		<Card>
 			<CardHeader
 				title="今天要處理"
-				icon={<ListChecks className="size-[18px] text-ink-3" aria-hidden />}
+				icon={ListChecks}
 				meta={tasks.length ? `${tasks.length} 項` : undefined}
 				action={
 					openCount > 0 && (

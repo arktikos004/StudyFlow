@@ -58,7 +58,7 @@ export function NextExamCard({
 		<Card>
 			<CardHeader
 				title="下一場考試"
-				icon={<GraduationCap className="size-[18px] text-ink-3" aria-hidden />}
+				icon={GraduationCap}
 				action={
 					<MoreLink to={`/events?open=${event.id}`} aria-label={`查看「${event.title}」`}>
 						查看
