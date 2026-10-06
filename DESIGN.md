@@ -55,6 +55,7 @@
 | chart-rest | #c1bdb5 | #6c727e | 圖表中的「未完成」等其餘項目 |
 | heat-1…4 | accent 以 24／45／70／100% 混入 card | accent 以 10／40／72% 混入 accent-soft；heat-4 = accent 與 accent-ink 各半 | 熱度圖（heat-0 = subtle），跟著主題色；藍筆時為淺 #c7d5f2 #9ab2e9 #6689dc #2d53ca、深 #263660 #415890 #607ec7 #8eaffc |
 | backdrop | rgb(22 29 49 / .4) | rgb(0 0 0 / .6) | 對話框背景遮罩 |
+| scrim／on-scrim | rgb(12 15 24 / .9)／#f3f0ea | rgb(0 0 0 / .85)／#f3f0ea | 深色遮罩（Sprint 3）：照片燈箱這類「看內容」的覆蓋層，淺色模式也要夠暗（`backdrop:bg-scrim`）；on-scrim 是遮罩上的文字與圖示。取代 raw 的 `black` |
 | logo-tile／logo-ink | accent／card | ink／accent-soft | 品牌標誌的底與 S（Sprint 2）：淺色是主題色的底、紙色的 S；深色反過來是紙色的底、深色主題色的 S。跟著主題色 |
 | logo-mark | #ffd84a | #ffcf33 | 品牌標誌的螢光筆黃，**只用在標誌裡**（介面的螢光筆仍是 mark） |
 
@@ -110,6 +111,25 @@
     | 標誌的底對 page | 5.55 | 16.83 | 3 |
     | 焦點框：accent 對 accent-soft、subtle | 5.06、5.14 | 4.93、5.81 | 3 |
 
+  - **Sprint 3 新增的組合（s3/design，實際計算；主題色取 6 組中的最低值）**：
+
+    | 組合 | 淺色 | 深色 | 門檻 |
+    |---|---|---|---|
+    | on-scrim／scrim（疊在 page；疊在 card） | 13.27；13.13 | 18.23；18.04 | 4.5 |
+    | 燈箱的關閉鈕（card 底）對 scrim | 14.72 | 1.18（靠 ink 圖示 15.43 與 line 邊框辨識） | 3 |
+    | SectionLabel：danger、warning、success 對 page | 5.63、5.23、5.45 | 6.96、10.83、9.05 | 4.5 |
+    | SectionLabel：ink-2、ink-3（數量）對 page | 7.48、5.23 | 10.55、6.91 | 4.5 |
+    | 倒數磚：ink、ink-2、ink-3 對 subtle | 14.35、6.93、4.85 | 13.81、8.66、5.67 | 4.5 |
+    | 倒數磚：danger／danger-soft、warning／warning-soft | 5.31、5.02 | 5.28、7.74 | 4.5 |
+    | ToggleButton 按下：accent-ink 對 accent-soft；hover 時；按住時 | 6.40、5.58、4.96 | 7.02、6.04、5.31 | 4.5 |
+    | ToggleButton 圖示版未按下：ink-3 對 card、page | 5.52、5.23 | 6.33、6.91 | 3 |
+    | MiniIconButton：ink 圖示對「card 90% 疊在全黑／全白照片」 | 13.05／16.34 | 15.77／11.60 | 3 |
+    | MiniIconButton、StretchedButton 的焦點框：accent 對 card、page | 5.86、5.55 | 6.49、7.07 | 3 |
+    | ErrorNote 的「重新載入」：ink 對 card；焦點框 accent 對 danger-soft | 16.33；5.23 | 15.43；5.36 | 4.5；3 |
+    | SearchInput 的放大鏡與清除鈕：ink-3 對 page | 5.23 | 6.91 | 3 |
+
+    - ToggleButton 忙碌中（opacity .7）的文字只有 3.33（淺色葡萄紫）：它是 `aria-disabled` 的暫時狀態（儲存的幾百毫秒），WCAG 不要求停用中的元件達到對比。
+    - ErrorNote 的按鈕是 secondary（card 底、line-strong 框），對 danger-soft 底只有 1.1–1.6：按鈕靠文字「重新載入」辨識，邊框不是辨識的必要條件（同其他 secondary 按鈕）。
   - **語意撞色（OKLab ΔE×100）**：莓果和 danger 14.2／11.0；墨綠和 success 7.7／9.2（計時環的專注與休息階段靠文字標籤區分）。
   - **不收錄琥珀橘**：和 warning（ΔE 4.7）、danger（ΔE 8.6）幾乎同色，主要按鈕與「今天到期」會分不出來，所以改收錄中性的「鉛筆」。紅、橘、黃系一律不做主題色。
 - **局部預覽**：任何元素都可以加 `data-theme="light|dark"` 或 `data-accent="…"`，只影響該區塊的 tokens（例如設定頁的深淺色對照、色組色票）。
@@ -157,7 +177,21 @@
   - 精確指標（滑鼠）且容器夠寬（≥ 22.25rem）：10 × 4 一整塊，格子 **32–44px**，隨容器寬度縮放（`clamp(2rem, (100cqw − 2.25rem) / 10, 2.75rem)`）。
   - 觸控裝置或窄容器：兩塊 5 × 4，每格 44px。
 - **驗證**：色盤有改動時，必須用 dataviz skill 的 `validate_palette.js` 驗證淺色與深色兩種模式。
-- **待評估（Sprint 2）：是否放寬深色的 DARK_BAND**。目前深色把 L 0.43–0.77 壓進 0.55–0.67，同色相的 4 個色調在深色只差 ΔE 3–5，所以深色的色格實際上只剩約 10 種可分辨的顏色。這個 Sprint 不改 `src/shared/color.ts`（屬於 s1/color）。
+- **DARK_BAND 評估（Sprint 3，結論：維持 0.55–0.67）**。設計審查建議放寬到 0.52–0.72（或折衷 0.54–0.70），讓同色相的 4 個色調在深色更好分辨。用 dataviz 的 `validate_palette.js`（深色、surface 是 card #151924）與 `subjectTone` 實際重算 48 色的深色 mark：
+
+  | DARK_BAND | 驗證器的深色色帶（L 0.48–0.67） | mark 對 card 最低 | onMark／mark 最低（< 4.5 的色數） | 同色相相鄰色調 ΔE：最小／平均（< 5 的對數） | 亮↔深 ΔE 平均 | 深色「幾乎一樣」的配對 | 40 色中彼此 ΔE ≥ 5 的色數 |
+  |---|---|---|---|---|---|---|---|
+  | **0.55–0.67（現行）** | 通過 | 3.52 | 4.39（8／48） | 2.9／3.7（29／30） | 10.6 | 46 | 21 |
+  | 0.52–0.72（建議） | **不通過**：「亮」列 10 色 L 0.713–0.715 | 3.22 | 4.39（2／48） | 4.1／5.8（1／30） | 17.2 | 13 | 38 |
+  | 0.54–0.70（折衷） | **不通過**：「亮」列 10 色 L 0.694–0.696 | 3.43 | 4.39（3／48） | 3.4／4.7（25／30） | 13.9 | 41 | 22 |
+  | 0.51–0.67（色帶內放寬到底） | 通過 | 3.01 | 4.43（2／48） | 3.2／4.7（26／30） | 13.9 | 36 | 24 |
+  | 0.48–0.67 | 通過 | **2.70**（5 色 < 3:1） | 4.46（2／48） | 2.3／5.5（5／30） | 16.3 | 16 | 34 |
+
+  - 共同的數字：推薦 8 色在深色用 DARK_STEPS，不受色帶影響，驗證器淺色（surface #fdfcfa）與深色都 PASS（CVD 最差 9.1／8.4、一般視覺最差 19.6／19.3）；最亮端（琥珀 #c98500，L 0.670）的 onMark 是 6.23；chip 的 ink／tint 在所有候選下都 ≥ 10.8。
+  - 「更多顏色」每一列（10 色相並排）在淺色與深色、任何色帶下都過不了驗證器的相鄰檢查（例如紫↔藍 deutan ΔE 0.2–0.4）：色格是選色器，不是固定順序的圖表色盤，所以由選色器的提醒負責，和色帶無關。
+  - 不採用建議值的原因：上緣超過 0.67 就離開 dataviz 的深色色帶（深色表面上太亮的 mark 會比文字還搶眼）；上緣固定 0.67 時，下緣最多只能放到約 0.51（再低 mark 對 card 就低於 3:1），同色相相鄰色調的 ΔE 平均只從 3.7 變成 4.7，30 對裡仍有 26 對低於「幾乎一樣」的 5，改善有限。
+  - 真的要讓深色的 4 個色調分得開，需要改深色的換算方式（例如色調之間固定 ΔL，或「深」色調改降 chroma），不是調整線性色帶的端點；這屬於 `src/shared/color.ts`，留給之後負責色彩的 lane。
+  - 「幾乎一樣」的提醒維持深色 ΔE < 5：在現行色帶下會把同色相相鄰色調標成「深色模式下幾乎一樣」，這正是要提醒的事。
 
 ## 4. 字型與排版
 
@@ -193,7 +227,7 @@
 
 - **間距**：以 4px 為單位。
   - 組內 4–12；組與組之間 16–24。
-  - 區塊之間：手機 24、桌面 32。
+  - 區塊之間：手機 24、桌面 32。用 `--section-gap`（Sprint 3）：直向堆疊用 `PageStack`，格線用 `gap-section`，頁首用 `PageHeader`（自帶 `mb-section`）。
   - 卡片內距：手機 16、桌面 20。
   - 內層間距不超過外層的一半。
 - **圓角**：用 `@theme` 定義。
@@ -275,8 +309,9 @@
   - 只有可互動的卡片才有 hover 效果。
   - 變體：inset、plain。
   - 卡片裡不放卡片。
-- **CardHeader**：h2，可加 meta，動作用文字加 ChevronRight。
-- **PageHeader**：h1，下面放即時摘要，或什麼都不放。
+- **CardHeader**：h2，可加 meta，動作用文字加 ChevronRight。圖示直接傳 lucide 元件（18px、ink-3 由元件決定）。
+- **PageHeader**：h1，下面放即時摘要，或什麼都不放；上方可以放 eyebrow（日期這類小字）。下方間距是區塊間距（手機 24、桌面 32）。
+- **SectionLabel**（Sprint 3）：卡片外的分組標題、卡片內的欄位小標。13px（或 14px）／600／ink-2，圖示 16px；有語氣時圖示和文字一起變成 danger／warning／success，仍然是圖示加文字。
 - **StatStrip**：
   - 一張卡片，用分隔線分成幾格。
   - 數值用 font-num 28/600。
@@ -405,7 +440,7 @@
 
 | 元件 | Props（新 prop 都是可選的） | 說明 |
 |---|---|---|
-| `Button` | `variant: 'primary'｜'secondary'（預設）｜'ghost'｜'danger'｜'soft'`、`size: 'sm'｜'md'（預設）｜'lg'｜'icon'`、`loading` | 40px（觸控 44px；sm 32px 另有 44px 點擊範圍；lg 48px；icon 36px、觸控 44px）。`loading` 保留文字並加 `aria-busy`。只有圖示時一定要給 `aria-label`。型別 `ButtonVariant`、`ButtonSize` |
+| `Button` | `variant: 'primary'｜'secondary'（預設）｜'ghost'｜'danger'｜'soft'`、`size: 'sm'｜'md'（預設）｜'lg'｜'icon'`、`loading` | 40px（觸控 44px；sm 32px，觸控裝置另有至少 44×44 的 `::after` 點擊範圍（Sprint 3 修正：原本只有 42px 高）；lg 48px；icon 36px、觸控 44px）。`loading` 保留文字並加 `aria-busy`。只有圖示時一定要給 `aria-label`。型別 `ButtonVariant`、`ButtonSize` |
 | `Input`、`Textarea` | 原生屬性 | 手機 16px、sm 以上 15px；page 色內嵌底、line-field 邊框、focus 時 accent 邊框加光環；`aria-invalid` 時變紅 |
 | `Select` | 原生屬性 | 右側 ChevronDown。**`className` 套在外層容器**（寬度、版面），select 填滿容器 |
 | `Field` | `label`、`hint`、`error`、`children: (id, aria) => …`、`className`；**Sprint 2**：`layout?: 'stacked'（預設）｜'inline'`（型別 `FieldLayout`） | `aria` 是 `FieldAria`（`aria-describedby`、`aria-invalid`），請展開到欄位上：`{(id, aria) => <Input id={id} {...aria} />}`。舊寫法 `(id) =>` 會自動把 aria 補到回傳的元素上。inline：標籤與提示／錯誤在左欄、欄位在右欄垂直置中，右欄寬度由欄位決定，請給欄位寬度（`className="w-24"`） |
@@ -427,7 +462,7 @@
 | `NumDisplay` | `children`、`unit`、`size: 'xl'｜'lg'（預設）｜'md'｜'sm'` | 數字字型、等寬數字；xl 為計時大字；型別 `NumSize` |
 | `Countdown` | `seconds`、`size`（'xl'） | `role="timer"`，mm:ss 或 h:mm:ss，半窄字寬 |
 
-**`components/charts.tsx`**：`StatStrip({ items: StatItem[] })`，`StatItem = { key?, label, value, sub?, icon? }`（一張卡片用分隔線分格、手機 2 欄、sm 以上最多 4 格、數值 28／600）。`Heatmap` 內建「表格／圖表」切換與 `role="img"` 摘要。`StatTile`、`Legend`、`SubjectBars`、`MiniDailyBars`、`DailyStackedBars`、`WeeklyTaskBars`、`SeriesDef` 的 API 不變（`StatTile` 只為相容保留，新頁面改用 `StatStrip`）。
+**`components/charts.tsx`**：`StatStrip({ items: StatItem[] })`，`StatItem = { key?, label, value, sub?, icon? }`（一張卡片用分隔線分格、手機 2 欄、sm 以上最多 4 格、數值 28／600）。`Heatmap` 內建「表格／圖表」切換與 `role="img"` 摘要。`StatTile`、`Legend`、`SubjectBars`、`MiniDailyBars`、`DailyStackedBars`、`WeeklyTaskBars`、`SeriesDef` 的 API 不變（`StatTile` 只為相容保留，新頁面改用 `StatStrip`）。**Sprint 3：`StatTile` 已經沒有任何呼叫端**（全 repo grep 只剩定義本身），`charts.tsx` 的擁有者可以在之後的清理刪掉；s3/design 不改 `charts.tsx`，所以先保留。
 
 **Sprint 2 新增到 `components/ui.tsx`（s2/shell，只新增、既有 API 不變）**
 
@@ -442,7 +477,52 @@
 | `TableToggle` | `on`、`onToggle` | 圖表／表格切換（`aria-pressed`），和 charts.tsx 的同名元件相同，不必為了它載入圖表函式庫 |
 | `gridKeyTarget(e, index, count, grid)` | 函式 | 格狀 radiogroup 的方向鍵目標（左右循環、上下同欄、Home／End），欄數讀 CSS grid 實際排出的欄 |
 
-**殼層（s2/shell）**：`components/CommandPalette.tsx` 的 `CommandPalette({ onClose })` 由 Layout 掛載（分開打包、閒置時預載），頁面不必使用。純邏輯在 `lib/shell-palette.ts`（`resultHref`、`QUICK_ACTIONS`、`PAGE_KEYWORDS`、`matchesQuery`、`isPaletteShortcut`）、`lib/shell-nav.ts`（`navBadges`、`badgeLabel`）、`lib/shell-achievements.ts`（`seenKey`、`parseSeen`、`diffUnlocked`、`achievementUnit`、`groupAchievements`、`nextMilestone`、`formatProgress`）、`lib/shell-icons.ts`（`achievementIcon`、`AchievementIcon`）。
+**Sprint 3 新增到 `components/ui.tsx`（s3/design，只新增 export 與可選的 prop，既有 API 不變）**
+
+既有元件的新 prop：
+
+| 元件 | 新 prop | 說明 |
+|---|---|---|
+| `PageHeader` | `eyebrow?: ReactNode`、`className?`、`actionsClassName?` | eyebrow 在 h1 上方（13px ink-2，例如總覽的日期 `<time>`）。actionsClassName 套在動作列（例如手機撐滿 `w-full sm:w-auto`）。**下方間距從固定 24px 改成 `mb-section`**（手機 24、md 以上 32），後面的第一個區塊不要再加 `mt-*` |
+| `CardHeader` | `icon?: IconProp`（原本是 ReactNode） | 傳 lucide 元件 `icon={Clock}` 時統一 18px、ink-3、aria-hidden；傳元素照舊原樣顯示 |
+| `ErrorNote` | `onRetry?: () => void`、`retrying?: boolean` | 有 onRetry 時右側出現「重新載入」（sm secondary，RotateCw 圖示）；retrying 時按鈕轉圈並暫停點擊。通常 `onRetry={() => void refetch()} retrying={isRefetching}`。不傳時和原本一樣 |
+
+新元件與工具：
+
+| 名稱 | Props | 說明 |
+|---|---|---|
+| `IconProp` | 型別：`LucideIcon \| ReactNode` | 元件的 icon prop：傳元件由元件決定大小顏色；傳元素照原樣 |
+| `PageStack` | `as?: 'div' \| 'section'`、其餘 HTML 屬性 | `space-y-section`：區塊之間的直向間距。兩欄以上的格線用工具類 `gap-section` |
+| `SectionLabel` | `children`、`as?: 'h2'（預設）\|'h3'\|'h4'\|'p'\|'div'`、`size?: 'meta'（預設）\|'sm'`、`tone?: 'neutral'（預設）\|'danger'\|'warning'\|'success'`（型別 `SectionLabelTone`）、`icon?: IconProp`、`count?: number`、`countUnit?: string`（'項'）、`id?`、`className?` | 小標，600、ink-2、圖示 16px（neutral 時圖示 ink-3）。count 用數字字型 ink-3，報讀成「已逾期，1項」。間距由呼叫端給（`className="mb-2 px-1"`） |
+| `ToggleButton` | `pressed`、`onPressedChange(pressed)`、`busy?`、`variant?: 'text'（預設）\|'icon'`、`icon?: IconProp`、`size?: ButtonSize`、其餘 button 屬性（含 `aria-label`、`title`、`data-*`）；forwardRef | `aria-pressed`；按下時 accent-soft 底、accent-ink 字、圖示轉實心（`fill-current`）。名稱不隨狀態改字。busy 時 `aria-disabled`＋`aria-busy`、opacity .7、忽略點擊（不用 disabled，焦點不會掉）。text 版是 sm secondary（未按下時有框）；icon 版是 ghost icon（36px、觸控 44px，未按下 ink-3），一定要給 aria-label |
+| `MiniIconButton` | `label`（無障礙名稱，必填）、`icon?: LucideIcon`（預設 X）、其餘 button 屬性；forwardRef | 看起來 28px 的圓形圖示按鈕（card 90% 底、line 框、陰影 sm），`::after` 擴大到 44px。位置由 className 決定（`absolute top-1 right-1`）。焦點時底色轉成實心 card，焦點框外再墊一圈 card |
+| `StretchedButton` | `cover?: 'cell'（預設）\|'card'`、其餘 button 屬性；forwardRef | 整格可點的標題按鈕：`::after` 蓋滿最近的 relative 容器，焦點框畫在 `::after`。cell：往外 4px、圓角 md；card：貼齊、圓角 xl、焦點框內縮 2px（卡片有 overflow-hidden 也看得到）。文字樣式由 className 給 |
+| `ShowAllToggle` | `expanded`、`onToggle`、`total`、`limit`、`unit?`（'項'）、`className?` | 「顯示全部 25 項／只顯示前 20 項」＋ChevronDown（展開時轉 180°），`aria-expanded`，ghost sm、撐滿寬度。total ≤ limit 時不顯示 |
+| `SearchInput` | `value`、`onValueChange(value)`、`label`（aria-label，必填）、`clearLabel?`（'清除搜尋'）、`className?`（**套在外層容器**）、其餘 input 屬性（placeholder、maxLength…）；forwardRef 到 input | `role="search"` 容器、左側放大鏡、有文字時右側 44px 清除鈕（清除後焦點回到輸入框）、Esc 清空並攔下事件（已經是空的就交給外層，例如讓對話框關閉）、注音選字中不攔截。`type="search"`、`enterKeyHint="search"`、隱藏瀏覽器內建的清除鈕 |
+| `usePrefersReducedMotion()` | — | `prefers-reduced-motion: reduce` 是否成立（`useSyncExternalStore`，會跟著系統設定變）。CSS 能處理的用 `motion-reduce:`，只有 JS 控制的動畫才用它 |
+
+tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-section`、`mt-section`）、`--scrim`／`--on-scrim`（`bg-scrim`、`backdrop:bg-scrim`、`text-on-scrim`）。
+
+**頁面端遷移（給 s3/polish，照這張表換）**
+
+| 原本 | 換成 |
+|---|---|
+| `pages/Dashboard.tsx` 自己寫的 `<header>`（日期＋問候＋兩個 lg 按鈕） | `<PageHeader eyebrow={<time dateTime={data.today}>…</time>} title={…} actionsClassName="w-full sm:w-auto" actions={…} />`；下方的 `mt-6 md:mt-8` 拿掉，主體用 `PageStack`／`gap-section` |
+| 各頁的 `space-y-5`、`space-y-6`、`gap-5`、`gap-6`、`mt-6 md:mt-8`、`mt-8`（區塊之間） | `PageStack`（直向）、`gap-section`（格線） |
+| `icon={<Clock className="size-[18px] text-ink-3" aria-hidden />}`（CardHeader） | `icon={Clock}` |
+| `pages/Notes.tsx` 的 `Section` 標題、`components/tasks/TaskList.tsx` 的分組 h2、`components/notes/content.tsx` 的 `Block` h3、`components/notes/review.tsx`「還不熟的題目」h3 | `SectionLabel`（TaskList：`size="sm" tone={overdue→'danger', today→'warning', done→'success'} icon={…} count={n}`；Block：`as="h3" icon={…}`，正確答案的綠勾用元素傳 `icon={<CircleCheck className="text-success" aria-hidden />}`） |
+| `components/notes/pin.tsx` 的 `PinToggle` 內部 | `ToggleButton`（icon 版：`variant="icon" icon={Pin} aria-label={\`釘選「${title}」\`} title=… data-pin-id=…`；text 版：`icon={Pin}`＋「釘選」）。PinToggle 的外部 API 可以保留 |
+| `components/notes/content.tsx` 的 `ThumbAction` | `<MiniIconButton label=… onClick=… className="absolute top-1 right-1" />` |
+| `components/notes/content.tsx:57` 燈箱的 `backdrop:bg-black/85` | `backdrop:bg-scrim` |
+| `components/TaskItem.tsx` 的 `TaskTitleButton` 外殼 | `<StretchedButton data-task-title className="text-dense break-words …">`（cover 預設 cell） |
+| `components/notes/card.tsx` 標題按鈕的 `after:absolute after:inset-0 …` | `<StretchedButton cover="card" onClick={onOpen}>` |
+| `components/tasks/TaskList.tsx`、`TaskBoard.tsx` 的「顯示全部／只顯示前」按鈕 | `<ShowAllToggle expanded={showAll} onToggle=… total={n} limit={DONE_LIMIT} />` |
+| `pages/Subject.tsx` 的 `ShowMore`（「再顯示 N 場／收起」） | 可以保留文案，或換成 `ShowAllToggle`（unit="場"） |
+| `components/tasks/TaskToolbar.tsx` 的搜尋框、`pages/Notes.tsx` 的搜尋框 | `<SearchInput value={q} onValueChange={…} label="搜尋任務" placeholder=… maxLength={100} className="min-w-0 grow basis-full sm:basis-64" />`，筆記頁也移到篩選列最前面 |
+| `lib/task-queries.ts` 的 `usePrefersReducedMotion` | 從 `components/ui` 匯入（原本那份可以改成 re-export 或刪掉） |
+| 任務、筆記、考試頁的 `<ErrorNote error={error} />` | `<ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />` |
+
+**殼層（s2/shell）**：`components/CommandPalette.tsx` 的 `CommandPalette({ onClose })` 由 Layout 掛載（分開打包、閒置時預載），頁面不必使用。純邏輯在 `lib/shell-palette.ts`（`resultHref`、`QUICK_ACTIONS`、`PAGE_KEYWORDS`、`matchesQuery`、`isPaletteShortcut`）、`lib/shell-nav.ts`（`navBadges`、`badgeLabel`）、`lib/shell-achievements.ts`（`seenKey`、`parseSeen`、`diffUnlocked`、`achievementUnit`、`groupAchievements`、`nextMilestone`、`formatProgress`、`splitColumns`（Sprint 3：把依序排列的區塊分成兩欄，各欄自己堆疊、單欄時順序不變））、`lib/shell-icons.ts`（`achievementIcon`、`AchievementIcon`）。
 - 搜尋結果的深連結：任務 `/tasks?open=<id>`、考試 `/events?open=<id>`、筆記 `/notes?open=<id>`、科目 `/subjects/<id>`；快捷動作 `/timer`、`/tasks?new=1`、`/notes?new=mistake`、`/settings?new=1`。**目標頁已經開著時也要能反應網址參數的改變**（例如在任務頁按 ⌘K 選另一個任務）。
 - 已看過的成就：localStorage `studyflow:achievements-seen:<userId>`（JSON 字串陣列）。
 
@@ -474,11 +554,14 @@
 - **只加 `data-accent` 的元素不會重算 heat-***：熱度圖色階跟著 `<html>` 的主題色。
 - **熱度圖最淺一階**：heat-1 對 card 約 1.3:1。依 dataviz 對 sequential 色階的規則（最淺一階代表接近 0，可以貼近表面）保留，並以表格檢視、格子的 title 提示與 `role="img"` 摘要補足。
 - **墨綠主題色與 success 相近**（ΔE 7.7／9.2）：計時環的專注（accent）與休息（success）靠文字標籤區分。
-- **待評估（延到 Sprint 3）**：是否放寬深色的 DARK_BAND（見 §3），Sprint 2 沒有 lane 負責 `src/shared/color.ts`。
-- **第三方與頁面層**：sonner 的關閉鈕只有 20px（套件內建；toast 會自動消失，也能滑掉）；toast 的動作鈕（例如「查看」）在觸控裝置用 `::after` 擴大到約 44px。PWA 啟動畫面（manifest `background_color`）只有淺色。頁面裡的 emoji、「・」、「→」、一排 `StatTile` 等舊寫法留給各頁 lane（UI-2）。
+- **深色的 DARK_BAND**（Sprint 3 評估完，維持 0.55–0.67，數字見 §3）：同色相的 4 個色調在深色只差 ΔE 2.9–5.0，選色器會提醒「深色模式下幾乎一樣」。要改善得改深色的換算方式（`src/shared/color.ts`），不是調整色帶端點。
+- **第三方**：
+  - sonner 的關閉鈕外觀仍是 20px（套件內建），點擊範圍用 `::after` 擴大到 44px（會蓋到 toast 左上角約 25px 見方，那裡沒有其他可以點的東西）；toast 的動作鈕在觸控裝置用 `::after` 擴大到 44px 高。
+  - PWA 啟動畫面：manifest 的 `background_color`、`theme_color` 都是淺色的 page（#f7f6f2），和 `--page` 一致；manifest 沒有標準的深色欄位，所以深色模式的啟動畫面仍是淺色，進入 App 後 `theme-color` meta 會換成深色的 page。
+- **照片燈箱**：深色模式的關閉鈕（card 底）對 scrim 只有 1.18:1，靠 ink 的 X 圖示（15.43:1）與 line 邊框辨識。
 - **品牌標誌**：站內的 `LogoMark` 跟著主題色與深淺色（`--logo-*`）；PWA 圖示與 favicon（`public/logo.svg`）是固定的藍筆版，換主題色不會變。
 - **成就 toast**：已看過的紀錄存在各瀏覽器的 localStorage，換裝置或清除網站資料後，第一次載入會把當時已解鎖的視為「已看過」而不跳 toast；徽章被收回後再解鎖也不會再跳（成就頁仍顯示目前的真實狀態）。同時開兩個分頁時，兩邊可能各跳一次。
 - **指令面板的「開始專注」**只前往計時頁，不會自動開始計時（避免誤觸就開始記錄）。
-- **指令面板的深連結**：`?open=<id>`、`?new=1`、`?new=mistake` 由各頁實作（任務頁 s2/tasks、考試與筆記頁 s2/notes、設定頁已支援）；還沒合併前，選了搜尋結果只會前往該頁、不會自動開啟項目。
-- **SubjectTag icon 版的第一個字**：目前 16px 字重 600，6／48（淺色）、8／48（深色）的科目色上對比低於 4.5:1（最低 4.24），修正方式見 §7；`components/subjects.tsx` 不屬於 s2/shell，留給 Sprint 3。
+- **指令面板的深連結**：`?open=<id>`、`?new=1`、`?new=mistake` 都已由各頁的 `useDeepLink` 實作（任務、考試、筆記、設定、月曆），選了搜尋結果會直接開啟該項目。
+- **SubjectTag icon 版的第一個字**：目前 16px 字重 600，6／48（淺色）、8／48（深色）的科目色上對比低於 4.5:1（最低 4.24），修正方式見 §7；Sprint 3 仍未修（`components/subjects.tsx` 屬於功能元件，不在 s3/design 的範圍）。
 - **Field 舊寫法的自動 aria**：只補在 children 回傳的那個元素上；自訂元件（例如 `SubjectSelect`）沒有把 aria 屬性傳給內部欄位時不會生效，Sprint 2 請改成 `(id, aria)` 並往下傳。
