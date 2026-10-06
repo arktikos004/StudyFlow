@@ -20,31 +20,37 @@ import {
 	Timer,
 	TriangleAlert,
 } from 'lucide-react';
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useEffect, useId, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import type { EventItem, SubjectOverview, TaskItem } from '../../shared/api-types';
 import { diffDays, today as todayOf, zonedTime } from '../../shared/dates';
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SubjectDialog } from '../components/settings/SubjectDialog';
-import { SubjectTag } from '../components/subjects';
+import { SubjectIconTile } from '../components/subjects';
 import { TaskCheckbox } from '../components/TaskItem';
 import {
 	Badge,
 	Button,
+	ButtonLink,
 	Card,
 	CardHeader,
 	cn,
 	Countdown,
 	EmptyState,
 	ErrorNote,
+	Figure,
 	GoalProgress,
 	NumDisplay,
 	PageHeader,
 	PageLoader,
 	ProgressBar,
+	TextLink,
 } from '../components/ui';
 import { ApiError } from '../lib/api';
 import { EVENT_KIND_LABEL, formatDate, formatMinutes } from '../lib/format';
+import { countdownTone, type CountdownTone } from '../lib/notes-exams';
+import { dropKept, keepSaved, mergeKept, pruneKept, type KeptTask } from '../lib/polish-kept';
+import { useTaskResults } from '../lib/polish-queries';
 import { useSubjectOverview, useSubjects, useUser } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
 import { splitMinutes } from '../lib/subjects-format';
@@ -58,33 +64,6 @@ const TASK_LIMIT = 6;
 
 // ---- 小元件 ----
 
-/** 看起來像按鈕的導覽連結（語意是 <a>，可以用新分頁開啟）；尺寸同 Button：40px，觸控裝置 44px */
-function LinkButton({ to, children, variant = 'secondary' }: { to: string; children: ReactNode; variant?: 'primary' | 'secondary' }) {
-	return (
-		<Link
-			to={to}
-			className={cn(
-				'inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-4 text-dense whitespace-nowrap transition-colors duration-120 ease-out pointer-coarse:h-11',
-				variant === 'primary'
-					? 'border-transparent bg-accent font-semibold text-on-accent hover:bg-accent-hover'
-					: 'border-line-strong bg-card text-ink hover:bg-subtle',
-			)}
-		>
-			{children}
-		</Link>
-	);
-}
-
-/** 文字連結＋ChevronRight（連結後面不加「→」） */
-function TextLink({ to, children }: { to: string; children: ReactNode }) {
-	return (
-		<Link to={to} className="inline-flex min-h-11 shrink-0 items-center gap-0.5 text-sm font-semibold text-accent-ink hover:underline">
-			{children}
-			<ChevronRight className="size-4 shrink-0" aria-hidden />
-		</Link>
-	);
-}
-
 function ShowMore({ open, onToggle, hidden, unit }: { open: boolean; onToggle: () => void; hidden: number; unit: string }) {
 	return (
 		<div className="border-t border-line px-2 py-1.5 sm:px-3">
@@ -95,17 +74,6 @@ function ShowMore({ open, onToggle, hidden, unit }: { open: boolean; onToggle: (
 					aria-hidden
 				/>
 			</Button>
-		</div>
-	);
-}
-
-/** 一格數字（dt 標籤＋dd 數值），用在卡片裡以分隔線分格的數字列 */
-function Figure({ label, sub, children, className }: { label: string; sub?: string; children: ReactNode; className?: string }) {
-	return (
-		<div className={cn('min-w-0 px-4 py-3.5 sm:px-5', className)}>
-			<dt className="truncate text-sm text-ink-2">{label}</dt>
-			<dd className="mt-1">{children}</dd>
-			{sub && <dd className="mt-0.5 text-meta text-ink-3">{sub}</dd>}
 		</div>
 	);
 }
@@ -164,10 +132,18 @@ function KindBadge({ kind }: { kind: EventItem['kind'] }) {
 }
 
 /**
- * 倒數磚：3 天內（含今天）用紅色（DESIGN.md：紅色只給現在就要處理的事）。
- * 今天、有時間、還沒開始：即時倒數 h:mm:ss（依使用者時區換算開始時間）。
+ * 倒數磚的顏色，規則和考試頁相同（countdownTone，DESIGN.md §1 第 5 條）：
+ * 紅色只給 3 天內（含今天）的考試；截止日不用紅色，今天截止的用 warning（今天到期）；其他是中性色。
  */
-function DayTile({ date, time, days, timeZone }: { date: string; time: string | null; days: number; timeZone: string }) {
+const TILE_TONE: Record<CountdownTone, string> = {
+	urgent: 'bg-danger-soft text-danger',
+	today: 'bg-warning-soft text-warning',
+	normal: 'bg-subtle text-ink',
+	past: 'bg-subtle text-ink-3',
+};
+
+/** 倒數磚。今天、有時間、還沒開始：即時倒數 h:mm:ss（依使用者時區換算開始時間）。 */
+function DayTile({ kind, date, time, days, timeZone }: { kind: EventItem['kind']; date: string; time: string | null; days: number; timeZone: string }) {
 	const startsAt = days === 0 && time ? zonedTime(date, time, timeZone) : null;
 	const now = useNow(startsAt !== null);
 	const secondsLeft = startsAt !== null ? Math.floor((startsAt - now) / 1000) : null;
@@ -175,7 +151,7 @@ function DayTile({ date, time, days, timeZone }: { date: string; time: string | 
 		<div
 			className={cn(
 				'flex min-w-20 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2.5 text-center',
-				days <= 3 ? 'bg-danger-soft text-danger' : 'bg-subtle text-ink',
+				TILE_TONE[countdownTone(kind, days)],
 			)}
 		>
 			{secondsLeft !== null && secondsLeft > 0 ? (
@@ -220,7 +196,7 @@ function NextEvent({ event, today, timeZone, color, onOpen }: { event: EventItem
 	const progressText = `${event.taskDone}／${event.taskTotal} 項任務，${pct}%`;
 	return (
 		<div className="flex items-start gap-4 px-4 pt-1 pb-4 sm:px-5">
-			<DayTile date={event.date} time={event.time} days={days} timeZone={timeZone} />
+			<DayTile kind={event.kind} date={event.date} time={event.time} days={days} timeZone={timeZone} />
 			<div className="min-w-0 flex-1 space-y-3">
 				<div>
 					<KindBadge kind={event.kind} />
@@ -259,12 +235,7 @@ function EventRow({ event, today, onOpen }: { event: EventItem; today: string; o
 			onClick={onOpen}
 			className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-120 ease-out hover:bg-subtle sm:px-5"
 		>
-			<span
-				className={cn(
-					'flex h-10 w-14 shrink-0 items-center justify-center rounded-lg',
-					days <= 3 ? 'bg-danger-soft text-danger' : 'bg-subtle text-ink',
-				)}
-			>
+			<span className={cn('flex h-10 w-14 shrink-0 items-center justify-center rounded-lg', TILE_TONE[countdownTone(event.kind, days)])}>
 				{days === 0 ? (
 					<span className="text-sm font-semibold">今天</span>
 				) : (
@@ -370,7 +341,7 @@ function DueLabel({ due, today }: { due: string | null; today: string }) {
 	);
 }
 
-function TaskLine({ task, today, onOpen, onToggle }: { task: TaskItem; today: string; onOpen: () => void; onToggle: () => void }) {
+function TaskLine({ task, today, onOpen }: { task: TaskItem; today: string; onOpen: () => void }) {
 	const done = task.status === 'done';
 	const checked = task.checklist.filter((c) => c.done).length;
 	const over = !!task.estimatedMinutes && task.spentMinutes > task.estimatedMinutes;
@@ -379,8 +350,7 @@ function TaskLine({ task, today, onOpen, onToggle }: { task: TaskItem; today: st
 		.join('／');
 	return (
 		<li data-task={task.id} className="flex items-start gap-3 px-4 py-3 sm:px-5">
-			{/* 記下「在這裡勾選的任務」，完成後留在原位（見 TasksCard） */}
-			<span className="pt-0.5" onClickCapture={onToggle}>
+			<span className="pt-0.5">
 				<TaskCheckbox task={task} />
 			</span>
 			<div className="min-w-0 flex-1">
@@ -438,36 +408,43 @@ function TaskLine({ task, today, onOpen, onToggle }: { task: TaskItem; today: st
 
 /**
  * 這一科還沒完成的任務，可以直接勾選（TaskCheckbox）。
- * 在這裡勾完的任務會從 API 的清單消失；為了能馬上取消、焦點也不會掉，先留在原位顯示「剛完成」，
- * 同一個 key 的元素不會重新掛載，勾選框的焦點會留著。
+ * 在這裡完成的任務會從 API 的清單消失；為了能馬上取消、焦點也不會掉，把伺服器回傳的那一筆留在原位顯示「剛完成」
+ * （規則在 lib/polish-kept.ts）。同一個 key 的 <li> 不會重新掛載，TaskCheckbox 儲存中用的是 aria-disabled，
+ * 勾選框的焦點從頭到尾都留在原地，不需要另外把焦點放回去。
  */
-function TasksCard({ tasks, today, onOpen, onAdd }: { tasks: TaskItem[]; today: string; onOpen: (task: TaskItem) => void; onAdd: () => void }) {
-	const [kept, setKept] = useState<{ task: TaskItem; index: number }[]>([]);
+function TasksCard({
+	tasks,
+	subjectId,
+	today,
+	onOpen,
+	onAdd,
+}: {
+	tasks: TaskItem[];
+	subjectId: string;
+	today: string;
+	onOpen: (task: TaskItem) => void;
+	onAdd: () => void;
+}) {
+	const [kept, setKept] = useState<readonly KeptTask[]>([]);
 	const [showAll, setShowAll] = useState(false);
-	const listRef = useRef<HTMLUListElement>(null);
-	const focusAfter = useRef<string | null>(null);
-	const openIds = new Set(tasks.map((t) => t.id));
-	const shown = [...tasks];
-	for (const k of kept.filter((k) => !openIds.has(k.task.id)).sort((a, b) => a.index - b.index)) {
-		shown.splice(Math.min(k.index, shown.length), 0, k.task);
-	}
+	// 清單更新後，已經回到清單（取消完成、在別處改回未完成）的那幾筆不再留著，之後不會又冒出來
+	const live = pruneKept(tasks, kept);
+	if (live !== kept) setKept(live);
+	const shown = mergeKept(tasks, live);
 	const visible = showAll ? shown : shown.slice(0, TASK_LIMIT);
 
-	const remember = (task: TaskItem, index: number) => {
-		focusAfter.current = task.id;
-		if (task.status === 'done') return;
-		setKept((prev) => [...prev.filter((k) => k.task.id !== task.id), { task: { ...task, status: 'done' }, index }]);
-	};
-
-	// TaskCheckbox 在儲存中會停用自己，焦點因此掉到 body；清單更新、勾選框恢復可用後，把焦點放回同一個勾選框
-	useLayoutEffect(() => {
-		const id = focusAfter.current;
-		if (!id) return;
-		const box = listRef.current?.querySelector<HTMLButtonElement>(`[data-task="${id}"] [role="checkbox"]`);
-		if (!box || box.disabled) return;
-		focusAfter.current = null;
-		if (!document.activeElement || document.activeElement === document.body) box.focus();
-	}, [tasks]);
+	// 儲存結果回來時要知道「當下清單上有哪些任務、排在第幾個」
+	const shownIds = useRef<readonly string[]>([]);
+	useEffect(() => {
+		shownIds.current = shown.map((t) => t.id);
+	});
+	useTaskResults({
+		onSaved: (task) => {
+			const ids = shownIds.current;
+			setKept((prev) => keepSaved(prev, task, subjectId, ids));
+		},
+		onRemoved: (id) => setKept((prev) => dropKept(prev, id)),
+	});
 
 	const add = (
 		<Button variant="ghost" size="sm" onClick={onAdd}>
@@ -486,9 +463,9 @@ function TasksCard({ tasks, today, onOpen, onAdd }: { tasks: TaskItem[]; today: 
 			/>
 			{shown.length ? (
 				<>
-					<ul ref={listRef} className="divide-y divide-line border-t border-line">
-						{visible.map((t, i) => (
-							<TaskLine key={t.id} task={t} today={today} onOpen={() => onOpen(t)} onToggle={() => remember(t, i)} />
+					<ul className="divide-y divide-line border-t border-line">
+						{visible.map((t) => (
+							<TaskLine key={t.id} task={t} today={today} onOpen={() => onOpen(t)} />
 						))}
 					</ul>
 					{shown.length > TASK_LIMIT && (
@@ -562,7 +539,7 @@ function MistakesCard({ mistakes, subjectId, color }: { mistakes: SubjectOvervie
 					className="pb-4"
 					title="還沒有這一科的錯題"
 					description="寫錯的題目記下來，考前可以集中複習"
-					action={<TextLink to="/notes?new=mistake">新增錯題</TextLink>}
+					action={<TextLink to={`/notes?new=mistake&subject=${subjectId}`}>新增錯題</TextLink>}
 				/>
 			) : (
 				<>
@@ -608,10 +585,10 @@ function MistakesCard({ mistakes, subjectId, color }: { mistakes: SubjectOvervie
 							) : (
 								<span className="text-meta text-ink-3">今天沒有到期的錯題</span>
 							)}
-							<LinkButton to={`/notes?view=review&mode=cram&subject=${subjectId}`}>
+							<ButtonLink to={`/notes?view=review&mode=cram&subject=${subjectId}`}>
 								<Brain className="size-4" aria-hidden />
 								複習這科
-							</LinkButton>
+							</ButtonLink>
 						</div>
 					</div>
 				</>
@@ -626,7 +603,8 @@ function Overview({ data }: { data: SubjectOverview }) {
 	const { subject, upcomingEvents, openTasks, minutes, mistakes } = data;
 	const user = useUser();
 	const today = todayOf(user.timezone);
-	const mark = useSubjectTone()(subject.color).mark;
+	const tone = useSubjectTone()(subject.color);
+	const mark = tone.mark;
 	const { data: subjects = [] } = useSubjects();
 	const navigate = useNavigate();
 	const [editing, setEditing] = useState(false);
@@ -643,7 +621,8 @@ function Overview({ data }: { data: SubjectOverview }) {
 			<PageHeader
 				title={
 					<span className="flex items-center gap-3">
-						<SubjectTag subjectId={subject.id} variant="icon" />
+						{/* 直接用這次 API 回傳的科目資料：不必等科目清單（另一個請求），直接開啟這一頁時方塊不會晚一拍才出現 */}
+						<SubjectIconTile name={subject.name} tone={tone} icon={subject.icon} />
 						<span className="min-w-0 break-words">{subject.name}</span>
 					</span>
 				}
@@ -675,7 +654,13 @@ function Overview({ data }: { data: SubjectOverview }) {
 						onOpen={(event) => setEventDialog({ event })}
 						onAdd={() => setEventDialog({})}
 					/>
-					<TasksCard tasks={openTasks} today={today} onOpen={(task) => setTaskDialog({ task })} onAdd={() => setTaskDialog({})} />
+					<TasksCard
+						tasks={openTasks}
+						subjectId={subject.id}
+						today={today}
+						onOpen={(task) => setTaskDialog({ task })}
+						onAdd={() => setTaskDialog({})}
+					/>
 				</div>
 				<div className="min-w-0 space-y-5 lg:col-span-2">
 					<StudyTimeCard week={minutes.week} last30={minutes.last30} goal={subject.weeklyGoalMinutes} color={mark} onSetGoal={() => setEditing(true)} />
@@ -691,7 +676,7 @@ function Overview({ data }: { data: SubjectOverview }) {
 				onDeleted={() => navigate('/settings', { replace: true })}
 			/>
 			<TaskDialog open={!!taskDialog} task={taskDialog?.task} defaults={{ subjectId: subject.id }} onClose={() => setTaskDialog(null)} />
-			<EventDialog open={!!eventDialog} event={eventDialog?.event} onClose={() => setEventDialog(null)} />
+			<EventDialog open={!!eventDialog} event={eventDialog?.event} defaults={{ subjectId: subject.id }} onClose={() => setEventDialog(null)} />
 		</div>
 	);
 }
@@ -705,7 +690,7 @@ function SubjectNotFound() {
 					icon={<SearchX />}
 					title="找不到此科目"
 					description="這個科目可能已經刪除，或不屬於你的帳號。"
-					action={<LinkButton to="/settings">查看所有科目</LinkButton>}
+					action={<ButtonLink to="/settings">查看所有科目</ButtonLink>}
 				/>
 			</Card>
 		</div>
@@ -716,6 +701,8 @@ function SubjectNotFound() {
 export function SubjectPage() {
 	const { id } = useParams();
 	const { data, isPending, error, refetch, isRefetching } = useSubjectOverview(id);
+	// 科目清單（編輯科目、任務與考試對話框的科目選單要用）和總覽同時開始載入，不必等總覽回來才去要
+	useSubjects();
 	if (isPending) return <PageLoader />;
 	if (error) {
 		if (error instanceof ApiError && error.status === 404) return <SubjectNotFound />;
