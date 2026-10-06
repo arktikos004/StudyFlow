@@ -59,10 +59,22 @@ const FIELD_ORDER: PasswordField[] = ['currentPassword', 'newPassword', 'confirm
  * 目前密碼不對（後端 400）標在「目前密碼」；其他失敗（離線、太多次）顯示在按鈕上方。
  * 有一個隱藏的 username 欄位（email），密碼管理工具才知道要更新哪一組帳號的密碼。
  */
-function PasswordForm({ id, email, onDone }: { id: string; email: string; onDone: () => void }) {
+function PasswordForm({
+	id,
+	email,
+	loading,
+	onLoadingChange: setLoading,
+	onDone,
+}: {
+	id: string;
+	email: string;
+	/** 送出中（狀態在 PasswordSection：送出中「取消」與「變更密碼」都不能把表單收起來） */
+	loading: boolean;
+	onLoadingChange: (loading: boolean) => void;
+	onDone: () => void;
+}) {
 	const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
 	const [errors, setErrors] = useState<PasswordErrors>({});
-	const [loading, setLoading] = useState(false);
 	// 展開時焦點直接進「目前密碼」（只在滑鼠、觸控板：觸控裝置不自動 focus，同 Dialog）
 	const [focusFirst] = useState(isFinePointer);
 	const refs = useRef<Partial<Record<PasswordField, HTMLInputElement | null>>>({});
@@ -135,7 +147,8 @@ function PasswordForm({ id, email, onDone }: { id: string; email: string; onDone
 				</p>
 			)}
 			<div className="flex justify-end gap-2">
-				<Button variant="ghost" onClick={onDone}>
+				{/* 送出中不能取消：表單收起來之後，成功時焦點會亂跳、失敗時錯誤沒地方顯示 */}
+				<Button variant="ghost" onClick={onDone} disabled={loading}>
 					取消
 				</Button>
 				<Button type="submit" loading={loading}>
@@ -146,9 +159,13 @@ function PasswordForm({ id, email, onDone }: { id: string; email: string; onDone
 	);
 }
 
-/** 密碼：平常只有一列說明與「變更密碼」（aria-expanded），按了才在下面展開表單；收起後焦點回到按鈕 */
+/**
+ * 密碼：平常只有一列說明與「變更密碼」（aria-expanded），按了才在下面展開表單；收起後焦點回到按鈕。
+ * 送出中（等後端回應）不能收起：「取消」停用，「變更密碼」是 aria-disabled 並忽略點擊。
+ */
 function PasswordSection({ email }: { email: string }) {
 	const [open, setOpen] = useState(false);
+	const [loading, setLoading] = useState(false);
 	const formId = useId();
 	const noteId = useId();
 	const toggleRef = useRef<HTMLButtonElement>(null);
@@ -170,7 +187,12 @@ function PasswordSection({ email }: { email: string }) {
 					aria-expanded={open}
 					aria-controls={open ? formId : undefined}
 					aria-describedby={noteId}
-					onClick={() => (open ? collapse() : setOpen(true))}
+					aria-disabled={loading || undefined}
+					onClick={() => {
+						if (loading) return;
+						if (open) collapse();
+						else setOpen(true);
+					}}
 				>
 					變更密碼
 					<ChevronDown
@@ -179,7 +201,7 @@ function PasswordSection({ email }: { email: string }) {
 					/>
 				</Button>
 			</div>
-			{open && <PasswordForm id={formId} email={email} onDone={collapse} />}
+			{open && <PasswordForm id={formId} email={email} loading={loading} onLoadingChange={setLoading} onDone={collapse} />}
 		</div>
 	);
 }
