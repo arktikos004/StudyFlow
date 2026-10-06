@@ -14,6 +14,7 @@ import {
 } from '../../shared/schemas';
 import { attachments, notes, subjects, type Attachment, type Note } from '../db/schema';
 import { assertOwned, hasValues, notFound, type DB } from '../lib/db';
+import { sniffImageType } from '../lib/image';
 import { containsText } from '../lib/text';
 import { validate } from '../lib/validator';
 import { requireAuth } from '../middleware/auth';
@@ -63,15 +64,6 @@ async function getOwnedNote(db: DB, id: string, userId: string) {
 		.get();
 	if (!note) notFound('筆記');
 	return note;
-}
-
-/** 用檔案開頭的 magic bytes 判斷真正的圖片格式，不相信瀏覽器送來的 Content-Type */
-function sniffImageType(bytes: Uint8Array): string | null {
-	if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
-	if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
-	const ascii = (from: number, to: number) => String.fromCharCode(...bytes.slice(from, to));
-	if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') return 'image/webp';
-	return null;
 }
 
 export const noteRoutes = new Hono<AppEnv>()

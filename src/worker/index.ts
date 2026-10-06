@@ -6,6 +6,7 @@ import { createDb } from './lib/db';
 import { achievementRoutes } from './routes/achievements';
 import { attachmentRoutes } from './routes/attachments';
 import { authRoutes } from './routes/auth';
+import { avatarRoutes } from './routes/avatar';
 import { dashboardRoutes } from './routes/dashboard';
 import { eventRoutes } from './routes/events';
 import { exportRoutes } from './routes/export';
@@ -32,6 +33,7 @@ app.use('/api/*', async (c, next) => {
 app
 	.get('/api/health', (c) => c.json({ ok: true }))
 	.route('/api/auth', authRoutes)
+	.route('/api/auth/avatar', avatarRoutes)
 	.route('/api/subjects', subjectRoutes)
 	.route('/api/events', eventRoutes)
 	.route('/api/tasks', taskRoutes)

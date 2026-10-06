@@ -249,6 +249,10 @@ export const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
 export const ATTACHMENT_MAX_PER_NOTE = 6;
 export const ATTACHMENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
+/** 頭像（PRO-1）：前端先裁成正方形並縮小再上傳；後端檢查大小與實際格式（同筆記照片） */
+export const AVATAR_MAX_BYTES = 1024 * 1024;
+export const AVATAR_TYPES = ATTACHMENT_TYPES;
+
 export type RegisterInput = z.input<typeof registerSchema>;
 export type EventInput = z.input<typeof eventSchema>;
 export type TaskInput = z.input<typeof taskSchema>;
