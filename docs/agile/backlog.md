@@ -285,7 +285,7 @@ Lane 欄的格式是「負責的 lane（相依的 lane）」。
   - 「剛完成」的列在特殊情況下會重新出現。
   - 按鈕連結按下時沒有回饋。
   - 截止日在 3 天內也顯示紅色，和 DESIGN.md 的規則不一致。
-- **總覽**：「設定目標」連到設定頁的 `#goals` 錨點。
+- **總覽**：「設定目標」連到設定頁的 `#goals` 錨點。（已完成：`dashboard/goals.tsx`）
 - **QA 畫面檢查**：
   - 390px 下「全部 N 項」與第一列的 ▶ 不能重疊。
   - 計時頁、筆記頁的按鈕大小。
@@ -300,37 +300,37 @@ Lane 欄的格式是「負責的 lane（相依的 lane）」。
 - **「要一併完成任務嗎？」**：用 `useConfirm` 的 `tone: 'primary'`，確認鈕不用紅色。
 - **看板拖曳**：使用 `@dnd-kit/core`。鍵盤不用 dnd-kit 的感應器，改用卡片下方原本的按鈕。
 
-**Sprint 3 的修正**
-- **共用元件遷移**（s2/shell 已在 `ui.tsx` 新增，呼叫端還沒換）：
+**Sprint 3 的修正**（結果標記：Sprint 3 PO 驗收，詳見 `sprint-review.md`；除註明外都已完成並合併）
+- **共用元件遷移**（已完成：Subject、dashboard/parts、charts `TableToggle`、`settings/roving`、Timer 與 SubjectDialog 的 `Switch description`、Events `TextLink` 都已換用共用元件）：
   - `pages/Subject.tsx` 的 `LinkButton`、`TextLink`、`Figure`。
   - `components/dashboard/parts.tsx` 的 `MoreLink`、`Unit`、`Duration`，以及引用它們的總覽、統計頁。
   - `components/charts.tsx` 的 `TableToggle`。
   - `components/settings/roving.ts` 的 `gridKeyTarget`，改完後刪掉 `roving.ts`。
   - `pages/Timer.tsx` 的自動專注開關、`SubjectDialog.tsx` 的封存開關改用 `Switch` 的 `description`。
   - `pages/Events.tsx` 自己寫的 `TextLink` 改用 ui 版。
-- **評估收進共用元件**：
+- **評估收進共用元件**（已完成：`PinToggle` → `ToggleButton`、`ThumbAction` → `MiniIconButton`、任務標題 → `StretchedButton`、`usePrefersReducedMotion`、`ShowAllToggle`、`SearchInput` 都已收進 `ui.tsx` 並換上）：
   - 筆記：`PinToggle`（可一般化成 `ToggleButton`）、`ThumbAction`。
   - 任務：整格可點的標題按鈕、`usePrefersReducedMotion`、「顯示全部 N 項」切換、可清除的搜尋框。
-- **SubjectTag `variant="icon"`**：
+- **SubjectTag `variant="icon"`**（已完成：19px 粗體，48 色淺深色最低 4.24／4.39，以大字 3:1 通過；首字改用 `Intl.Segmenter`）：
   - 沒有圖示時顯示的首字對比不足，淺色 6 色、深色 8 色低於 4.5:1。改成 19px 粗體（適用大字 3:1），或改顯示通用圖示。
   - 首字改用 `Intl.Segmenter` 取第一個字素。
-- **單科頁**：
+- **單科頁**（已完成，含上面「Sprint 2 第一波」列的 4 項）：
   - 「新增錯題」改連 `/notes?new=mistake&subject=<id>`。
   - 新增考試傳 `EventDialog` 的 `defaults.subjectId`。
   - 第 462 行左右的 `box.disabled` 焦點處理已經用不到，可以刪掉（TaskCheckbox 改用 `aria-disabled`）。
-- **筆記**：刪除照片前沒有確認。
-- **設計**：
+- **筆記**：刪除照片前沒有確認。（已完成：刪除前會確認）
+- **設計**（燈箱 token、sonner 關閉鈕 44px、DESIGN.md 的 `outline-0` 註明已完成；`background_color` 與 DARK_BAND 評估後不改，見下）：
   - 照片燈箱背景目前用 `backdrop:bg-black/85`，評估是否新增深色 token。
   - DESIGN.md 註明：用 `::after` 讓整張卡可點時，標題按鈕要用 `outline-0`，不能用 `outline-none`，否則焦點框會消失。
   - sonner 的關閉鈕只有 20px。
-  - `vite.config.ts` 的 manifest `background_color` 仍是淺色。
-  - DARK_BAND 的評估。
-- **後端**：`lib/queries.ts` export `TASK_KEYS`，`lib/task-queries.ts` 改用 import，不再複製一份。
-- **測試**：專案沒有 jsdom 環境，下列行為目前只靠人工檢查：
+  - `vite.config.ts` 的 manifest `background_color` 仍是淺色。（評估後不改：本來就是 `#f7f6f2`，與淺色背景一致，manifest 沒有深色欄位。）
+  - DARK_BAND 的評估。（評估後維持 0.55–0.67：建議值用 dataviz 驗證器重算不通過；真正的改善要改深色換算方式，常數在凍結的 `src/shared/color.ts`，移到下一版。）
+- **後端**（已完成）：`lib/queries.ts` export `TASK_KEYS`，`lib/task-queries.ts` 改用 import，不再複製一份。
+- **測試**（未完成，移到下一版）：專案沒有 jsdom 環境，下列行為目前只靠人工檢查：
   - `useTaskPatch` 的樂觀更新與回滾。
   - 考前衝刺不呼叫 `/review`、今天到期的題目在開始時固定。
 
-**QA 畫面檢查（第二波）**
+**QA 畫面檢查（第二波）**（QA 已檢查：Auth chip 對比淺色 ≥ 11.8、深色 ≥ 13.8；指令面板深連結與鍵盤；看板滑鼠拖曳與失敗退回。**未檢查**：指令面板 chunk 載入失敗與 Safari、看板觸控長按，已列入手動驗收清單）
 - Auth 頁左側品牌欄用 `data-theme` 反轉深淺色：6 組主題色下的科目 chip 與焦點框對比要目視確認。
 - 指令面板：chunk 載入失敗的提示、Safari 的重試行為。
 - 看板：觸控長按拖曳、拖曳失敗退回原欄。
@@ -339,3 +339,28 @@ Lane 欄的格式是「負責的 lane（相依的 lane）」。
 - 子任務項目不能改名，要刪掉再新增；任務搜尋不比對子任務項目。
 - 指令面板的「開始專注」只前往計時頁，不會自動開始計時。
 - 部署新版後，舊分頁要的舊 chunk 已經不在伺服器上；指令面板會提示重新整理頁面。
+
+## Sprint 3 結束時的待辦
+
+**決定**
+- Sprint 3 驗收結果：24 個故事中 22 個通過、2 個部分通過（TSK-2 觸控拖曳未驗證、CAL-2 Google 日曆提醒未驗證），沒有不通過。這兩項靠使用者的手動驗收清單（見 `sprint-review.md` 第 4 節）。
+- DARK_BAND 維持 0.55–0.67；`vite.config.ts` 的 `background_color` 不改。
+
+**留給下一版**
+- **手動驗收後續**：依 Google 日曆的結果決定 README 對 .ics 提醒的說法；若不生效，註明改用 Apple 日曆、Outlook 或手動加通知。
+- **測試缺口**（專案沒有 jsdom）：`useTaskPatch` 的樂觀更新與回滾（目前只測純函式）、考前衝刺不呼叫 `/review`、今天到期的題目在開始時固定、單科頁「剛完成」列的 mutation 事件接線（`lib/polish-queries.ts`）。PO 驗收時補充：NOTE-2 的「衝刺不影響排程」與 TMR-3 的白噪音也沒有前端自動化測試。
+- **死碼**：`lib/format.ts` 的 `dDay()` 沒有呼叫端（format.ts 凍結中）；`lib/notes-exams.ts` 的 `countdownState` 標成 `@deprecated`，只剩 `test/notes-ui-exams.spec.ts` 在用。
+- **共用元件**：`CountdownTile` 收進 `ui.tsx`；`ShowAllToggle` 加「收起」的寫法；`SectionLabel` 的 `count` 加可見單位。
+- **DARK_BAND**：改深色的換算方式（`src/shared/color.ts`）。
+- **後端改善**：`DashboardResponse` 加 `nextExam`、`POST /study-sessions` 冪等、儲存讀書目標時的提示文字。
+- **已知限制**：
+  - 子任務項目不能改名；任務搜尋不比對子任務。
+  - 指令面板「開始專注」只前往計時頁。
+  - 部署新版後，舊分頁的舊 chunk 會載入失敗（會提示重新整理）。
+  - 成就的已看過紀錄存在各瀏覽器。
+  - PWA 圖示固定為藍筆版，不跟主題色。
+  - 原生日期／時間輸入欄的 12／24 小時制依瀏覽器語系。
+- **PO 驗收時發現的缺口**：
+  - QA 與驗收環境沒有觸控、Safari、Google 帳號；下一版要找一台實機，或加入 Playwright 之類的瀏覽器測試。
+  - TMR-3、SUB-4 的計時環這類「看得到、聽得到」的項目沒有任何自動化檢查。
+- **流程**：設計審查改在 Sprint 中段做；共用元件在 Sprint 開始時先定清單；agent 中斷後依「先 commit 再喚醒」接續。
