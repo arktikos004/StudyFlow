@@ -395,9 +395,11 @@
   - 只放照片與暱稱；時區是設定，在「帳號與安全」卡。
   - 照片：96px 預覽、「上傳照片／更換照片」（secondary sm，ImageUp）、「移除照片」（ghost sm，Trash2，有照片時才出現）。選檔用隱藏的 `<input type="file" accept="image/jpeg,image/png,image/webp">`。
     - 選了照片就在瀏覽器裡置中裁成正方形、縮到最大 512×512、轉 JPEG（透明的地方鋪白、依 EXIF 轉正，`lib/profile-image.ts`），處理中按鈕轉圈；儲存時才真的上傳。
+    - 轉好的 JPEG 超過後端上限（`AVATAR_MAX_BYTES`，1MB）時先降低品質重試，仍太大就在選照片時提示「照片太大（上限 1MB），請換一張照片」，不送出（不等後端回 413）。選檔的格式清單用共用的 `AVATAR_TYPES`。
     - 預覽跟著變更走：新選的照片、移除後的首字（首字跟著輸入中的暱稱）。下方說明用 `aria-live` 念出狀態：「JPEG、PNG 或 WebP，會置中裁成正方形」「新照片會在儲存後套用」「儲存後會移除照片，改用暱稱的第一個字」。照片讀不出來時是 danger 文字＋圖示（`role="alert"`）。
   - 暱稱：`Field`＋`Input`（`autoComplete="nickname"`、最多 30 字），空白或太長在送出前檢查，錯誤在欄位旁、焦點回到欄位。
-  - 儲存：先處理照片（上傳或移除），成功才存暱稱。成功與失敗的提示都由各自的 hook 用 toast 顯示，對話框不重複；照片失敗時什麼都沒存、對話框留著；照片成功但暱稱失敗時，照片已經換好，再按「儲存」只會存暱稱。沒有變更時「儲存」停用。
+  - 儲存：先處理照片（上傳或移除），成功才存暱稱。成功與失敗的提示都由各自的 hook 用 toast 顯示（「已更新頭像」「已移除頭像」「已更新個人資料」、後端的錯誤訊息），對話框不重複；照片失敗時什麼都沒存、對話框留著（新選的照片與輸入的暱稱都還在）；照片成功但暱稱失敗時，照片已經換好，再按「儲存」只會存暱稱。沒有變更時「儲存」停用。
+  - 離線時不送出：直接 toast「目前離線，連上網路後再儲存」。TanStack Query 離線時會把 mutation 暫停、連線後才補送，不擋的話按鈕會一直轉圈，連回網路後還會補存使用者已經放棄的變更（帳號與安全卡的時區同樣處理）。
 - **帳號與安全卡**（`components/settings/AccountCard.tsx`，取代原本的「個人資料」與「變更密碼」兩張卡）：
   - 三段用分隔線分開：Email（`<dl>`，唯讀文字，不用停用的輸入框；附「登入時使用，目前無法變更」）、時區、密碼。
   - 時區：Select＋「儲存」（secondary，改了才能按；不在選單變動時自動儲存，因為鍵盤上下鍵會直接改值）。選項附上 GMT 偏移（「Asia/Taipei（GMT+8）」，零偏移寫 GMT+0），說明「用來判斷「今天」與統計每天的學習時間」。
@@ -418,7 +420,7 @@
   - 用 page 色底，靠空白分組。
   - 目前頁面：accent-soft 底、字重 600、較粗的圖示。
   - 第一個可聚焦元素是「跳到主要內容」連結；Logo 下方是像輸入框的「搜尋」鈕（右側 Kbd 提示 ⌘K／Ctrl K，`aria-keyshortcuts`）。
-  - **帳號列**（Sprint 4，PRO-1，左下角）：Avatar sm＋暱稱（14／600 ink）＋Email（13px ink-3），整列是連到 `/settings` 的連結（個人檔案在設定頁最上面），hover 時 subtle 底，48px 高。名稱念成「小安，demo@example.com，查看個人檔案」；頭像是裝飾。已經在設定頁時再點會捲回最上面。下面一列是「登出」，維持一眼看得到，不藏進選單。
+  - **帳號列**（Sprint 4，PRO-1，左下角）：Avatar sm＋暱稱（14／600 ink）＋Email（13px ink-3，太長時截斷，`title` 是完整的 Email），整列是連到 `/settings` 的連結（個人檔案在設定頁最上面），hover 時 subtle 底，48px 高。名稱念成「小安，demo@example.com，查看個人檔案」；頭像是裝飾。已經在設定頁時再點會捲回最上面。下面一列是「登出」，維持一眼看得到，不藏進選單。
 - **手機底部導覽**：
   - 實心底，12px 標籤。
   - 目前頁面在圖示後面加上膠囊底。
@@ -566,7 +568,7 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 
 `firstGrapheme` 沒有搬家：它本來就在中性的 `lib/polish-format.ts`（沒有 React），`ui.tsx` 與 `components/subjects.tsx` 都從那裡 import，`ui.tsx` 不必反過來 import `subjects.tsx`。
 
-個人檔案的純邏輯（都有單元測試）：`lib/profile-format.ts`（`ProfileSummary` 型別（第一階段暫放）、`joinedLabel`、`studyTotal`、`sessionsNote`、`streakNote`、`masteredNote`、`formatCount`、`badgeCapacity`、`emailParts`、`timezoneOptions`、`timezoneLabel`）、`lib/profile-crop.ts`（`squareCrop`、`AVATAR_MAX_EDGE`、`AvatarImageError`）、`lib/profile-photo.ts`（照片的變更 `PhotoDraft`）。瀏覽器端的照片處理是 `lib/profile-image.ts` 的 `prepareAvatar(file)`。
+個人檔案的純邏輯（都有單元測試）：`lib/profile-format.ts`（`joinedLabel`、`studyTotal`、`sessionsNote`、`streakNote`、`masteredNote`、`formatCount`、`badgeCapacity`、`emailParts`、`timezoneOptions`、`timezoneLabel`）、`lib/profile-crop.ts`（`squareCrop`、`AVATAR_MAX_EDGE`、`AvatarImageError`、`withinAvatarLimit`、`AVATAR_TOO_LARGE`）、`lib/profile-photo.ts`（照片的變更 `PhotoDraft`）。瀏覽器端的照片處理是 `lib/profile-image.ts` 的 `prepareAvatar(file)`。資料用 `lib/queries.ts` 的 `useProfileSummary`、`useUploadAvatar`、`useDeleteAvatar` 與 `lib/api.ts` 的 `avatarUrl(user)`（s4/profile-api），型別是 `src/shared/api-types.ts` 的 `ProfileSummary`。頭像網址一律用 `avatarUrl(user)` 組：`?v=` 等於目前的 `avatarUpdatedAt` 時後端才讓瀏覽器快取一年。
 
 **頁面端遷移（給 s3/polish，照這張表換）**
 
@@ -632,5 +634,7 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 - **個人檔案（Sprint 4，PRO-1）**：
   - 成就格的徽章沒有滑鼠提示（`title`）：整格是連結，`::after` 蓋在徽章上面。名稱給螢幕報讀器，看得到的人點進成就頁看。
   - 時區儲存成功的 toast 是共用 hook 的「已更新個人資料」（`useUpdateProfile`），不是「已更新時區」。
+  - 用語：介面寫「照片」（使用者的說法：上傳照片、更換照片、移除照片），頭像 hook 的 toast 寫「已更新頭像」「已移除頭像」。意思一樣，但不是同一個詞。
+  - 同時改照片與暱稱時會跳兩則成功的 toast（頭像、個人資料各一則），由各自的 hook 顯示。
   - 照片只在瀏覽器裡處理：比 512px 小的照片不放大；GIF 只取第一格；瀏覽器解不開的格式（例如 Chrome 的 HEIC）會請使用者改用 JPEG、PNG 或 WebP。
   - 頭像的 `<img>` 由瀏覽器快取，Service Worker 不快取 `/api/*`：離線且沒有快取時顯示首字。

@@ -298,7 +298,10 @@ function AccountLink({
 			<span className="min-w-0 flex-1">
 				<span className={cn('block truncate font-semibold text-ink', size === 'sm' ? 'text-sm' : 'text-dense')}>{user.displayName}</span>
 				<span className="sr-only">，</span>
-				<span className="block truncate text-meta text-ink-3">{user.email}</span>
+				{/* 側欄窄，長的 Email 會截斷：title 讓滑鼠使用者看得到完整的（螢幕報讀器念連結名稱，本來就是完整的） */}
+				<span title={user.email} className="block truncate text-meta text-ink-3">
+					{user.email}
+				</span>
 				<span className="sr-only">，查看個人檔案</span>
 			</span>
 			{chevron && <ChevronRight className="size-4 shrink-0 text-ink-3" aria-hidden />}
