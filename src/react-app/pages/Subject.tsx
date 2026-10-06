@@ -200,7 +200,7 @@ function NextEvent({ event, today, timeZone, color, onOpen }: { event: EventItem
 			<div className="min-w-0 flex-1 space-y-3">
 				<div>
 					<KindBadge kind={event.kind} />
-					<button type="button" onClick={onOpen} className="mt-1 block text-left text-h3 font-semibold break-words text-ink hover:underline">
+					<button type="button" onClick={onOpen} className="mt-1 block text-left text-h3 font-semibold wrap-anywhere text-ink hover:underline">
 						{event.title}
 					</button>
 					<EventMeta event={event} today={today} />
@@ -357,7 +357,7 @@ function TaskLine({ task, today, onOpen }: { task: TaskItem; today: string; onOp
 				<button
 					type="button"
 					onClick={onOpen}
-					className={cn('text-left text-dense break-words hover:underline', done ? 'text-ink-3 line-through' : 'text-ink')}
+					className={cn('text-left text-dense wrap-anywhere hover:underline', done ? 'text-ink-3 line-through' : 'text-ink')}
 				>
 					{task.title}
 				</button>
@@ -623,7 +623,7 @@ function Overview({ data }: { data: SubjectOverview }) {
 					<span className="flex items-center gap-3">
 						{/* 直接用這次 API 回傳的科目資料：不必等科目清單（另一個請求），直接開啟這一頁時方塊不會晚一拍才出現 */}
 						<SubjectIconTile name={subject.name} tone={tone} icon={subject.icon} />
-						<span className="min-w-0 break-words">{subject.name}</span>
+						<span className="min-w-0 wrap-anywhere">{subject.name}</span>
 					</span>
 				}
 				description={

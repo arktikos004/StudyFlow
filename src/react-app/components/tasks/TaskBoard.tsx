@@ -344,7 +344,7 @@ function CardPreview({ task, today, event, query }: { task: TaskItem; today: str
 					{done && <Check className="size-3.5" strokeWidth={3} />}
 				</span>
 				<div className="min-w-0 flex-1">
-					<p className={cn('text-dense break-words', done ? 'text-ink-3 line-through' : 'text-ink')}>
+					<p className={cn('text-dense wrap-anywhere', done ? 'text-ink-3 line-through' : 'text-ink')}>
 						<Highlight text={task.title} query={query} />
 					</p>
 					<TaskMetaLine task={task} today={today} event={event} />

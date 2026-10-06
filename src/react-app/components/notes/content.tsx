@@ -126,7 +126,7 @@ function Block({ icon, label, children }: { icon: ReactNode; label: string; chil
 	);
 }
 
-const text = (t: string) => <p className="leading-relaxed break-words whitespace-pre-wrap">{t}</p>;
+const text = (t: string) => <p className="leading-relaxed wrap-anywhere whitespace-pre-wrap">{t}</p>;
 
 /** 錯題的題目（文字與照片）；沒有題目文字時只顯示照片 */
 export function MistakeQuestion({ note }: { note: NoteItem }) {

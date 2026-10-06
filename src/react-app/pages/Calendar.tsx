@@ -328,7 +328,7 @@ export function CalendarPage() {
 						retrying={failed.some((q) => q.isRefetching)}
 					/>
 				)}
-				<div className={view === 'month' ? 'grid gap-section lg:grid-cols-[minmax(0,1fr)_20rem]' : 'flex flex-col gap-section'}>
+				<div className={view === 'month' ? 'grid grid-cols-1 gap-section lg:grid-cols-[minmax(0,1fr)_20rem]' : 'flex flex-col gap-section'}>
 					{grid_}
 					<DayPanel
 						className={view === 'month' ? 'self-start' : 'w-full lg:max-w-2xl'}

@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Archive, ArrowDown, ArrowUp, BookOpen, ChevronRight, Pencil, Plus } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, BookOpen, Pencil, Plus } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { Subject } from '../../../shared/api-types';
@@ -17,6 +17,7 @@ function SubjectRow({
 	subject,
 	first,
 	last,
+	goalColumn,
 	onMove,
 	onEdit,
 	setButton,
@@ -24,28 +25,33 @@ function SubjectRow({
 	subject: Subject;
 	first: boolean;
 	last: boolean;
+	/** 有任何科目設了每週目標：保留右側的目標欄，各列的目標靠右對齊 */
+	goalColumn: boolean;
 	onMove: (dir: Direction) => void;
 	onEdit: () => void;
 	setButton: (key: string, el: HTMLButtonElement | null) => void;
 }) {
 	const name = subject.name;
 	return (
-		<li className="flex items-center gap-1 py-1 pr-3 pl-2 sm:pr-4 sm:pl-3">
-			{/* 整個左半邊連到單科總覽（SUB-3）；SubjectTag 本身不是連結。ChevronRight 緊接在名稱後面，不和右邊的按鈕混在一起 */}
-			<Link
-				to={`/subjects/${subject.id}`}
-				className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 py-2 transition-colors duration-120 ease-out hover:bg-subtle"
-			>
-				<span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-					<SubjectTag subjectId={subject.id} />
+		<li className="flex items-center gap-1 py-1 pr-3 pl-4 sm:pr-4 sm:pl-5">
+			{/* 名稱本身就是連到單科總覽（SUB-3）的連結，hover 時名稱加底線；名稱太長時截斷（手機不會把整頁撐寬） */}
+			<div className="flex min-w-0 flex-1 items-center gap-2">
+				<Link to={`/subjects/${subject.id}`} className="group/subject-link inline-flex min-h-11 max-w-full min-w-0 items-center rounded-sm">
+					<SubjectTag subjectId={subject.id} className="max-w-full" />
+					<span className="sr-only">，查看科目總覽</span>
+				</Link>
+				{subject.archived && <Badge icon={<Archive aria-hidden />}>已封存</Badge>}
+			</div>
+			{goalColumn && (
+				<span className="flex w-[5.5rem] shrink-0 flex-col items-end text-right text-meta leading-tight text-ink-3">
 					{subject.weeklyGoalMinutes != null && (
-						<span className="text-meta text-ink-3">每週目標 {formatMinutes(subject.weeklyGoalMinutes)}</span>
+						<>
+							<span className="text-caption">每週目標</span>
+							<span className="font-num text-ink-2 tabular-nums">{formatMinutes(subject.weeklyGoalMinutes)}</span>
+						</>
 					)}
-					{subject.archived && <Badge icon={<Archive aria-hidden />}>已封存</Badge>}
 				</span>
-				<span className="sr-only">，查看科目總覽</span>
-				<ChevronRight className="size-4 shrink-0 text-ink-3" aria-hidden />
-			</Link>
+			)}
 			<Button
 				ref={(el) => setButton(`${subject.id}:up`, el)}
 				size="icon"
@@ -79,7 +85,7 @@ function SubjectRow({
  */
 export function SubjectsCard() {
 	const qc = useQueryClient();
-	const { data, isPending, error } = useSubjects();
+	const { data, isPending, error, refetch, isRefetching } = useSubjects();
 	const subjects = data ?? NO_SUBJECTS;
 	const reorder = useReorderSubjects();
 	const [params, setParams] = useSearchParams();
@@ -164,7 +170,7 @@ export function SubjectsCard() {
 				</div>
 			) : error ? (
 				<div className="px-4 pb-5 sm:px-5">
-					<ErrorNote error={error} />
+					<ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />
 				</div>
 			) : subjects.length === 0 ? (
 				<EmptyState
@@ -188,6 +194,7 @@ export function SubjectsCard() {
 								subject={s}
 								first={i === 0}
 								last={i === subjects.length - 1}
+								goalColumn={subjects.some((x) => x.weeklyGoalMinutes != null)}
 								onMove={(dir) => move(s.id, dir)}
 								onEdit={() => setDialog({ id: s.id })}
 								setButton={setButton}

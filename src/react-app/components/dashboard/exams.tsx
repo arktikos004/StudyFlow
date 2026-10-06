@@ -113,7 +113,7 @@ export function NextExamCard({
 				<div className="flex items-start gap-4">
 					<ExamCountdown date={event.date} time={event.time} today={today} timeZone={timeZone} />
 					<div className="min-w-0 flex-1 pt-0.5">
-						<p className="text-h3 font-semibold break-words text-ink">{event.title}</p>
+						<p className="text-h3 font-semibold wrap-anywhere text-ink">{event.title}</p>
 						<div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-meta text-ink-2">
 							<SubjectTag subjectId={event.subjectId} />
 							<span className="font-num tabular-nums">

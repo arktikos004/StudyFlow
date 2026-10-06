@@ -90,7 +90,7 @@ function EventCard({
 							<Pencil className="size-4" aria-hidden />
 						</Button>
 					</div>
-					<h3 className="mt-1 text-h3 font-semibold break-words">{event.title}</h3>
+					<h3 className="mt-1 text-h3 font-semibold wrap-anywhere">{event.title}</h3>
 					<div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-meta text-ink-2">
 						<span className="inline-flex items-center gap-1">
 							<CalendarDays className="size-3.5 shrink-0 text-ink-3" aria-hidden />
@@ -102,13 +102,13 @@ function EventCard({
 						{event.location && (
 							<span className="inline-flex min-w-0 items-center gap-1">
 								<MapPin className="size-3.5 shrink-0 text-ink-3" aria-hidden />
-								<span className="break-words">{event.location}</span>
+								<span className="wrap-anywhere">{event.location}</span>
 							</span>
 						)}
 					</div>
 				</div>
 			</div>
-			{event.notes && <p className="mt-3 line-clamp-3 text-meta break-words whitespace-pre-wrap text-ink-2">{event.notes}</p>}
+			{event.notes && <p className="mt-3 line-clamp-3 text-meta wrap-anywhere whitespace-pre-wrap text-ink-2">{event.notes}</p>}
 
 			{past ? (
 				event.taskTotal > 0 && <PrepProgress event={event} color={markOf(event.subjectId)} size="sm" className="mt-4" />

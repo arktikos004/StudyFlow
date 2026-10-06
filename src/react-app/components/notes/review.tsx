@@ -148,7 +148,7 @@ function ReviewRunner({
 					<SubjectTag subjectId={note.subjectId} />
 					{meta?.(note)}
 				</div>
-				<h2 ref={headingRef} tabIndex={-1} className="mb-4 rounded-sm text-h2 font-semibold break-words outline-offset-4">
+				<h2 ref={headingRef} tabIndex={-1} className="mb-4 rounded-sm text-h2 font-semibold wrap-anywhere outline-offset-4">
 					{note.title}
 				</h2>
 				{note.kind === 'mistake' && <MistakeQuestion note={note} />}

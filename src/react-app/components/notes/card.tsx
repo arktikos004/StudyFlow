@@ -64,7 +64,7 @@ export function NoteCard({
 						className="relative z-10 -mt-1 -mr-2"
 					/>
 				</div>
-				<h3 className="mt-2 text-h3 font-semibold break-words text-ink">
+				<h3 className="mt-2 text-h3 font-semibold wrap-anywhere text-ink">
 					<button
 						type="button"
 						onClick={onOpen}
@@ -76,7 +76,7 @@ export function NoteCard({
 					</button>
 				</h3>
 				{snippet && (
-					<p className="mt-1 line-clamp-3 text-meta break-words text-ink-2">
+					<p className="mt-1 line-clamp-3 text-meta wrap-anywhere text-ink-2">
 						<Highlight text={snippet} query={terms} />
 					</p>
 				)}

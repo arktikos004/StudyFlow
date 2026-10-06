@@ -57,8 +57,8 @@ export function DayPanel({
 			<Card as="div">
 				<CardHeader
 					title={
-						<span id={titleId} className="inline-flex items-center gap-2 whitespace-nowrap">
-							{formatDate(date, date.slice(0, 4) !== today.slice(0, 4))}
+						<span id={titleId} className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+							<span className="whitespace-nowrap">{formatDate(date, date.slice(0, 4) !== today.slice(0, 4))}</span>
 							{label === '今天' && <Badge tone="accent">今天</Badge>}
 						</span>
 					}
@@ -102,7 +102,7 @@ export function DayPanel({
 												{e.time && <span className="font-num text-meta text-ink-2 tabular-nums">{e.time}</span>}
 												<SubjectTag subjectId={e.subjectId} variant="compact" />
 											</span>
-											<span className="mt-1 block text-dense break-words">{e.title}</span>
+											<span className="mt-1 block text-dense wrap-anywhere">{e.title}</span>
 											{e.location && <span className="block text-meta text-ink-3">{e.location}</span>}
 										</span>
 									</button>
@@ -113,7 +113,7 @@ export function DayPanel({
 							<li key={t.id} className="flex items-center gap-3 px-4 py-2 sm:px-5">
 								<TaskCheckbox task={t} />
 								<button type="button" className="flex min-h-11 min-w-0 flex-1 flex-col justify-center text-left" onClick={() => onTask(t)}>
-									<span className={cn('block text-dense break-words', t.status === 'done' && 'text-ink-3 line-through')}>{t.title}</span>
+									<span className={cn('block text-dense wrap-anywhere', t.status === 'done' && 'text-ink-3 line-through')}>{t.title}</span>
 									<span className="flex items-center gap-2 text-meta text-ink-3">
 										任務期限
 										<SubjectTag subjectId={t.subjectId} variant="compact" />

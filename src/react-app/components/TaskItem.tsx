@@ -108,7 +108,7 @@ export function TaskTitleButton({ title, query, done, onOpen }: { title: string;
 			onClick={onOpen}
 			data-task-title
 			className={cn(
-				'block w-full text-left text-dense break-words decoration-line-strong underline-offset-4 hover:underline',
+				'block w-full text-left text-dense wrap-anywhere decoration-line-strong underline-offset-4 hover:underline',
 				"after:absolute after:-inset-1 after:rounded-md after:content-['']",
 				'focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-accent',
 				done ? 'text-ink-3 line-through' : 'text-ink',
@@ -124,7 +124,7 @@ export function DescriptionSnippet({ task, query }: { task: Pick<Task, 'title' |
 	const snippet = query ? descriptionSnippet(task, searchTerms(query)) : null;
 	if (!snippet) return null;
 	return (
-		<p className="mt-0.5 line-clamp-2 text-meta break-words text-ink-2">
+		<p className="mt-0.5 line-clamp-2 text-meta wrap-anywhere text-ink-2">
 			<Highlight text={snippet} query={query} />
 		</p>
 	);
@@ -189,7 +189,7 @@ export function TaskMetaLine({
 							<Checkbox
 								checked={item.done}
 								onChange={() => onToggleItem(task, item.id)}
-								label={<span className={cn('break-words', item.done && 'text-ink-3 line-through')}>{item.title}</span>}
+								label={<span className={cn('wrap-anywhere', item.done && 'text-ink-3 line-through')}>{item.title}</span>}
 								className="w-full rounded-md px-2.5 hover:bg-subtle"
 							/>
 						</li>
