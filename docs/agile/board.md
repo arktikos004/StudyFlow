@@ -40,3 +40,10 @@
 | s3/polish：backlog 累積的頁面修正、共用元件遷移 | frontend-engineer | 已合併（第一輪 review：可合併；最後一輪 review：修正後合併） |
 | s3/design：共用元件與設計系統的修正 | ui-designer | 已合併（review：修正後合併；DARK_BAND 驗證後維持原值） |
 | 逐條驗收、README、Sprint review、回顧 | product-owner（Sonnet） | 完成（24 個故事：22 通過、2 部分通過〔TSK-2 觸控、CAL-2 Google 日曆提醒，待使用者手動驗證〕；見 sprint-review.md） |
+
+## Sprint 4：個人檔案（使用者追加）
+
+| Lane | Agent | 故事 | 狀態 |
+|---|---|---|---|
+| s4/profile-api | backend-engineer | PRO-1：頭像上傳 API、個人檔案摘要 API、migration 0002、hook 與整合測試 | 進行中 |
+| s4/profile-ui | ui-designer | PRO-1：設定頁頂端的個人檔案、Avatar 元件、帳號與安全卡、側欄與手機選單的帳號區塊 | 進行中 |
