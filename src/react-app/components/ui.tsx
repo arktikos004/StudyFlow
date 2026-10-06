@@ -438,7 +438,7 @@ function avatarInitial(name: string): string {
 /**
  * 頭像（圓形）。有照片時顯示照片（object-cover，邊緣一圈 ink 10% 的細線，白底照片在紙色上也有邊）；
  * 沒有照片、或照片載入失敗（例如離線）時，顯示暱稱的第一個字素：主題色底、on-accent 字（6 組主題色淺深色都 ≥ 6:1）。
- * - 照片載入中是 subtle 底，不會先閃一下首字；失敗才換成首字。src 換了（例如上傳新照片）會重新載入。
+ * - 照片載入中是 subtle 底，不會先閃一下首字；失敗才換成首字。src 換了（例如上傳新照片）或連回網路（online 事件）時會重新載入。
  * - label：頭像單獨出現時的無障礙名稱（role="img"）。旁邊已經有暱稱文字時不要給：整個頭像是裝飾（aria-hidden）。
  */
 export function Avatar({
@@ -457,6 +457,14 @@ export function Avatar({
 	className?: string;
 }) {
 	const [failedSrc, setFailedSrc] = useState<string | null>(null);
+	// 載入失敗多半是暫時的（離線）：連回網路時再試一次。側欄的頭像整個工作階段都掛著，
+	// 不重試的話會一直顯示首字，和設定頁新掛上去的頭像不一致。
+	useEffect(() => {
+		if (!failedSrc) return;
+		const retry = () => setFailedSrc(null);
+		window.addEventListener('online', retry);
+		return () => window.removeEventListener('online', retry);
+	}, [failedSrc]);
 	const photo = src && src !== failedSrc ? src : null;
 	const { box, px } = AVATAR[size];
 	const initial = avatarInitial(name);
