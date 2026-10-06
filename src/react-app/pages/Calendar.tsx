@@ -311,11 +311,11 @@ export function CalendarPage() {
 					<>
 						<Button onClick={() => setTaskDialog({ date: selected })}>
 							<ListPlus className="size-4" aria-hidden />
-							任務
+							<span className="sr-only">新增</span>任務
 						</Button>
 						<Button variant="primary" onClick={() => setEventDialog({ date: selected })}>
 							<Plus className="size-4" aria-hidden />
-							考試／截止日
+							<span className="sr-only">新增</span>考試或截止日
 						</Button>
 					</>
 				}
