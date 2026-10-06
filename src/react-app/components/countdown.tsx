@@ -1,8 +1,8 @@
 import { AlarmClock, CalendarClock } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { addDays } from '../../shared/dates';
 import { countdown, type CountdownKind, type CountdownTone } from '../lib/countdown';
 import { eventStartMs } from '../lib/dashboard-format';
-import { useNow } from '../lib/timer';
 import { cn, Countdown, NumDisplay } from './ui';
 
 // 倒數磚（DESIGN.md §7「跨頁慣例」）：考試頁、總覽、單科頁共用，規則與文案在 lib/countdown.ts。
@@ -13,6 +13,32 @@ const TONE: Record<CountdownTone, string> = {
 	normal: 'bg-subtle text-ink',
 	past: 'bg-subtle text-ink-3',
 };
+
+/**
+ * 現在時間，每 250ms 更新一次，直到 deadline 為止：跨過 deadline 的那一次更新之後就停（顯示換成「已開始」後不再重新渲染）。
+ * deadline 為 null 時不更新。已經過了的 deadline 只會在掛載後更新一次。
+ */
+function useNowUntil(deadline: number | null): number {
+	const [now, setNow] = useState(Date.now);
+	useEffect(() => {
+		if (deadline === null) return;
+		const tick = () => {
+			const t = Date.now();
+			setNow(t);
+			if (t >= deadline) {
+				clearTimeout(first);
+				clearInterval(id);
+			}
+		};
+		const first = setTimeout(tick, 0);
+		const id = setInterval(tick, 250);
+		return () => {
+			clearTimeout(first);
+			clearInterval(id);
+		};
+	}, [deadline]);
+	return now;
+}
 
 /** 狀態一定是圖示加文字：3 天內的考試是鬧鐘，截止日與任務期限是 CalendarClock */
 function ToneIcon({ tone, className }: { tone: CountdownTone; className?: string }) {
@@ -45,10 +71,11 @@ export function CountdownTile({
 	size?: 'lg' | 'sm';
 	className?: string;
 }) {
-	// 只有今天或明天、有時間的項目需要每 250ms 更新；其他時候 now 只用在不會變的判斷上
+	// 只有今天或明天、有時間的項目需要每 250ms 更新（即時倒數），而且只到開始的那一刻為止（review A1）；
+	// 其他時候 now 只用在不會變的判斷上
 	const start = size === 'lg' ? eventStartMs(date, time, timeZone) : null;
 	const ticking = start !== null && date >= today && date <= addDays(today, 1);
-	const now = useNow(ticking);
+	const now = useNowUntil(ticking ? start : null);
 	const s = countdown({ kind, date, time }, today, now, timeZone);
 
 	if (size === 'sm')
