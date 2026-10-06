@@ -31,6 +31,10 @@ export const users = sqliteTable('users', {
 	dailyGoalMinutes: integer('daily_goal_minutes'),
 	weeklyGoalMinutes: integer('weekly_goal_minutes'),
 	createdAt: createdAt(),
+	// 頭像（PRO-1）：R2 的 key 只在後端使用，絕不回傳給前端；NULL = 沒有上傳
+	avatarKey: text('avatar_key'),
+	// 頭像最後更新的時間（UTC 毫秒），前端用來組出頭像網址並避開快取；NULL = 沒有上傳
+	avatarUpdatedAt: integer('avatar_updated_at'),
 });
 
 export const sessions = sqliteTable(

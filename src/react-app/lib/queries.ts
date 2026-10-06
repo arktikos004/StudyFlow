@@ -19,6 +19,7 @@ import type {
 	DashboardResponse,
 	EventItem,
 	NoteItem,
+	ProfileSummary,
 	PublicAttachment,
 	PublicUser,
 	SearchResponse,
@@ -163,6 +164,18 @@ export function useAchievements() {
 	});
 }
 
+/**
+ * 個人檔案的累積數字（PRO-1）：累積時數與次數、連續天數、完成任務、掌握錯題、已解鎖的徽章。
+ * 和成就同一份計算；學習紀錄、任務、筆記有變動時會和 ['achievements'] 一起重新取得。
+ */
+export function useProfileSummary() {
+	return useQuery({
+		queryKey: ['profile-summary'],
+		queryFn: () => api.get<ProfileSummary>('/profile/summary'),
+		staleTime: 60_000,
+	});
+}
+
 // ---- 修改 ----
 
 /**
@@ -244,8 +257,8 @@ export const useDeleteEvent = () =>
 /** checklist 可省略（預設空清單）；子項目的 id 由前端產生，例如 crypto.randomUUID() */
 export type TaskInput = z.input<typeof taskSchema>;
 export type TaskUpdateInput = z.input<typeof taskUpdateSchema> & { id: string };
-// 任務會影響考試的準備進度（events）與「完成 50 個任務」成就
-export const TASK_KEYS: QueryKey[] = [['tasks'], ['events'], ['achievements'], ...OVERVIEW];
+// 任務會影響考試的準備進度（events）、「完成 50 個任務」成就與個人檔案的完成任務數
+export const TASK_KEYS: QueryKey[] = [['tasks'], ['events'], ['achievements'], ['profile-summary'], ...OVERVIEW];
 export const useCreateTask = () => useApiMutation((v: TaskInput) => api.post<{ task: TaskItem }>('/tasks', v), TASK_KEYS, '已新增任務');
 export const useUpdateTask = () =>
 	useApiMutation(({ id, ...v }: TaskUpdateInput) => api.patch<{ task: TaskItem }>(`/tasks/${id}`, v), TASK_KEYS);
@@ -255,7 +268,7 @@ export type SessionInput = z.input<typeof studySessionSchema>;
 /** 只送要改的欄位；沒給 durationSec 但改了起訖時間時，後端會依起訖時間重新計算 */
 export type SessionUpdateInput = z.input<typeof studySessionUpdateSchema> & { id: string };
 /**
- * 學習紀錄的新增、修改、刪除會影響：紀錄列表、任務投入時間、總覽、統計、頁首摘要、成就、單科總覽。
+ * 學習紀錄的新增、修改、刪除會影響：紀錄列表、任務投入時間、總覽、統計、頁首摘要、成就、個人檔案、單科總覽。
  * 計時器自己送出紀錄時（lib/timer.ts）也要 invalidate 這一組。
  */
 export const SESSION_KEYS: QueryKey[] = [
@@ -265,6 +278,7 @@ export const SESSION_KEYS: QueryKey[] = [
 	['stats'],
 	['summary'],
 	['achievements'],
+	['profile-summary'],
 	['subject-overview'],
 ];
 export const useCreateSession = () =>
@@ -280,8 +294,17 @@ export const useDeleteSession = () => useApiMutation((id: string) => api.del(`/s
 export type NoteInput = z.input<typeof noteSchema>;
 /** 只送要改的欄位；{ id, pinned } 只改釘選，不會更新「最後更新」時間 */
 export type NoteUpdateInput = z.input<typeof noteUpdateSchema> & { id: string };
-// 筆記與錯題會影響待複習數、錯題統計、單科總覽與「掌握錯題」成就
-const NOTE_KEYS: QueryKey[] = [['notes'], ['note'], ['dashboard'], ['stats'], ['summary'], ['achievements'], ['subject-overview']];
+// 筆記與錯題會影響待複習數、錯題統計、單科總覽、「掌握錯題」成就與個人檔案的掌握錯題數
+const NOTE_KEYS: QueryKey[] = [
+	['notes'],
+	['note'],
+	['dashboard'],
+	['stats'],
+	['summary'],
+	['achievements'],
+	['profile-summary'],
+	['subject-overview'],
+];
 export const useCreateNote = () => useApiMutation((v: NoteInput) => api.post<{ note: NoteItem }>('/notes', v), NOTE_KEYS);
 export const useUpdateNote = () =>
 	useApiMutation(({ id, ...v }: NoteUpdateInput) => api.patch<{ note: NoteItem }>(`/notes/${id}`, v), NOTE_KEYS);
@@ -314,3 +337,33 @@ export const useUpdateProfile = () => {
 		onError: (e) => toast.error(e.message),
 	});
 };
+
+/**
+ * 頭像的上傳與移除：成功後直接換掉 ['me'] 快取裡的使用者。avatarUpdatedAt 變了，avatarUrl() 就會換網址，
+ * 用 useMe／useUser 的地方（側欄、「更多」選單、設定頁）都會跟著更新。失敗時用 toast 顯示後端的錯誤訊息。
+ */
+function useAvatarMutation<TVars>(fn: (vars: TVars) => Promise<{ user: PublicUser }>, successMessage: string) {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: fn,
+		onSuccess: ({ user }) => {
+			qc.setQueryData(['me'], user);
+			toast.success(successMessage);
+		},
+		onError: (e) => toast.error(e.message),
+	});
+}
+
+/**
+ * 上傳頭像：mutate(file)。請先在前端裁成正方形並縮小；後端上限 AVATAR_MAX_BYTES（1MB），
+ * 依檔案內容只接受 JPEG、PNG、WebP（AVATAR_TYPES）。
+ */
+export const useUploadAvatar = () =>
+	useAvatarMutation((file: Blob) => {
+		const form = new FormData();
+		form.append('file', file, 'avatar');
+		return api.put<{ user: PublicUser }>('/auth/avatar', form);
+	}, '已更新頭像');
+
+/** 移除頭像：mutate()；之後 avatarUpdatedAt 是 null，畫面改用暱稱首字 */
+export const useDeleteAvatar = () => useAvatarMutation<void>(() => api.del<{ user: PublicUser }>('/auth/avatar'), '已移除頭像');

@@ -16,6 +16,7 @@ import type { AppEnv } from '../types';
 const WINDOW_15M = 15 * 60 * 1000;
 const WINDOW_1H = 60 * 60 * 1000;
 
+/** 回傳給前端（與 JSON 備份）的使用者資料：逐欄列出，不含密碼雜湊與頭像的 R2 key */
 export function publicUser(u: User): PublicUser {
 	return {
 		id: u.id,
@@ -25,6 +26,7 @@ export function publicUser(u: User): PublicUser {
 		createdAt: u.createdAt,
 		dailyGoalMinutes: u.dailyGoalMinutes,
 		weeklyGoalMinutes: u.weeklyGoalMinutes,
+		avatarUpdatedAt: u.avatarUpdatedAt,
 	};
 }
 

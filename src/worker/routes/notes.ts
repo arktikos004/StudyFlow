@@ -14,7 +14,9 @@ import {
 } from '../../shared/schemas';
 import { attachments, notes, subjects, type Attachment, type Note } from '../db/schema';
 import { assertOwned, hasValues, notFound, type DB } from '../lib/db';
+import { sniffImageType } from '../lib/image';
 import { containsText } from '../lib/text';
+import { uploadLimit } from '../lib/upload';
 import { validate } from '../lib/validator';
 import { requireAuth } from '../middleware/auth';
 import type { NoteItem, PublicAttachment } from '../../shared/api-types';
@@ -28,6 +30,8 @@ const listQuery = z.object({
 	review: z.enum(['due']).optional(),
 	mastered: z.enum(['true', 'false']).optional(),
 });
+
+const PHOTO_TOO_LARGE = '照片太大（上限 5MB）';
 
 function publicAttachment(a: Attachment): PublicAttachment {
 	return { id: a.id, noteId: a.noteId, contentType: a.contentType, size: a.size, createdAt: a.createdAt };
@@ -63,15 +67,6 @@ async function getOwnedNote(db: DB, id: string, userId: string) {
 		.get();
 	if (!note) notFound('筆記');
 	return note;
-}
-
-/** 用檔案開頭的 magic bytes 判斷真正的圖片格式，不相信瀏覽器送來的 Content-Type */
-function sniffImageType(bytes: Uint8Array): string | null {
-	if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
-	if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
-	const ascii = (from: number, to: number) => String.fromCharCode(...bytes.slice(from, to));
-	if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') return 'image/webp';
-	return null;
 }
 
 export const noteRoutes = new Hono<AppEnv>()
@@ -172,7 +167,8 @@ export const noteRoutes = new Hono<AppEnv>()
 		await db.delete(notes).where(eq(notes.id, note.id));
 		return c.json({ ok: true });
 	})
-	.post('/:id/attachments', async (c) => {
+	// 大小上限放在 handler 之前：沒有 Content-Length（chunked）的上傳也會在讀進記憶體前擋下
+	.post('/:id/attachments', uploadLimit(ATTACHMENT_MAX_BYTES + 64 * 1024, PHOTO_TOO_LARGE), async (c) => {
 		const db = c.var.db;
 		const user = c.var.user;
 		const note = await getOwnedNote(db, c.req.param('id'), user.id);
@@ -180,13 +176,10 @@ export const noteRoutes = new Hono<AppEnv>()
 		const [{ n }] = await db.select({ n: count() }).from(attachments).where(eq(attachments.noteId, note.id));
 		if (n >= ATTACHMENT_MAX_PER_NOTE) throw new HTTPException(400, { message: `每則筆記最多 ${ATTACHMENT_MAX_PER_NOTE} 張照片` });
 
-		const length = Number(c.req.header('content-length') ?? 0);
-		if (length > ATTACHMENT_MAX_BYTES + 64 * 1024) throw new HTTPException(413, { message: '照片太大（上限 5MB）' });
-
 		const form = await c.req.formData();
 		const file = form.get('file');
 		if (!(file instanceof File)) throw new HTTPException(400, { message: '請選擇照片' });
-		if (file.size > ATTACHMENT_MAX_BYTES) throw new HTTPException(413, { message: '照片太大（上限 5MB）' });
+		if (file.size > ATTACHMENT_MAX_BYTES) throw new HTTPException(413, { message: PHOTO_TOO_LARGE });
 
 		const bytes = new Uint8Array(await file.arrayBuffer());
 		const contentType = sniffImageType(bytes);
