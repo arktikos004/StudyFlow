@@ -5,12 +5,13 @@ import { AVATAR_MAX_BYTES } from '../../shared/schemas';
 import { users } from '../db/schema';
 import type { DB } from '../lib/db';
 import { sniffImageType } from '../lib/image';
+import { uploadLimit } from '../lib/upload';
 import { requireAuth } from '../middleware/auth';
 import type { AppEnv } from '../types';
 import { publicUser } from './auth';
 
 const TOO_LARGE = `照片太大（上限 ${AVATAR_MAX_BYTES / (1024 * 1024)}MB）`;
-/** multipart 的分隔線與欄位標頭只有幾百 bytes；content-length 超過「上限 + 這個值」就不必把內容讀進記憶體 */
+/** multipart 的分隔線與欄位標頭只有幾百 bytes；整個 body 超過「上限 + 這個值」就不再讀取（uploadLimit） */
 const MULTIPART_OVERHEAD = 16 * 1024;
 
 function avatarNotFound(): never {
@@ -70,11 +71,8 @@ export const avatarRoutes = new Hono<AppEnv>()
 			},
 		});
 	})
-	.put('/', async (c) => {
+	.put('/', uploadLimit(AVATAR_MAX_BYTES + MULTIPART_OVERHEAD, TOO_LARGE), async (c) => {
 		const user = c.var.user;
-		const length = Number(c.req.header('content-length') ?? 0);
-		if (length > AVATAR_MAX_BYTES + MULTIPART_OVERHEAD) throw new HTTPException(413, { message: TOO_LARGE });
-
 		// 不是 multipart（例如送了 JSON 或沒有內容）時 formData() 會丟錯：一樣當作沒有選照片
 		const form = await c.req.formData().catch(() => null);
 		const file = form?.get('file');
