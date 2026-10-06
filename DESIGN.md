@@ -130,6 +130,24 @@
 
     - ToggleButton 忙碌中（opacity .7）的文字只有 3.33（淺色葡萄紫）：它是 `aria-disabled` 的暫時狀態（儲存的幾百毫秒），WCAG 不要求停用中的元件達到對比。
     - ErrorNote 的按鈕是 secondary（card 底、line-strong 框），對 danger-soft 底只有 1.1–1.6：按鈕靠文字「重新載入」辨識，邊框不是辨識的必要條件（同其他 secondary 按鈕）。
+  - **Sprint 4 新增的組合（s4/profile-ui，PRO-1；從 index.css 讀出 token 實際計算，主題色取 6 組中的最低值，括號是最低的那一組）**：
+
+    | 組合 | 淺色 | 深色 | 門檻 |
+    |---|---|---|---|
+    | Avatar 首字：on-accent／accent | 6.00（葡萄紫） | 7.01（墨綠） | 4.5 |
+    | Avatar 圓（主題色）對 card、page、subtle（hover） | 5.86、5.55、5.14 | 6.49、7.07、5.81 | 3 |
+    | 個人檔案的徽章：on-accent 圖示／accent；徽章對 card、對 subtle（hover） | 6.00；5.86、5.14 | 7.01；6.49、5.81 | 3 |
+    | 成就格的焦點框：accent 對 card、subtle（hover 中） | 5.86、5.14 | 6.49、5.81 | 3 |
+    | 「開始第一次專注」：accent-ink 對 card | 7.30（湖水青） | 9.08（鉛筆） | 4.5 |
+    | 暱稱 ink、Email ink-2、加入時間與副標 ink-3 對 card | 16.33、7.89、5.52 | 15.43、9.68、6.33 | 4.5 |
+    | 「+N」：ink-2 對 card | 7.89 | 9.68 | 4.5 |
+    | 成就格 hover：ink-2 標籤、ink 數值、ink-3（／12、徽章文字、箭頭）對 subtle | 6.93、14.35、4.85 | 8.66、13.81、5.67 | 4.5 |
+    | 側欄帳號列：ink 暱稱、ink-3 Email 對 page；hover 時 ink-3 對 subtle | 15.48、5.23；4.85 | 16.83、6.91；5.67 | 4.5 |
+    | 登出：ink-2 對 page（側欄）、card（手機選單） | 7.48、7.89 | 10.55、9.68 | 4.5 |
+    | 照片處理失敗：danger 對 card | 5.93 | 6.39 | 4.5 |
+
+    - 照片的邊緣是 ink 10% 的 1px 細線（`outline-ink/10`，疊在照片上），只是讓白底照片在紙色上有邊，不承擔辨識（照片旁邊一定有暱稱）。
+    - 骨架（載入中的 subtle 方塊）對 card 只有約 1.1：它是暫時的裝飾，`aria-busy` 與 sr-only「載入中」負責告知狀態。
   - **語意撞色（OKLab ΔE×100）**：莓果和 danger 14.2／11.0；墨綠和 success 7.7／9.2（計時環的專注與休息階段靠文字標籤區分）。
   - **不收錄琥珀橘**：和 warning（ΔE 4.7）、danger（ΔE 8.6）幾乎同色，主要按鈕與「今天到期」會分不出來，所以改收錄中性的「鉛筆」。紅、橘、黃系一律不做主題色。
 - **局部預覽**：任何元素都可以加 `data-theme="light|dark"` 或 `data-accent="…"`，只影響該區塊的 tokens（例如設定頁的深淺色對照、色組色票）。
@@ -302,6 +320,12 @@
 - **Segmented**：
   - 採 WAI-ARIA radio group：roving tabindex、方向鍵、Home／End。
   - 項目 h-9，觸控裝置 40px。
+- **Avatar**（Sprint 4，PRO-1）：
+  - 圓形。有照片時顯示照片（`object-cover`，邊緣 ink 10% 的 1px 細線）；沒有照片、或照片載入失敗（例如離線）時，顯示暱稱的第一個字素（`firstGrapheme`，emoji、組合字不切半；拉丁字母轉大寫），accent 底、on-accent 字，跟著主題色。
+  - 照片載入中是 subtle 底，不先閃一下首字；失敗才換成首字，src 換了會重新載入。
+  - 尺寸：sm 32（側欄）、md 40（手機選單）、lg 72（個人檔案）、xl 96（編輯對話框的預覽）。首字 600。
+  - 無障礙：旁邊已經有暱稱文字時是裝飾（`aria-hidden`、`alt=""`）；單獨出現時給 `label`（`role="img"`）。
+  - 不可當成按鈕或連結的唯一內容；要可以點時，整列（頭像＋暱稱）一起當連結。
 
 **版面元件**
 - **Card**：
@@ -354,6 +378,32 @@
   - 這頁的焦點是「下一個目標」：最接近解鎖的成就、還差多少、一個前往的動作。其餘依讀書時數／連續天數／番茄鐘／錯題與任務分組，每組一張卡片、列之間用分隔線（不做一排一樣的卡片）。
   - 圖示：後端回傳 lucide 名稱，前端用白名單（`lib/shell-icons.ts` 的 `AchievementIcon`）對應，不動態 import 整包。
   - 新解鎖的 toast 由 Layout 全站跳一次：「解鎖成就「名稱」」＋說明＋「查看」動作；同時解鎖多個時合併成一則。
+- **個人檔案（設定頁最上面，Sprint 4，PRO-1）**（`components/settings/ProfileSection.tsx`；外觀在 `ProfileHeader`、`ProfileStats`）：
+  - 整頁寬的一張卡片，放在設定頁兩欄卡片的上方（`PageStack` 的第一個區塊）。上半是身分：Avatar lg、暱稱（h2，1.25rem／1.4／700，前面有 sr-only「個人檔案：」）、Email（14px ink-2）、加入時間（13px ink-3，「2026 年 9 月加入」，依 `user.timezone`，`<time dateTime="2026-09">`）。
+    - 暱稱的字級比卡片標題（h2 18／600）大一階、比頁面 h1（24）小，只用在這裡。
+    - Email 只在「@」與「.」前面換行（`<wbr>`），長的學校信箱不會從單字中間斷開。
+  - 「編輯個人資料」是 secondary（Pencil 圖示）：設定頁只有一個 primary，對話框裡的「儲存」才是 primary。手機撐滿寬度、放在身分下面；sm 以上靠右。
+  - 下半是累積數字：同一張卡片裡用分隔線分格（卡片裡不放卡片，做法同 StatStrip），手機 2×2、lg 以上一列 4 格。每格是 dt（16px 圖示＋14px ink-2 標籤）、dd 數值（font-num 28／600，單位用 `Unit`）、dd 副標（13px ink-3）。
+    - 學習累積（Hourglass）：未滿 1 小時用分鐘，之後用小時、無條件捨去到一位小數（和成就頁的進度一致），100 小時以上取整數；副標「共 32 次學習」。
+    - 連續天數（Flame）：副標「最長 12 天」；目前就是最長紀錄時寫「目前就是最長紀錄」；都是 0 時寫「今天讀書就能開始累積」。
+    - 完成量（ListChecks）：完成的任務數；副標「已掌握 7 題錯題」。
+    - 成就（Trophy）：「5／12 個」（念成「已解鎖 5 個，共 12 個」）＋已解鎖的徽章（成就頁的章縮成 28px：accent 底、on-accent 圖示、外圈 2px accent-soft）。一列放不下時最後一格是「+N」（card 底、line-strong 細框），放得下幾個由實際寬度決定（`badgeCapacity`）。系統沒有記錄解鎖時間，所以是「已解鎖的徽章」，依成就的固定順序，不是「最近解鎖的」。
+    - 成就那一格整格連到 `/achievements`：標籤是連結，`::after` 蓋滿這一格（hover 時 subtle 底），右上角 ChevronRight；焦點框畫在 `::after`、內縮 2px，右下角跟著卡片的內圓角（這一格在 2×2 與一列 4 格時都在卡片右下角）。徽章名稱給螢幕報讀器（sr-only），看得到的人點進成就頁看名稱。
+  - 新帳號（還沒有學習紀錄）：數字都是 0，「學習累積」的副標換成下一步「開始第一次專注」（`MoreLink` 到 `/timer`，accent-ink，不用 primary）；成就格寫「還沒有解鎖的徽章」。版面和有資料時一樣高。
+  - 載入中：格子與標籤照常，數值與副標換成 subtle 骨架（同高，載入完不跳動），`aria-busy`。載入失敗：數字那半換成 `ErrorNote`（可以重新載入），頭像與暱稱照常；已經有數字時，背景重新整理失敗就繼續顯示舊的。
+- **編輯個人資料對話框**（`ProfileDialog`、`ProfilePhotoField`）：
+  - 只放照片與暱稱；時區是設定，在「帳號與安全」卡。
+  - 照片：96px 預覽、「上傳照片／更換照片」（secondary sm，ImageUp）、「移除照片」（ghost sm，Trash2，有照片時才出現）。選檔用隱藏的 `<input type="file" accept="image/jpeg,image/png,image/webp">`。
+    - 選了照片就在瀏覽器裡置中裁成正方形、縮到最大 512×512、轉 JPEG（透明的地方鋪白、依 EXIF 轉正，`lib/profile-image.ts`），處理中按鈕轉圈；儲存時才真的上傳。
+    - 預覽跟著變更走：新選的照片、移除後的首字（首字跟著輸入中的暱稱）。下方說明用 `aria-live` 念出狀態：「JPEG、PNG 或 WebP，會置中裁成正方形」「新照片會在儲存後套用」「儲存後會移除照片，改用暱稱的第一個字」。照片讀不出來時是 danger 文字＋圖示（`role="alert"`）。
+  - 暱稱：`Field`＋`Input`（`autoComplete="nickname"`、最多 30 字），空白或太長在送出前檢查，錯誤在欄位旁、焦點回到欄位。
+  - 儲存：先處理照片（上傳或移除），成功才存暱稱。成功與失敗的提示都由各自的 hook 用 toast 顯示，對話框不重複；照片失敗時什麼都沒存、對話框留著；照片成功但暱稱失敗時，照片已經換好，再按「儲存」只會存暱稱。沒有變更時「儲存」停用。
+- **帳號與安全卡**（`components/settings/AccountCard.tsx`，取代原本的「個人資料」與「變更密碼」兩張卡）：
+  - 三段用分隔線分開：Email（`<dl>`，唯讀文字，不用停用的輸入框；附「登入時使用，目前無法變更」）、時區、密碼。
+  - 時區：Select＋「儲存」（secondary，改了才能按；不在選單變動時自動儲存，因為鍵盤上下鍵會直接改值）。選項附上 GMT 偏移（「Asia/Taipei（GMT+8）」，零偏移寫 GMT+0），說明「用來判斷「今天」與統計每天的學習時間」。
+  - 密碼：平常只有一列（「密碼」＋「變更後，其他裝置會登出」＋「變更密碼」按鈕，`aria-expanded`、ChevronDown 轉 180°），按了才在下面展開表單（漸進揭露，不用對話框）。
+    - 表單：目前密碼、新密碼（至少 8 個字元）、確認新密碼，`autoComplete` 正確，另有隱藏的 username（Email）讓密碼管理工具知道是哪個帳號。錯誤在欄位旁、送出時焦點到第一個錯誤；目前密碼不對（後端 400）標在「目前密碼」，其他失敗在按鈕上方。
+    - 「取消」ghost、「更新密碼」secondary；成功時 toast「密碼已更新，其他裝置已登出」、收起、焦點回到「變更密碼」。滑鼠操作時展開後焦點進「目前密碼」，觸控裝置不自動 focus。
 - **共用小元件**（Sprint 1 由設計師提供）：
   - ProgressBar、ProgressRing
   - Switch、Checkbox
@@ -368,11 +418,13 @@
   - 用 page 色底，靠空白分組。
   - 目前頁面：accent-soft 底、字重 600、較粗的圖示。
   - 第一個可聚焦元素是「跳到主要內容」連結；Logo 下方是像輸入框的「搜尋」鈕（右側 Kbd 提示 ⌘K／Ctrl K，`aria-keyshortcuts`）。
+  - **帳號列**（Sprint 4，PRO-1，左下角）：Avatar sm＋暱稱（14／600 ink）＋Email（13px ink-3），整列是連到 `/settings` 的連結（個人檔案在設定頁最上面），hover 時 subtle 底，48px 高。名稱念成「小安，demo@example.com，查看個人檔案」；頭像是裝飾。已經在設定頁時再點會捲回最上面。下面一列是「登出」，維持一眼看得到，不藏進選單。
 - **手機底部導覽**：
   - 實心底，12px 標籤。
   - 目前頁面在圖示後面加上膠囊底。
   - 計時中，「計時」那格顯示即時進度環。
   - 頁首右側是搜尋圖示鈕（44px），開指令面板。
+  - **「更多」選單**（bottom sheet）：最上面是帳號列（Avatar md＋暱稱 15／600＋Email＋ChevronRight，連到 `/settings`，點了關閉選單），分隔線，其他頁面，分隔線，最下面一列「登出」（20px 圖示，和上面的項目對齊）。
 - **導覽數量標籤**（Sprint 2）：
   - 學習任務＝逾期＋今天到期；筆記與錯題＝待複習。0 時不顯示，超過 99 顯示 99+。
   - 顏色依語意：有逾期是 danger，否則 warning。桌面是 soft 膠囊（`bg-*-soft text-*`）靠右；手機是實心膠囊（`bg-danger／bg-warning`＋on-accent 字＋2px card 外圈）疊在圖示右上角。
@@ -432,6 +484,7 @@
     - 焦點框畫在 `::after` 上（`focus-visible:after:outline-2 focus-visible:after:outline-accent`）。
     - 容器有 `overflow-hidden` 時加 `focus-visible:after:-outline-offset-2`，否則焦點框畫在容器外面會被裁掉。
     - 容器要 `relative`；同一格裡其他可以點的元素加 `relative z-10` 才會疊在上面。
+    - 整格是「前往另一頁」時要用連結（`<Link>`），StretchedButton 是按鈕，不適用：照上面的規則自己寫（例如個人檔案的成就格）。格子在有圓角的卡片角落時，`::after` 也要給同樣的內圓角，焦點框才不會被裁掉。
 
 ### 元件 API（Sprint 1 定案，給 Sprint 2 各 lane）
 
@@ -504,6 +557,17 @@
 
 tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-section`、`mt-section`）、`--scrim`／`--on-scrim`（`bg-scrim`、`backdrop:bg-scrim`、`text-on-scrim`）。
 
+**Sprint 4 新增到 `components/ui.tsx`（s4/profile-ui，PRO-1；只新增 export，既有 API 不變）**
+
+| 名稱 | Props | 說明 |
+|---|---|---|
+| `Avatar` | `name`（暱稱，必填）、`src?: string \| null`（照片網址，例如 `avatarUrl(user)`、預覽的 `blob:`）、`size?: AvatarSize`（預設 'md'）、`label?: string`、`className?` | 圓形頭像。有照片顯示照片；沒有或載入失敗時顯示暱稱的第一個字素（accent 底、on-accent 字）。旁邊有暱稱時不給 `label`（`aria-hidden`）；單獨出現時給 `label`（`role="img"`） |
+| `AvatarSize` | 型別：`'sm' \| 'md' \| 'lg' \| 'xl'` | 32／40／72／96px |
+
+`firstGrapheme` 沒有搬家：它本來就在中性的 `lib/polish-format.ts`（沒有 React），`ui.tsx` 與 `components/subjects.tsx` 都從那裡 import，`ui.tsx` 不必反過來 import `subjects.tsx`。
+
+個人檔案的純邏輯（都有單元測試）：`lib/profile-format.ts`（`ProfileSummary` 型別（第一階段暫放）、`joinedLabel`、`studyTotal`、`sessionsNote`、`streakNote`、`masteredNote`、`formatCount`、`badgeCapacity`、`emailParts`、`timezoneOptions`、`timezoneLabel`）、`lib/profile-crop.ts`（`squareCrop`、`AVATAR_MAX_EDGE`、`AvatarImageError`）、`lib/profile-photo.ts`（照片的變更 `PhotoDraft`）。瀏覽器端的照片處理是 `lib/profile-image.ts` 的 `prepareAvatar(file)`。
+
 **頁面端遷移（給 s3/polish，照這張表換）**
 
 | 原本 | 換成 |
@@ -565,3 +629,8 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 - **指令面板的「開始專注」**只前往計時頁，不會自動開始計時（避免誤觸就開始記錄）。
 - **指令面板的深連結**：`?open=<id>`、`?new=1`、`?new=mistake` 都已由各頁的 `useDeepLink` 實作（任務、考試、筆記、設定、月曆），選了搜尋結果會直接開啟該項目。
 - **Field 舊寫法的自動 aria**：只補在 children 回傳的那個元素上；自訂元件（例如 `SubjectSelect`）沒有把 aria 屬性傳給內部欄位時不會生效，Sprint 2 請改成 `(id, aria)` 並往下傳。
+- **個人檔案（Sprint 4，PRO-1）**：
+  - 成就格的徽章沒有滑鼠提示（`title`）：整格是連結，`::after` 蓋在徽章上面。名稱給螢幕報讀器，看得到的人點進成就頁看。
+  - 時區儲存成功的 toast 是共用 hook 的「已更新個人資料」（`useUpdateProfile`），不是「已更新時區」。
+  - 照片只在瀏覽器裡處理：比 512px 小的照片不放大；GIF 只取第一格；瀏覽器解不開的格式（例如 Chrome 的 HEIC）會請使用者改用 JPEG、PNG 或 WebP。
+  - 頭像的 `<img>` 由瀏覽器快取，Service Worker 不快取 `/api/*`：離線且沒有快取時顯示首字。
