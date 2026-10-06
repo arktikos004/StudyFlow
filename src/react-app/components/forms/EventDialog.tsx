@@ -10,13 +10,18 @@ import { DialogFooter, FormError } from './shared';
 
 const blankToNull = (v: string) => (v.trim() === '' ? null : v);
 
+/** 新增時的預設值（編輯既有考試時不使用）；例如單科頁、考試頁篩選某一科時預先選好科目 */
+export type EventDefaults = { subjectId?: string | null };
+
 function EventForm({
 	event,
 	defaultDate,
+	defaults,
 	onSave,
 }: {
 	event?: EventItem;
 	defaultDate?: string;
+	defaults?: EventDefaults;
 	onSave: (input: EventInput) => Promise<void>;
 }) {
 	const user = useUser();
@@ -28,7 +33,7 @@ function EventForm({
 		time: event?.time ?? '',
 		location: event?.location ?? '',
 		notes: event?.notes ?? '',
-		subjectId: event?.subjectId ?? null,
+		subjectId: event ? event.subjectId : (defaults?.subjectId ?? null),
 	});
 
 	const onSubmit = (e: FormEvent) => {
@@ -105,11 +110,14 @@ export function EventDialog({
 	onClose,
 	event,
 	defaultDate,
+	defaults,
 }: {
 	open: boolean;
 	onClose: () => void;
 	event?: EventItem;
 	defaultDate?: string;
+	/** 選填，只影響新增：例如 { subjectId } 預先選好科目 */
+	defaults?: EventDefaults;
 }) {
 	const create = useCreateEvent();
 	const update = useUpdateEvent();
@@ -144,7 +152,13 @@ export function EventDialog({
 					<DialogFooter formId="event-form" onClose={onClose} onDelete={event && onDelete} saving={create.isPending || update.isPending} />
 				}
 			>
-				<EventForm key={event?.id ?? defaultDate ?? 'new'} event={event} defaultDate={defaultDate} onSave={onSave} />
+				<EventForm
+					key={`${event?.id ?? defaultDate ?? 'new'}|${defaults?.subjectId ?? ''}`}
+					event={event}
+					defaultDate={defaultDate}
+					defaults={defaults}
+					onSave={onSave}
+				/>
 			</Dialog>
 			{confirmDialog}
 		</>

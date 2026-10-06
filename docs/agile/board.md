@@ -26,9 +26,9 @@
 |---|---|---|---|
 | s2/subjects | frontend-engineer | SUB-2、SUB-3、GOAL-1/2 設定卡、DATA-1/CAL-2 設定卡、SUB-4 設定卡 | 已合併（review：可合併） |
 | s2/dashboard | frontend-engineer | 總覽與統計改版、GOAL-1/2、DASH-1 | 已合併（review：修正後合併） |
-| s2/tasks | frontend-engineer | TSK-1～4、任務頁改版 | 進行中 |
+| s2/tasks | frontend-engineer | TSK-1～4、任務頁改版 | 已合併（review：修正後合併） |
 | s2/timer | frontend-engineer | TMR-1～3、CAL-1、計時頁與月曆改版 | 已合併（review：月曆修正後合併、計時可合併） |
-| s2/notes | frontend-engineer | NOTE-1/2、筆記頁與考試頁改版 | 進行中 |
+| s2/notes | frontend-engineer | NOTE-1/2、筆記頁與考試頁改版 | 已合併（review：修正後合併） |
 | s2/shell | ui-designer | APP-1、APP-2、導覽、Auth 頁、品牌、動效 | 進行中 |
 
 ## Sprint 3：驗收

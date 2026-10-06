@@ -1,10 +1,13 @@
+import { TriangleAlert } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import type { Task } from '../../../shared/api-types';
+import type { ChecklistItem, Task, TaskItem } from '../../../shared/api-types';
 import { today } from '../../../shared/dates';
 import { taskSchema } from '../../../shared/schemas';
 import { PRIORITY_LABEL, STATUS_LABEL } from '../../lib/format';
 import { useCreateTask, useDeleteTask, useEvents, useUpdateTask, useUser, type TaskInput } from '../../lib/queries';
+import { formatTaskTime, spentOf } from '../../lib/task-format';
 import { SubjectSelect } from '../subjects';
+import { ChecklistEditor } from '../tasks/ChecklistEditor';
 import { Dialog, Field, Input, Select, Textarea, useConfirm } from '../ui';
 import { DialogFooter, FormError } from './shared';
 
@@ -12,7 +15,32 @@ const blankToNull = (v: string) => (v.trim() === '' ? null : v);
 
 export type TaskDefaults = Partial<Pick<TaskInput, 'dueDate' | 'eventId' | 'subjectId'>>;
 
-function TaskForm({ task, defaults, onSave }: { task?: Task; defaults?: TaskDefaults; onSave: (input: TaskInput) => Promise<void> }) {
+type Confirm = ReturnType<typeof useConfirm>[0];
+
+/** 預估時間欄位下方的提示：已投入多少；超過預估時加上警示圖示與文字（TSK-4） */
+function SpentHint({ spent, estimate }: { spent: number; estimate: number | null }) {
+	const time = formatTaskTime(spent, estimate);
+	if (!time.spentText) return null;
+	if (!time.over) return <>{time.spentText}</>;
+	return (
+		<span className="inline-flex items-start gap-1 font-semibold text-warning">
+			<TriangleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+			{time.spentText}，超過預估 {time.overText}
+		</span>
+	);
+}
+
+function TaskForm({
+	task,
+	defaults,
+	onSave,
+	confirm,
+}: {
+	task?: Task | TaskItem;
+	defaults?: TaskDefaults;
+	onSave: (input: TaskInput) => Promise<void>;
+	confirm: Confirm;
+}) {
 	const user = useUser();
 	const { data: events = [] } = useEvents({ from: today(user.timezone) });
 	const [error, setError] = useState<string>();
@@ -25,7 +53,9 @@ function TaskForm({ task, defaults, onSave }: { task?: Task; defaults?: TaskDefa
 		estimatedMinutes: task?.estimatedMinutes ? String(task.estimatedMinutes) : '',
 		subjectId: task?.subjectId ?? defaults?.subjectId ?? null,
 		eventId: task?.eventId ?? defaults?.eventId ?? null,
+		checklist: task?.checklist ?? ([] as ChecklistItem[]),
 	});
+	const spent = task ? spentOf(task) : 0;
 
 	// 選了考試就自動帶入該考試的科目
 	const pickEvent = (eventId: string | null) => {
@@ -33,17 +63,36 @@ function TaskForm({ task, defaults, onSave }: { task?: Task; defaults?: TaskDefa
 		setForm((f) => ({ ...f, eventId, subjectId: f.subjectId ?? ev?.subjectId ?? null }));
 	};
 
-	const onSubmit = (e: FormEvent) => {
-		e.preventDefault();
+	const submit = (values: typeof form) => {
 		const input: TaskInput = {
-			...form,
-			description: blankToNull(form.description),
-			dueDate: blankToNull(form.dueDate),
-			estimatedMinutes: form.estimatedMinutes ? Number(form.estimatedMinutes) : null,
+			...values,
+			description: blankToNull(values.description),
+			dueDate: blankToNull(values.dueDate),
+			estimatedMinutes: values.estimatedMinutes ? Number(values.estimatedMinutes) : null,
 		};
 		const parsed = taskSchema.safeParse(input);
 		if (!parsed.success) return setError(parsed.error.issues[0].message);
+		setError(undefined);
 		onSave(input);
+	};
+
+	const onSubmit = (e: FormEvent) => {
+		e.preventDefault();
+		submit(form);
+	};
+
+	// 子項目全部勾完：詢問要不要一併完成任務（不會自動完成）；確定後改成已完成並儲存
+	const onAllDone = async (checklist: ChecklistItem[]) => {
+		if (form.status === 'done') return;
+		const ok = await confirm({
+			title: '要一併完成任務嗎？',
+			message: '子項目都勾完了。選「完成任務」會把狀態改成已完成，並儲存這個任務。',
+			confirmText: '完成任務',
+		});
+		if (!ok) return;
+		const next = { ...form, checklist, status: 'done' as const };
+		setForm(next);
+		submit(next);
 	};
 
 	// 編輯舊任務時，連結的考試可能已經結束（不在「即將到來」清單中）
@@ -91,7 +140,10 @@ function TaskForm({ task, defaults, onSave }: { task?: Task; defaults?: TaskDefa
 					</Select>
 				)}
 			</Field>
-			<Field label="預估時間（分鐘）">
+			<Field
+				label="預估時間（分鐘）"
+				hint={spent > 0 ? <SpentHint spent={spent} estimate={Number(form.estimatedMinutes) || null} /> : undefined}
+			>
 				{(id) => (
 					<Input
 						id={id}
@@ -118,6 +170,7 @@ function TaskForm({ task, defaults, onSave }: { task?: Task; defaults?: TaskDefa
 					</Select>
 				)}
 			</Field>
+			<ChecklistEditor items={form.checklist} onChange={(checklist) => setForm((f) => ({ ...f, checklist }))} onAllDone={onAllDone} />
 			<Field label="說明（選填）" className="col-span-2">
 				{(id) => (
 					<Textarea id={id} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={5000} />
@@ -136,6 +189,7 @@ export function TaskDialog({
 }: {
 	open: boolean;
 	onClose: () => void;
+	/** 傳入 TaskItem（帶 spentMinutes）時，預估時間下方會顯示已投入的時間 */
 	task?: Task;
 	defaults?: TaskDefaults;
 }) {
@@ -171,7 +225,7 @@ export function TaskDialog({
 					<DialogFooter formId="task-form" onClose={onClose} onDelete={task && onDelete} saving={create.isPending || update.isPending} />
 				}
 			>
-				<TaskForm key={task?.id ?? 'new'} task={task} defaults={defaults} onSave={onSave} />
+				<TaskForm key={task?.id ?? 'new'} task={task} defaults={defaults} onSave={onSave} confirm={confirm} />
 			</Dialog>
 			{confirmDialog}
 		</>
