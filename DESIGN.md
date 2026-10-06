@@ -499,7 +499,7 @@
 | `MiniIconButton` | `label`（無障礙名稱，必填）、`icon?: LucideIcon`（預設 X）、其餘 button 屬性；forwardRef | 看起來 28px 的圓形圖示按鈕（card 90% 底、line 框、陰影 sm），`::after` 擴大到 44px。位置由 className 決定（`absolute top-1 right-1`）。焦點時底色轉成實心 card，焦點框外再墊一圈 card |
 | `StretchedButton` | `cover?: 'cell'（預設）\|'card'`、其餘 button 屬性；forwardRef | 整格可點的標題按鈕：`::after` 蓋滿最近的 relative 容器，焦點框畫在 `::after`。cell：往外 4px、圓角 md；card：貼齊、圓角 xl、焦點框內縮 2px（卡片有 overflow-hidden 也看得到）。文字樣式由 className 給 |
 | `ShowAllToggle` | `expanded`、`onToggle`、`total`、`limit`、`unit?`（'項'）、`className?` | 「顯示全部 25 項／只顯示前 20 項」＋ChevronDown（展開時轉 180°），`aria-expanded`，ghost sm、撐滿寬度。total ≤ limit 時不顯示 |
-| `SearchInput` | `value`、`onValueChange(value)`、`label`（aria-label，必填）、`clearLabel?`（'清除搜尋'）、`className?`（**套在外層容器**）、其餘 input 屬性（placeholder、maxLength…）；forwardRef 到 input | `role="search"` 容器、左側放大鏡、有文字時右側 44px 清除鈕（清除後焦點回到輸入框）、Esc 清空並攔下事件（已經是空的就交給外層，例如讓對話框關閉）、注音選字中不攔截。`type="search"`、`enterKeyHint="search"`、隱藏瀏覽器內建的清除鈕 |
+| `SearchInput` | `value`、`onValueChange(value)`、`label`（aria-label，必填）、`clearLabel?`（'清除搜尋'）、`className?`（**套在外層容器**）、其餘 input 屬性（placeholder、maxLength…）；forwardRef 到 input | `role="search"` 容器、左側放大鏡、有文字時右側 44px 清除鈕（清除後焦點回到輸入框）、Esc 清空並攔下事件（`preventDefault`＋`stopPropagation`，外層的對話框與 Escape 快捷鍵都不會觸發；已經是空的就交給外層，例如讓對話框關閉）、注音選字中不攔截。`type="search"`、`enterKeyHint="search"`、隱藏瀏覽器內建的清除鈕 |
 | `usePrefersReducedMotion()` | — | `prefers-reduced-motion: reduce` 是否成立（`useSyncExternalStore`，會跟著系統設定變）。CSS 能處理的用 `motion-reduce:`，只有 JS 控制的動畫才用它 |
 
 tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-section`、`mt-section`）、`--scrim`／`--on-scrim`（`bg-scrim`、`backdrop:bg-scrim`、`text-on-scrim`）。

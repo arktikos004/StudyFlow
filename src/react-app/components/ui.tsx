@@ -1302,7 +1302,7 @@ type SearchInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'o
 
 /**
  * 搜尋框：左側放大鏡、有文字時右側出現清除鈕（44px 寬，清除後焦點回到輸入框），Esc 也會清空。
- * - Esc：有文字時清空並攔下事件（外層的對話框不會跟著關閉）；已經是空的就交給外層。注音選字中不攔截。
+ * - Esc：有文字時清空並攔下事件（preventDefault＋stopPropagation：外層的對話框不會關閉，外層的 Escape 快捷鍵也不會觸發）；已經是空的就交給外層。注音選字中不攔截。
  * - **className 套在外層容器**（寬度、flex），和 Select 一樣；其餘屬性（placeholder、maxLength…）傳給 input。
  */
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(function SearchInput(
@@ -1328,7 +1328,9 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
 				onKeyDown={(e) => {
 					onKeyDown?.(e);
 					if (e.defaultPrevented || e.key !== 'Escape' || !value || e.nativeEvent.isComposing) return;
+					// 這次 Esc 只用來清空：preventDefault 讓原生 <dialog> 不關閉，stopPropagation 讓外層（document、window）的 Escape 處理不會同時觸發
 					e.preventDefault();
+					e.stopPropagation();
 					onValueChange('');
 				}}
 				className="sf-field sf-input sf-search-input"
