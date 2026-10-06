@@ -1061,8 +1061,9 @@ export function TableToggle({ on, onToggle }: { on: boolean; onToggle: () => voi
  * - Home／End：第一個／最後一個。
  * 欄數直接讀 CSS grid 實際排出來的欄（grid-template-columns 的計算值），所以 auto-fill、斷點都不用另外同步。
  * 不是這些按鍵時回傳 null（交給瀏覽器處理，例如 Tab）。
+ * e 只需要 key：React 的合成事件與 DOM 的 KeyboardEvent 都能直接傳。
  */
-export function gridKeyTarget(e: KeyboardEvent, index: number, count: number, grid: HTMLElement | null): number | null {
+export function gridKeyTarget(e: { readonly key: string }, index: number, count: number, grid: HTMLElement | null): number | null {
 	if (count <= 0) return null;
 	const cols = grid ? Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length) : 1;
 	switch (e.key) {
