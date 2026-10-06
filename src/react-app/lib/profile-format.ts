@@ -67,6 +67,18 @@ export function badgeCapacity(width: number, count: number, size: number, gap: n
 	return Math.max(0, Math.min(count - 1, fit));
 }
 
+/** 個人檔案徽章列的尺寸（rem）：徽章 1.75rem（28px）、間距 0.5rem（8px）、「+N」最寬約 2.125rem（34px，+11） */
+export const BADGE_ROW = { size: 1.75, gap: 0.5, chip: 2.125 } as const;
+
+/**
+ * 個人檔案的徽章列放得下幾個：width 是這一列實際的寬度（px），rootFontSize 是 <html> 的字級（px）。
+ * 徽章的尺寸是 rem，使用者把瀏覽器的預設字級調大時會跟著變大，所以換算後再算（不能假設 1rem = 16px）。
+ */
+export function badgeRowCapacity(width: number, count: number, rootFontSize: number): number {
+	const px = Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : 16;
+	return badgeCapacity(width, count, BADGE_ROW.size * px, BADGE_ROW.gap * px, BADGE_ROW.chip * px);
+}
+
 /**
  * Email 的換行點：在「@」與「.」前面斷開（alex.chen.2026@student.example 換行 .edu.tw），
  * 不會在單字中間斷（example.e／du.tw）。回傳的片段依序接起來就是原本的 Email。

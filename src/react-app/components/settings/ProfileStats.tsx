@@ -2,14 +2,9 @@ import { ChevronRight, Flame, Hourglass, ListChecks, Trophy, type LucideIcon } f
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ProfileSummary } from '../../../shared/api-types';
-import { badgeCapacity, formatCount, masteredNote, sessionsNote, streakNote, studyTotal } from '../../lib/profile-format';
+import { badgeRowCapacity, formatCount, masteredNote, sessionsNote, streakNote, studyTotal } from '../../lib/profile-format';
 import { AchievementIcon } from '../../lib/shell-icons';
 import { cn, MoreLink, Unit } from '../ui';
-
-// 徽章 28px、間距 8px；「+N」最寬約 34px（+11）
-const BADGE = 28;
-const GAP = 8;
-const CHIP = 34;
 
 /** 一格數字：dt（圖示＋標籤）、dd 數值（font-num 28px／600）、dd 副標。第二格起的左框與第二列的上框都是分隔線 */
 function Cell({ icon: Icon, label, children, note, className }: { icon: LucideIcon; label: ReactNode; children: ReactNode; note: ReactNode; className?: string }) {
@@ -40,21 +35,32 @@ const NoteSkeleton = () => (
 	</span>
 );
 
+type RowSpace = { width: number; rootFontSize: number };
+
 /**
- * 量出元素的寬度（px），跟著 ResizeObserver 更新。observe 之後的第一次通知在版面計算完、畫面繪製前送達，
- * 所以第一次畫面就是量好的寬度，不會先閃一下估計值。
+ * 量出徽章列實際的寬度與 <html> 的字級（徽章的尺寸是 rem）。
+ * - 在 layout effect 裡先同步量一次：React 會在畫面繪製前用量到的值重新 render，第一個畫面就是對的
+ *   （ResizeObserver 回呼裡的 setState 要到下一輪才 render，第一個畫面會是估計值，窄手機上會多放一顆而溢出）。
+ * - 之後跟著 ResizeObserver 更新；值沒變就沿用同一個物件，不多 render。
  */
-function useWidth<T extends HTMLElement>(enabled: boolean) {
+function useRowSpace<T extends HTMLElement>(enabled: boolean) {
 	const ref = useRef<T>(null);
-	const [width, setWidth] = useState<number | null>(null);
+	const [space, setSpace] = useState<RowSpace | null>(null);
 	useLayoutEffect(() => {
 		const el = ref.current;
-		if (!enabled || !el || typeof ResizeObserver === 'undefined') return;
-		const observer = new ResizeObserver(() => setWidth(el.clientWidth));
+		if (!enabled || !el) return;
+		const measure = () => {
+			const width = el.clientWidth;
+			const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+			setSpace((prev) => (prev && prev.width === width && prev.rootFontSize === rootFontSize ? prev : { width, rootFontSize }));
+		};
+		measure();
+		if (typeof ResizeObserver === 'undefined') return;
+		const observer = new ResizeObserver(measure);
 		observer.observe(el);
 		return () => observer.disconnect();
 	}, [enabled]);
-	return [ref, width] as const;
+	return [ref, space] as const;
 }
 
 /**
@@ -62,11 +68,11 @@ function useWidth<T extends HTMLElement>(enabled: boolean) {
  * 一列放不下時最後一格是「+N」。徽章名稱給螢幕報讀器（sr-only），看得到的人點整格到成就頁看名稱。
  */
 function BadgeRow({ badges }: { badges: ProfileSummary['achievements']['badges'] }) {
-	const [ref, width] = useWidth<HTMLUListElement>(badges.length > 0);
+	const [ref, space] = useRowSpace<HTMLUListElement>(badges.length > 0);
 	// 沒有徽章時的文字和徽章列同高（28px），載入完、解鎖第一個時都不會跳動
 	if (!badges.length) return <p className="flex min-h-7 items-center text-meta text-ink-3">還沒有解鎖的徽章</p>;
-	// 還沒量到寬度時先用手機一格的寬度估（約 147px），量到後在第一次畫面前就會更新
-	const shown = badges.slice(0, badgeCapacity(width ?? 147, badges.length, BADGE, GAP, CHIP));
+	// 第一次 render 還沒量到：先用最窄的估計（只會存在於繪製前的那一次 render，畫面上看不到）
+	const shown = badges.slice(0, badgeRowCapacity(space?.width ?? 0, badges.length, space?.rootFontSize ?? 16));
 	const rest = badges.length - shown.length;
 	return (
 		<ul ref={ref} aria-label="已解鎖的徽章" className="flex items-center gap-2">

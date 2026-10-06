@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	badgeCapacity,
+	badgeRowCapacity,
 	emailParts,
 	formatCount,
 	joinedLabel,
@@ -100,6 +101,32 @@ describe('一列放得下幾個徽章（badgeCapacity）', () => {
 		// chip 省略時和徽章一樣寬：1 個徽章＋間距＋「+N」= 64
 		expect(badgeCapacity(64, 3, 28, 8)).toBe(1);
 		expect(badgeCapacity(63, 3, 28, 8)).toBe(0);
+	});
+});
+
+describe('個人檔案的徽章列（badgeRowCapacity，review A4）', () => {
+	it('預設字級 16px：和以 px 計算的結果相同（徽章 28、間距 8、「+N」34）', () => {
+		for (const width of [0, 100, 132, 147, 204, 500]) {
+			expect(badgeRowCapacity(width, 12, 16)).toBe(badgeCapacity(width, 12, 28, 8, 34));
+		}
+		// 390px 手機的一格約 147px：3 個＋「+N」；360px 手機約 132px：只放得下 2 個＋「+N」
+		expect(badgeRowCapacity(147, 5, 16)).toBe(3);
+		expect(badgeRowCapacity(132, 5, 16)).toBe(2);
+	});
+
+	it('瀏覽器的預設字級調大時，徽章跟著變大，放得下的數量變少', () => {
+		// 20px（125%）：徽章 35、間距 10、「+N」42.5 → (147 − 42.5) / 45 = 2.3 → 2 個
+		expect(badgeRowCapacity(147, 5, 20)).toBe(2);
+		// 24px（150%）：徽章 42、間距 12、「+N」51 → (147 − 51) / 54 = 1.7 → 1 個
+		expect(badgeRowCapacity(147, 5, 24)).toBe(1);
+		// 全部放得下時不受影響：2 個 = 35×2 + 10 = 80
+		expect(badgeRowCapacity(147, 2, 20)).toBe(2);
+	});
+
+	it('字級不合法時當成 16px；還沒量到寬度（0）時不顯示徽章，只留「+N」', () => {
+		expect(badgeRowCapacity(147, 5, Number.NaN)).toBe(3);
+		expect(badgeRowCapacity(147, 5, 0)).toBe(3);
+		expect(badgeRowCapacity(0, 5, 16)).toBe(0);
 	});
 });
 
