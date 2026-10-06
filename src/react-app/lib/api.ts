@@ -1,3 +1,5 @@
+import type { PublicUser } from '../../shared/api-types';
+
 export class ApiError extends Error {
 	constructor(
 		message: string,
@@ -43,6 +45,13 @@ export function qs(params: Record<string, string | number | undefined | null>) {
 }
 
 export const attachmentUrl = (id: string) => `/api/attachments/${id}`;
+
+/**
+ * 本人頭像的網址，給 <img src> 使用（同源，會帶登入 cookie）；沒有上傳時回 null，畫面改用暱稱首字。
+ * 帶 ?v=<avatarUpdatedAt>：每次更換都會換網址，瀏覽器不會拿快取裡的舊圖（後端讓同一個網址快取一年）。
+ */
+export const avatarUrl = (user: Pick<PublicUser, 'avatarUpdatedAt'>): string | null =>
+	user.avatarUpdatedAt ? `/api/auth/avatar?v=${user.avatarUpdatedAt}` : null;
 
 export type ExportFile = 'backup.json' | 'sessions.csv' | 'tasks.csv' | 'calendar.ics';
 /**
