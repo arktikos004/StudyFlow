@@ -25,6 +25,12 @@ export type CountdownState = {
 	label: string;
 };
 
+/** 倒數磚的語氣只看種類與距離今天幾天（考試頁、單科總覽共用同一條規則） */
+export function countdownTone(kind: EventItem['kind'], days: number): CountdownTone {
+	const exam = kind === 'exam';
+	return days < 0 ? 'past' : exam && days <= 3 ? 'urgent' : !exam && days === 0 ? 'today' : 'normal';
+}
+
 export function countdownState(
 	event: Pick<EventItem, 'kind' | 'date' | 'time'>,
 	today: string,
@@ -35,8 +41,7 @@ export function countdownState(
 	const exam = event.kind === 'exam';
 	const start = eventStartMs(event.date, event.time, timeZone);
 	const left = start === null ? null : start - now;
-	const tone: CountdownTone =
-		days < 0 ? 'past' : exam && days <= 3 ? 'urgent' : !exam && days === 0 ? 'today' : 'normal';
+	const tone = countdownTone(event.kind, days);
 
 	if (days < 0) return { tone, days, secondsLeft: null, label: '天前' };
 	if (left !== null && left > 0 && left < DAY_MS) return { tone, days, secondsLeft: left / 1000, label: exam ? '後開始' : '後截止' };

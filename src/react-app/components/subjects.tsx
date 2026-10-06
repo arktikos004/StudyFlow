@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import type { Subject } from '../../shared/api-types';
 import type { SubjectTone } from '../../shared/color';
+import { firstGrapheme } from '../lib/polish-format';
 import { useSubjectMap, useSubjects } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
 import { subjectIcon } from '../lib/subject-icons';
@@ -54,10 +55,42 @@ export function SubjectChip({
 }
 
 /**
- * 科目標籤。文字一律是 ink 色，科目色只用在底色、外框與圓點；科目圖示只透過這個元件顯示。
+ * 科目圖示方塊的外觀（純顯示）：科目 mark 底、onMark 圖示；沒有圖示時顯示名稱的第一個字。
+ * 裝飾用、aria-hidden（所以不加 title），名稱要由旁邊的文字提供；不可放進按鈕或連結當唯一內容。
+ * - 第一個字是文字，對比門檻比圖示高：用 19px 粗體（WCAG 的大字，門檻 3:1）。onMark 會在白色與深色文字之間
+ *   選對比較高的那個，48 個色盤色在淺色、深色下最低 4.24／4.39，任意自訂色也都在 3:1 以上（test/polish-subject-tile.spec.ts）。
+ * - 第一個字以字素切（firstGrapheme），emoji、組合字不會被切半。
+ * SubjectTag 的 icon 版與「手上已經有科目資料」的地方（單科總覽的標題，資料來自同一次 API）共用；
+ * tone 由呼叫端用 useSubjectTone 算好。大小用 className 調整（預設 40px）。
+ */
+export function SubjectIconTile({
+	name,
+	tone,
+	icon,
+	className,
+}: {
+	name: string;
+	tone: SubjectTone;
+	/** SUBJECT_ICONS 的 key；null 或省略就顯示名稱的第一個字 */
+	icon?: string | null;
+	className?: string;
+}) {
+	return (
+		<span
+			aria-hidden
+			className={cn('grid size-10 shrink-0 place-items-center rounded-lg text-[1.1875rem] leading-none font-bold [&_svg]:size-5', className)}
+			style={{ background: tone.mark, color: tone.onMark }}
+		>
+			{subjectIcon(icon) ? <TagIcon icon={icon} /> : firstGrapheme(name)}
+		</span>
+	);
+}
+
+/**
+ * 科目標籤。文字一律是 ink 色，科目色只用在底色、外框與圓點；科目圖示只透過這個檔案的元件顯示。
  * - chip（預設）：螢光筆 chip（圓點＋圖示＋名稱）。
  * - compact：圓點＋圖示＋名稱，用在空間很擠的地方。
- * - icon：只有圖示方塊（科目色底、onMark 圖示；沒有圖示時顯示名稱的第一個字），裝飾用、aria-hidden，
+ * - icon：只有圖示方塊（SubjectIconTile），裝飾用、aria-hidden，
  *   名稱要由旁邊的文字提供（例如單科總覽頁的標題）。大小用 className 調整（預設 40px）。
  *
  * asLink：連到單科總覽 `/subjects/:id`（名稱加上「的科目總覽」給螢幕報讀器；觸控裝置點擊範圍 44px 高）。
@@ -80,17 +113,7 @@ export function SubjectTag({
 	if (!subject) return null;
 	const tone = toneOf(subject.color);
 
-	if (variant === 'icon')
-		return (
-			<span
-				aria-hidden
-				title={subject.name}
-				className={cn('grid size-10 shrink-0 place-items-center rounded-lg text-base font-semibold [&_svg]:size-5', className)}
-				style={{ background: tone.mark, color: tone.onMark }}
-			>
-				{subjectIcon(subject.icon) ? <TagIcon icon={subject.icon} /> : Array.from(subject.name)[0]}
-			</span>
-		);
+	if (variant === 'icon') return <SubjectIconTile name={subject.name} tone={tone} icon={subject.icon} className={className} />;
 
 	const tag =
 		variant === 'compact' ? (

@@ -45,7 +45,6 @@ function SubjectForm({
 	const goalRef = useRef<HTMLInputElement>(null);
 	const iconLabelId = useId();
 	const colorLabelId = useId();
-	const archiveHintId = useId();
 	const [name, setName] = useState(subject?.name ?? '');
 	const [icon, setIcon] = useState<SubjectIcon | null>(subject && isSubjectIcon(subject.icon) ? subject.icon : null);
 	// 新科目沒選顏色時，自動用下一個還沒用過的推薦色
@@ -136,11 +135,13 @@ function SubjectForm({
 			</div>
 
 			{subject && (
-				<div className="space-y-1 border-t border-line pt-4">
-					<Switch checked={archived} onChange={setArchived} label="封存這個科目" aria-describedby={archiveHintId} />
-					<p id={archiveHintId} className="text-meta text-ink-3">
-						上完的課程可以封存：不會出現在選單中，考試、任務、筆記與學習紀錄都會保留。
-					</p>
+				<div className="border-t border-line pt-4">
+					<Switch
+						checked={archived}
+						onChange={setArchived}
+						label="封存這個科目"
+						description="上完的課程可以封存：不會出現在選單中，考試、任務、筆記與學習紀錄都會保留。"
+					/>
 				</div>
 			)}
 		</form>

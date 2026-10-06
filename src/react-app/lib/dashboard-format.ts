@@ -50,12 +50,3 @@ export function sortByLag<T extends { goalMinutes: number; minutes: number }>(go
 		.sort((a, b) => ratio(a.g) - ratio(b.g) || left(b.g) - left(a.g) || a.i - b.i)
 		.map(({ g }) => g);
 }
-
-/** 分鐘數拆成數字與單位，和 formatMinutes 的文字一致：45 分鐘／1 小時 20 分／2 小時 */
-export function minuteParts(min: number): { value: number; unit: string }[] {
-	const m = Math.round(min);
-	if (m < 60) return [{ value: m, unit: '分鐘' }];
-	const h = Math.floor(m / 60);
-	const rest = m % 60;
-	return rest ? [{ value: h, unit: '小時' }, { value: rest, unit: '分' }] : [{ value: h, unit: '小時' }];
-}

@@ -4,9 +4,8 @@ import type { DashboardResponse } from '../../../shared/api-types';
 import { sortByLag } from '../../lib/dashboard-format';
 import { formatMinutes } from '../../lib/format';
 import { SubjectTag } from '../subjects';
-import { Card, CardHeader, EmptyState, GoalProgress, ProgressBar } from '../ui';
+import { Card, CardHeader, EmptyState, GoalProgress, MoreLink, ProgressBar } from '../ui';
 import { useSubjectMark } from './hooks';
-import { MoreLink } from './parts';
 
 type Goals = DashboardResponse['goals'];
 type SubjectGoal = Goals['subjects'][number];
@@ -18,7 +17,7 @@ function Goal({ label, value, goal, missing }: { label: string; value: number; g
 		<div className="flex flex-col gap-1.5">
 			<span className="text-sm text-ink-2">{label}</span>
 			<p className="text-meta text-ink-3">{missing}</p>
-			<MoreLink to="/settings" className="self-start">
+			<MoreLink to="/settings#goals" className="self-start">
 				設定目標
 			</MoreLink>
 		</div>
@@ -81,7 +80,7 @@ export function GoalsCard({ goals, todayMinutes, weekMinutes }: { goals: Goals; 
 				icon={<Target className="size-[18px] text-ink-3" aria-hidden />}
 				action={
 					hasAny && (
-						<MoreLink to="/settings" aria-label="調整讀書目標">
+						<MoreLink to="/settings#goals" aria-label="調整讀書目標">
 							調整
 						</MoreLink>
 					)
@@ -93,7 +92,7 @@ export function GoalsCard({ goals, todayMinutes, weekMinutes }: { goals: Goals; 
 					className="pb-4 sm:pb-5"
 					title="還沒有設定讀書目標"
 					description="設定後可以追蹤每天和每週的進度"
-					action={<MoreLink to="/settings">設定目標</MoreLink>}
+					action={<MoreLink to="/settings#goals">設定目標</MoreLink>}
 				/>
 			) : (
 				<div className="px-4 pb-4 sm:px-5 sm:pb-5">

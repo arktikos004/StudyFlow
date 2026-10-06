@@ -245,7 +245,7 @@ export const useDeleteEvent = () =>
 export type TaskInput = z.input<typeof taskSchema>;
 export type TaskUpdateInput = z.input<typeof taskUpdateSchema> & { id: string };
 // 任務會影響考試的準備進度（events）與「完成 50 個任務」成就
-const TASK_KEYS: QueryKey[] = [['tasks'], ['events'], ['achievements'], ...OVERVIEW];
+export const TASK_KEYS: QueryKey[] = [['tasks'], ['events'], ['achievements'], ...OVERVIEW];
 export const useCreateTask = () => useApiMutation((v: TaskInput) => api.post<{ task: TaskItem }>('/tasks', v), TASK_KEYS, '已新增任務');
 export const useUpdateTask = () =>
 	useApiMutation(({ id, ...v }: TaskUpdateInput) => api.patch<{ task: TaskItem }>(`/tasks/${id}`, v), TASK_KEYS);

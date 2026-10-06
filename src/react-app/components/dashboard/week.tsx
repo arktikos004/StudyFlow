@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { formatDate, formatMinutes } from '../../lib/format';
-import { MiniDailyBars, TableToggle } from '../charts';
-import { Card, CardHeader } from '../ui';
-import { MoreLink } from './parts';
+import { MiniDailyBars } from '../charts';
+import { Card, CardHeader, MoreLink, TableToggle } from '../ui';
 
 /** 總覽的「近 7 天學習時間」：單一系列的長條圖（不需要圖例），附表格檢視 */
 export function WeekCard({ days, today }: { days: { date: string; minutes: number }[]; today: string }) {

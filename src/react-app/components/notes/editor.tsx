@@ -5,7 +5,7 @@ import { ATTACHMENT_MAX_PER_NOTE, REVIEW_INTERVALS, noteSchema } from '../../../
 import { compressImage } from '../../lib/image';
 import { useCreateNote, useDeleteAttachment, useNote, useUpdateNote, useUploadAttachment, type NoteInput } from '../../lib/queries';
 import { SubjectSelect } from '../subjects';
-import { Button, Checkbox, cn, Dialog, Field, Input, Segmented, Textarea } from '../ui';
+import { Button, Checkbox, cn, Dialog, Field, Input, Segmented, Textarea, useConfirm, type ConfirmOptions } from '../ui';
 import { MarkdownView, PhotoGrid, ThumbAction } from './content';
 
 /** 選照片：新筆記先暫存在本機，儲存筆記後再上傳 */
@@ -88,12 +88,15 @@ function NoteEditorForm({
 	defaultSubjectId,
 	onDone,
 	setSaving,
+	confirm,
 }: {
 	note?: NoteItem;
 	defaultKind: 'note' | 'mistake';
 	defaultSubjectId: string | null;
 	onDone: () => void;
 	setSaving: (v: boolean) => void;
+	/** 刪除已上傳的照片前確認（對話框由 NoteEditor 渲染在編輯視窗外層） */
+	confirm: (opts: ConfirmOptions) => Promise<boolean>;
 }) {
 	const create = useCreateNote();
 	const update = useUpdateNote();
@@ -285,7 +288,18 @@ function NoteEditorForm({
 						}
 					/>
 				</div>
-				<PhotoGrid attachments={existing} onDelete={(a) => removeAttachment.mutate(a.id)} />
+				<PhotoGrid
+					attachments={existing}
+					onDelete={async (a) => {
+						// 已上傳的照片一刪就真的刪掉，和下面「儲存後上傳」的暫存照片不同，按「取消」關閉編輯視窗也不會回來
+						const ok = await confirm({
+							title: `刪除第 ${existing.indexOf(a) + 1} 張照片？`,
+							message: '照片會馬上刪除、無法復原，就算之後不儲存這次的修改也一樣。',
+							confirmText: '刪除照片',
+						});
+						if (ok) removeAttachment.mutate(a.id);
+					}}
+				/>
 				{pending.length > 0 && (
 					<ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
 						{pending.map((p, i) => (
@@ -344,31 +358,36 @@ export function NoteEditor({
 	defaultSubjectId?: string | null;
 }) {
 	const [saving, setSaving] = useState(false);
+	const [confirm, confirmDialog] = useConfirm();
 	// 新增時可以在表單裡切換錯題／筆記，所以標題不寫死類型
 	const title = note ? (note.kind === 'mistake' ? '編輯錯題' : '編輯筆記') : '新增錯題或筆記';
 	return (
-		<Dialog
-			open={open}
-			onClose={onClose}
-			wide
-			title={title}
-			footer={
-				<>
-					<Button onClick={onClose}>取消</Button>
-					<Button variant="primary" type="submit" form="note-form" loading={saving}>
-						儲存
-					</Button>
-				</>
-			}
-		>
-			<NoteEditorForm
-				key={note?.id ?? defaultKind}
-				note={note}
-				defaultKind={defaultKind}
-				defaultSubjectId={defaultSubjectId}
-				onDone={onClose}
-				setSaving={setSaving}
-			/>
-		</Dialog>
+		<>
+			<Dialog
+				open={open}
+				onClose={onClose}
+				wide
+				title={title}
+				footer={
+					<>
+						<Button onClick={onClose}>取消</Button>
+						<Button variant="primary" type="submit" form="note-form" loading={saving}>
+							儲存
+						</Button>
+					</>
+				}
+			>
+				<NoteEditorForm
+					key={note?.id ?? defaultKind}
+					note={note}
+					defaultKind={defaultKind}
+					defaultSubjectId={defaultSubjectId}
+					onDone={onClose}
+					setSaving={setSaving}
+					confirm={confirm}
+				/>
+			</Dialog>
+			{confirmDialog}
+		</>
 	);
 }

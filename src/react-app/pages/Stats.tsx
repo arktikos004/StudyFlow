@@ -7,14 +7,29 @@ import {
 	Legend,
 	StatStrip,
 	SubjectBars,
-	TableToggle,
 	useSubjectColor,
 	WeeklyTaskBars,
 	type StatItem,
 } from '../components/charts';
-import { Duration, MoreLink, Unit } from '../components/dashboard/parts';
 import { buildSeries, foldSeries } from '../components/dashboard/series';
-import { Badge, Button, Card, CardHeader, cn, EmptyState, ErrorNote, NumDisplay, PageHeader, PageLoader, ProgressBar, Segmented } from '../components/ui';
+import {
+	Badge,
+	Button,
+	Card,
+	CardHeader,
+	cn,
+	Duration,
+	EmptyState,
+	ErrorNote,
+	MoreLink,
+	NumDisplay,
+	PageHeader,
+	PageLoader,
+	ProgressBar,
+	Segmented,
+	TableToggle,
+	Unit,
+} from '../components/ui';
 import { formatDate, formatMinutes } from '../lib/format';
 import { useStats, useSubjects } from '../lib/queries';
 
@@ -107,7 +122,7 @@ export function StatsPage() {
 					label: '每日目標',
 					icon: <Target aria-hidden />,
 					value: (
-						<MoreLink to="/settings" className="font-sans text-dense">
+						<MoreLink to="/settings#goals" className="font-sans text-dense">
 							設定每日目標
 						</MoreLink>
 					),
