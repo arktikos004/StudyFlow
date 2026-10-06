@@ -4,9 +4,8 @@ import type { DashboardResponse } from '../../../shared/api-types';
 import { sortByLag } from '../../lib/dashboard-format';
 import { formatMinutes } from '../../lib/format';
 import { SubjectTag } from '../subjects';
-import { Card, CardHeader, EmptyState, GoalProgress, ProgressBar } from '../ui';
+import { Card, CardHeader, EmptyState, GoalProgress, MoreLink, ProgressBar } from '../ui';
 import { useSubjectMark } from './hooks';
-import { MoreLink } from './parts';
 
 type Goals = DashboardResponse['goals'];
 type SubjectGoal = Goals['subjects'][number];

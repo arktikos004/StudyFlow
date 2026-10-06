@@ -6,9 +6,8 @@ import { eventStartMs } from '../../lib/dashboard-format';
 import { formatDate } from '../../lib/format';
 import { useNow } from '../../lib/timer';
 import { SubjectTag } from '../subjects';
-import { Button, Card, CardHeader, cn, Countdown, NumDisplay, ProgressBar } from '../ui';
+import { Button, Card, CardHeader, cn, Countdown, MoreLink, NumDisplay, ProgressBar } from '../ui';
 import { useSubjectMark } from './hooks';
-import { MoreLink } from './parts';
 
 const DAY_MS = 86_400_000;
 

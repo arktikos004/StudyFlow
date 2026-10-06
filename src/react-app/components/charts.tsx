@@ -1,8 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from 'recharts';
 import { formatDate, formatMinutes, formatMinutesShort, formatMonthDay, weekdayLabel } from '../lib/format';
-import { ChartColumn, Table2 } from 'lucide-react';
-import { Button, cn } from './ui';
+import { cn, TableToggle } from './ui';
 
 // 科目色的邏輯在 lib/subject-color.ts；這裡保留 re-export，既有的 import 不用改
 export { NO_SUBJECT_COLOR, nextSubjectColor, useSubjectColor } from '../lib/subject-color';
@@ -124,16 +123,6 @@ export function StatStrip({ items, className, footer }: { items: StatItem[]; cla
 			</dl>
 			{footer && <div className="border-t border-line">{footer}</div>}
 		</div>
-	);
-}
-
-/** 圖表／表格切換：每張圖都有表格檢視（dataviz）。aria-pressed 表示目前是表格檢視；文字與 aria-label 寫出按下去會切到哪一種 */
-export function TableToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-	return (
-		<Button size="sm" variant="ghost" onClick={onToggle} aria-pressed={on} aria-label={on ? '改用圖表檢視' : '改用表格檢視'}>
-			{on ? <ChartColumn className="size-4" aria-hidden /> : <Table2 className="size-4" aria-hidden />}
-			{on ? '圖表' : '表格'}
-		</Button>
 	);
 }
 
