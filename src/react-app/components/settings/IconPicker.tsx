@@ -2,8 +2,7 @@ import { useRef, type KeyboardEvent } from 'react';
 import type { SubjectTone } from '../../../shared/color';
 import type { SubjectIcon } from '../../../shared/schemas';
 import { SUBJECT_ICON_OPTIONS, type SubjectIconDef } from '../../lib/subject-icons';
-import { cn } from '../ui';
-import { gridKeyTarget } from './roving';
+import { cn, gridKeyTarget } from '../ui';
 
 type Option = { key: SubjectIcon | null } & Partial<SubjectIconDef> & { label: string };
 

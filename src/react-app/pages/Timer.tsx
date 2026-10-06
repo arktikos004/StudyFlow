@@ -133,7 +133,6 @@ function OptionField({ option, value, hint }: { option: NumericOption; value: nu
 function PomodoroSettings({ s }: { s: TimerState }) {
 	const [open, setOpen] = useState(false);
 	const id = useId();
-	const focusHint = useId();
 	return (
 		<section aria-labelledby={`${id}-title`} className="w-full max-w-xl border-t border-line pt-5">
 			<div className="flex items-center justify-between gap-3">
@@ -167,11 +166,8 @@ function PomodoroSettings({ s }: { s: TimerState }) {
 						checked={s.autoStartFocus}
 						onChange={(autoStartFocus) => timer.setOptions({ autoStartFocus })}
 						label="休息結束後自動開始下一輪專注"
-						aria-describedby={focusHint}
+						description="離開超過 1 分鐘（例如電腦睡眠）時不會自動開始，也不會補記不在時的番茄"
 					/>
-					<p id={focusHint} className="pl-[3.25rem] text-meta text-ink-3">
-						離開超過 1 分鐘（例如電腦睡眠）時不會自動開始，也不會補記不在時的番茄
-					</p>
 				</div>
 			</div>
 		</section>

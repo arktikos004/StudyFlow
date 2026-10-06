@@ -1,17 +1,15 @@
-import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import type { ChecklistItem, TaskItem } from '../../shared/api-types';
 import { api } from './api';
+import { TASK_KEYS } from './queries';
 import { applyTaskPatch, revertTaskPatch } from './task-patch';
 import { DEFAULT_SORT, parseSort, type TaskSort, type TaskStatus } from './task-sort';
 
 // 任務頁（s2/tasks）的資料 hook：樂觀更新、網址上的搜尋與排序、檢視方式。
-// lib/queries.ts 屬於後端；這裡只用同樣的 API 與 query key，快取與 invalidate 和 queries.ts 共用。
-
-/** 和 queries.ts 的 TASK_KEYS 相同：任務會影響考試準備進度、成就、總覽、統計、頁首摘要、單科總覽 */
-export const TASK_KEYS: QueryKey[] = [['tasks'], ['events'], ['achievements'], ['dashboard'], ['stats'], ['summary'], ['subject-overview']];
+// lib/queries.ts 屬於後端；這裡用同樣的 API 與 query key（TASK_KEYS 直接從 queries.ts 引入），快取與 invalidate 和 queries.ts 共用。
 
 const PATCH_KEY = ['task-patch'];
 

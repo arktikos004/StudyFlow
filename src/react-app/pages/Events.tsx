@@ -1,6 +1,5 @@
-import { AlarmClock, Brain, CalendarClock, CalendarDays, ChevronDown, ChevronRight, GraduationCap, ListPlus, MapPin, Pencil, Plus } from 'lucide-react';
+import { AlarmClock, Brain, CalendarClock, CalendarDays, ChevronDown, GraduationCap, ListPlus, MapPin, Pencil, Plus } from 'lucide-react';
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
 import { toast } from 'sonner';
 import type { EventItem } from '../../shared/api-types';
 import { localDate } from '../../shared/dates';
@@ -8,7 +7,7 @@ import { PrepProgress } from '../components/dashboard/exams';
 import { useSubjectMark } from '../components/dashboard/hooks';
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SubjectSelect, SubjectTag } from '../components/subjects';
-import { Badge, Button, Card, cn, Countdown, EmptyState, ErrorNote, NumDisplay, PageHeader, PageLoader } from '../components/ui';
+import { Badge, Button, Card, cn, Countdown, EmptyState, ErrorNote, NumDisplay, PageHeader, PageLoader, TextLink } from '../components/ui';
 import { eventStartMs } from '../lib/dashboard-format';
 import { EVENT_KIND_LABEL, formatDate } from '../lib/format';
 import { countdownState, eventsSummary, type CountdownTone } from '../lib/notes-exams';
@@ -52,20 +51,6 @@ function CountdownTile({ event, today, timeZone, clock }: { event: EventItem; to
 				{s.label}
 			</span>
 		</div>
-	);
-}
-
-/** 文字連結加 ChevronRight（連結後面不加「→」），觸控裝置 44px 高 */
-function TextLink({ to, children, label }: { to: string; children: ReactNode; label?: string }) {
-	return (
-		<Link
-			to={to}
-			aria-label={label}
-			className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-sm text-sm font-semibold text-accent-ink hover:underline pointer-fine:min-h-9 [&_svg]:size-4 [&_svg]:shrink-0"
-		>
-			{children}
-			<ChevronRight aria-hidden />
-		</Link>
 	);
 }
 
@@ -139,9 +124,14 @@ function EventCard({
 							<ListPlus className="size-4" aria-hidden />
 							新增準備任務
 						</Button>
+						{/* 滑鼠等精確指標維持 36px 高，卡片底部的這一列不會比左邊的按鈕高出太多；觸控裝置是 TextLink 預設的 44px */}
 						{subject && (
-							<TextLink to={`/notes?view=review&mode=cram&subject=${subject.id}`} label={`複習「${subject.name}」的錯題`}>
-								<Brain aria-hidden />
+							<TextLink
+								to={`/notes?view=review&mode=cram&subject=${subject.id}`}
+								aria-label={`複習「${subject.name}」的錯題`}
+								className="rounded-sm pointer-fine:min-h-9"
+							>
+								<Brain className="mr-0.5 size-4 shrink-0" aria-hidden />
 								複習這科錯題
 							</TextLink>
 						)}

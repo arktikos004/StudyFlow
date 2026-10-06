@@ -1,8 +1,7 @@
 import { Check, Monitor, Moon, Play, Sun } from 'lucide-react';
 import { useId, useRef, type KeyboardEvent } from 'react';
 import { ACCENTS, setAccent, setThemeMode, useAccent, useThemeMode, type AccentId, type ThemeMode } from '../../lib/theme';
-import { Card, CardHeader, cn, Segmented } from '../ui';
-import { gridKeyTarget } from './roving';
+import { Card, CardHeader, cn, gridKeyTarget, Segmented } from '../ui';
 
 /**
  * 主題色（SUB-4）：6 組預先驗證的色組，WAI-ARIA radiogroup（roving tabindex，方向鍵依畫面排列移動並選取）。
