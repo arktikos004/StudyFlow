@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import type { NoteItem, PublicAttachment } from '../../../shared/api-types';
 import { attachmentUrl } from '../../lib/api';
 import { formatDate } from '../../lib/format';
-import { Badge } from '../ui';
+import { Badge, MiniIconButton, SectionLabel, type IconProp } from '../ui';
 
 // 筆記與錯題的內容區塊：Markdown、照片、錯題的題目與答案、類型與複習狀態的 badge。
 
@@ -34,9 +34,19 @@ export function KindBadge({ kind }: { kind: NoteItem['kind'] }) {
  * detailed 時另外顯示之後的複習日（neutral）。圖示加文字，不只靠顏色。
  */
 export function ReviewBadge({ note, today, detailed = false }: { note: NoteItem; today: string; detailed?: boolean }) {
-	if (note.mastered) return <Badge tone="success" icon={<CircleCheck aria-hidden />}>已掌握</Badge>;
+	if (note.mastered)
+		return (
+			<Badge tone="success" icon={<CircleCheck aria-hidden />}>
+				已掌握
+			</Badge>
+		);
 	if (!note.nextReviewDate) return null;
-	if (note.nextReviewDate <= today) return <Badge tone="warning" icon={<Brain aria-hidden />}>待複習</Badge>;
+	if (note.nextReviewDate <= today)
+		return (
+			<Badge tone="warning" icon={<Brain aria-hidden />}>
+				待複習
+			</Badge>
+		);
 	if (!detailed) return null;
 	return <Badge icon={<Brain aria-hidden />}>{formatDate(note.nextReviewDate)} 複習</Badge>;
 }
@@ -54,7 +64,7 @@ function Lightbox({ attachment, onClose }: { attachment: PublicAttachment | null
 			ref={ref}
 			onClose={onClose}
 			onClick={onClose}
-			className="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-black/85"
+			className="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-scrim"
 			aria-label="檢視照片"
 		>
 			{attachment && (
@@ -70,20 +80,6 @@ function Lightbox({ attachment, onClose }: { attachment: PublicAttachment | null
 				</div>
 			)}
 		</dialog>
-	);
-}
-
-/** 小圓形按鈕（照片角落的刪除、移除）：看起來 28px，點擊範圍用 ::after 擴大到 44px */
-export function ThumbAction({ label, onClick }: { label: string; onClick: () => void }) {
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			aria-label={label}
-			className="absolute top-1 right-1 grid size-7 place-items-center rounded-full border border-line bg-card/90 text-ink shadow-sm after:absolute after:-inset-2 after:content-[''] hover:bg-card"
-		>
-			<X className="size-4" aria-hidden />
-		</button>
 	);
 }
 
@@ -103,7 +99,7 @@ export function PhotoGrid({ attachments, onDelete }: { attachments: PublicAttach
 						>
 							<img src={attachmentUrl(a.id)} alt="" loading="lazy" className="size-full object-cover" />
 						</button>
-						{onDelete && <ThumbAction label={`刪除第 ${i + 1} 張照片`} onClick={() => onDelete(a)} />}
+						{onDelete && <MiniIconButton label={`刪除第 ${i + 1} 張照片`} onClick={() => onDelete(a)} className="absolute top-1 right-1" />}
 					</li>
 				))}
 			</ul>
@@ -114,13 +110,13 @@ export function PhotoGrid({ attachments, onDelete }: { attachments: PublicAttach
 
 // ---- 錯題的題目與答案 ----
 
-function Block({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
+/** 欄位小標（SectionLabel，h3）＋內容 */
+function Block({ icon, label, children }: { icon: IconProp; label: string; children: ReactNode }) {
 	return (
 		<section>
-			<h3 className="mb-1 flex items-center gap-1.5 text-meta font-semibold text-ink-2 [&_svg]:size-4 [&_svg]:shrink-0">
-				{icon}
+			<SectionLabel as="h3" icon={icon} className="mb-1">
 				{label}
-			</h3>
+			</SectionLabel>
 			{children}
 		</section>
 	);
@@ -134,7 +130,7 @@ export function MistakeQuestion({ note }: { note: NoteItem }) {
 	return (
 		<div className="space-y-3">
 			{note.question && (
-				<Block icon={<FileQuestionMark className="text-ink-3" aria-hidden />} label="題目">
+				<Block icon={FileQuestionMark} label="題目">
 					{text(note.question)}
 				</Block>
 			)}
@@ -150,7 +146,7 @@ export function MistakeAnswer({ note }: { note: NoteItem }) {
 	return (
 		<div className="space-y-4">
 			{note.wrongAnswer && (
-				<Block icon={<CircleX className="text-ink-3" aria-hidden />} label="我的錯誤答案">
+				<Block icon={CircleX} label="我的錯誤答案">
 					{text(note.wrongAnswer)}
 				</Block>
 			)}
@@ -160,12 +156,12 @@ export function MistakeAnswer({ note }: { note: NoteItem }) {
 				</Block>
 			)}
 			{note.reason && (
-				<Block icon={<Lightbulb className="text-ink-3" aria-hidden />} label="錯誤原因">
+				<Block icon={Lightbulb} label="錯誤原因">
 					{text(note.reason)}
 				</Block>
 			)}
 			{note.content && (
-				<Block icon={<NotebookText className="text-ink-3" aria-hidden />} label="補充筆記">
+				<Block icon={NotebookText} label="補充筆記">
 					<MarkdownView>{note.content}</MarkdownView>
 				</Block>
 			)}

@@ -650,14 +650,7 @@ export function SubjectPage() {
 	if (isPending) return <PageLoader />;
 	if (error) {
 		if (error instanceof ApiError && error.status === 404) return <SubjectNotFound />;
-		return (
-			<div className="space-y-3">
-				<ErrorNote error={error} />
-				<Button onClick={() => refetch()} loading={isRefetching}>
-					重新載入
-				</Button>
-			</div>
-		);
+		return <ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />;
 	}
 	return <Overview key={data.subject.id} data={data} />;
 }

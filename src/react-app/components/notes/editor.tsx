@@ -5,8 +5,8 @@ import { ATTACHMENT_MAX_PER_NOTE, REVIEW_INTERVALS, noteSchema } from '../../../
 import { compressImage } from '../../lib/image';
 import { useCreateNote, useDeleteAttachment, useNote, useUpdateNote, useUploadAttachment, type NoteInput } from '../../lib/queries';
 import { SubjectSelect } from '../subjects';
-import { Button, Checkbox, cn, Dialog, Field, Input, Segmented, Textarea, useConfirm, type ConfirmOptions } from '../ui';
-import { MarkdownView, PhotoGrid, ThumbAction } from './content';
+import { Button, Checkbox, cn, Dialog, Field, Input, MiniIconButton, Segmented, Textarea, useConfirm, type ConfirmOptions } from '../ui';
+import { MarkdownView, PhotoGrid } from './content';
 
 /** 選照片：新筆記先暫存在本機，儲存筆記後再上傳 */
 function PhotoPicker({ count, onPick, disabled }: { count: number; onPick: (files: File[]) => void; disabled?: boolean }) {
@@ -200,9 +200,13 @@ function NoteEditorForm({
 						/>
 					)}
 				</Field>
-				<Field label="科目">{(id, aria) => <SubjectSelect id={id} {...aria} value={form.subjectId} onChange={(v) => set('subjectId', v)} />}</Field>
+				<Field label="科目">
+					{(id, aria) => <SubjectSelect id={id} {...aria} value={form.subjectId} onChange={(v) => set('subjectId', v)} />}
+				</Field>
 				<Field label="標籤" hint="用逗號或空白分隔，最多 10 個">
-					{(id, aria) => <Input id={id} {...aria} value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="例如：遞迴, 期中考" />}
+					{(id, aria) => (
+						<Input id={id} {...aria} value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="例如：遞迴, 期中考" />
+					)}
 				</Field>
 			</div>
 
@@ -222,12 +226,24 @@ function NoteEditorForm({
 					<div className="grid gap-4 sm:grid-cols-2">
 						<Field label="我的錯誤答案">
 							{(id, aria) => (
-								<Textarea id={id} {...aria} className="min-h-20" value={form.wrongAnswer} onChange={(e) => set('wrongAnswer', e.target.value)} />
+								<Textarea
+									id={id}
+									{...aria}
+									className="min-h-20"
+									value={form.wrongAnswer}
+									onChange={(e) => set('wrongAnswer', e.target.value)}
+								/>
 							)}
 						</Field>
 						<Field label="正確答案">
 							{(id, aria) => (
-								<Textarea id={id} {...aria} className="min-h-20" value={form.correctAnswer} onChange={(e) => set('correctAnswer', e.target.value)} />
+								<Textarea
+									id={id}
+									{...aria}
+									className="min-h-20"
+									value={form.correctAnswer}
+									onChange={(e) => set('correctAnswer', e.target.value)}
+								/>
 							)}
 						</Field>
 					</div>
@@ -308,12 +324,13 @@ function NoteEditorForm({
 									<img src={p.url} alt="" className="size-full object-cover" />
 								</div>
 								<span className="absolute bottom-1 left-1 rounded-sm bg-card/90 px-1.5 text-caption text-ink-2">儲存後上傳</span>
-								<ThumbAction
+								<MiniIconButton
 									label={`移除第 ${i + 1} 張待上傳的照片`}
 									onClick={() => {
 										URL.revokeObjectURL(p.url);
 										setPending((list) => list.filter((x) => x !== p));
 									}}
+									className="absolute top-1 right-1"
 								/>
 							</li>
 						))}

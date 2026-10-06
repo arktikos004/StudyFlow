@@ -3,12 +3,12 @@ import type { NoteItem } from '../../../shared/api-types';
 import { attachmentUrl } from '../../lib/api';
 import { dayLabel, noteSnippet } from '../../lib/notes-format';
 import { SubjectTag } from '../subjects';
-import { Card, Highlight } from '../ui';
+import { Card, Highlight, StretchedButton } from '../ui';
 import { KindBadge, ReviewBadge } from './content';
 import { PinToggle } from './pin';
 
 /**
- * 筆記卡：整張可點（標題按鈕用 ::after 蓋滿卡片），釘選與標籤按鈕浮在上面。
+ * 筆記卡：整張可點（標題是 StretchedButton cover="card"，::after 蓋滿卡片），釘選與標籤按鈕浮在上面。
  * - 搜尋中：標題與摘要用 <mark> 標出關鍵字；摘要會從含關鍵字的地方開始。
  * - 狀態一律圖示加文字（錯題／筆記、待複習、已掌握），科目只透過 SubjectTag 顯示。
  */
@@ -65,15 +65,11 @@ export function NoteCard({
 					/>
 				</div>
 				<h3 className="mt-2 text-h3 font-semibold wrap-anywhere text-ink">
-					<button
-						type="button"
-						onClick={onOpen}
-						className="block w-full text-left after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:outline-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
-					>
+					<StretchedButton cover="card" onClick={onOpen}>
 						<span className="line-clamp-2">
 							<Highlight text={note.title} query={terms} />
 						</span>
-					</button>
+					</StretchedButton>
 				</h3>
 				{snippet && (
 					<p className="mt-1 line-clamp-3 text-meta wrap-anywhere text-ink-2">

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import type { ChecklistItem, TaskItem } from '../../shared/api-types';
@@ -143,18 +143,4 @@ export function useTaskView(): [TaskView, (view: TaskView) => void] {
 		}
 	};
 	return [view, set];
-}
-
-const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
-
-/** 使用者是否要求減少動態（看板拖曳放開時的歸位動畫會拿掉） */
-export function usePrefersReducedMotion(): boolean {
-	return useSyncExternalStore(
-		(onChange) => {
-			const media = window.matchMedia(REDUCED_MOTION);
-			media.addEventListener('change', onChange);
-			return () => media.removeEventListener('change', onChange);
-		},
-		() => window.matchMedia(REDUCED_MOTION).matches,
-	);
 }

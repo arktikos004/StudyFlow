@@ -1,4 +1,4 @@
-import { Brain, Check, CircleAlert, CircleCheck, Eye, Plus, Repeat, RotateCcw, RotateCw, Shuffle, SkipForward, Sparkles, X, Zap } from 'lucide-react';
+import { Brain, Check, CircleAlert, CircleCheck, Eye, Plus, Repeat, RotateCcw, Shuffle, SkipForward, Sparkles, X, Zap } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import type { NoteItem } from '../../../shared/api-types';
@@ -6,7 +6,22 @@ import { ApiError } from '../../lib/api';
 import { cramPool, cramQueue, cramTags, retryQueue, tally, type ReviewResult } from '../../lib/notes-cram';
 import { useNotes, useReviewNote, useSubjectMap } from '../../lib/queries';
 import { SubjectSelect, SubjectTag } from '../subjects';
-import { Badge, Button, Card, cn, EmptyState, ErrorNote, Field, NumDisplay, PageLoader, ProgressBar, Segmented, Select, Switch } from '../ui';
+import {
+	Badge,
+	Button,
+	Card,
+	cn,
+	EmptyState,
+	ErrorNote,
+	Field,
+	NumDisplay,
+	PageLoader,
+	ProgressBar,
+	SectionLabel,
+	Segmented,
+	Select,
+	Switch,
+} from '../ui';
 import { KindBadge, MistakeAnswer, MistakeQuestion, NoteBody } from './content';
 
 // 複習（NOTE-2）：「今天到期」走間隔複習（呼叫 /notes/:id/review），
@@ -131,16 +146,11 @@ function ReviewRunner({
 					<span className="font-num tabular-nums">／{queue.length}</span> 題
 				</span>
 				<span className="text-ink-3">
-					記住 <span className="font-num tabular-nums">{counts.remembered}</span>，還不熟 <span className="font-num tabular-nums">{counts.forgot}</span>
+					記住 <span className="font-num tabular-nums">{counts.remembered}</span>，還不熟{' '}
+					<span className="font-num tabular-nums">{counts.forgot}</span>
 				</span>
 			</div>
-			<ProgressBar
-				value={index}
-				max={queue.length}
-				size="sm"
-				labelledBy={progressId}
-				valueText={`已作答 ${index}／${queue.length} 題`}
-			/>
+			<ProgressBar value={index} max={queue.length} size="sm" labelledBy={progressId} valueText={`已作答 ${index}／${queue.length} 題`} />
 
 			<Card as="article" className="mt-4 p-4 sm:p-6">
 				<div className="mb-2 flex flex-wrap items-center gap-1.5">
@@ -170,7 +180,10 @@ function ReviewRunner({
 			</Card>
 
 			{failure && (
-				<div role="alert" className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-danger-soft py-2 pr-2 pl-4 text-sm text-danger">
+				<div
+					role="alert"
+					className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-danger-soft py-2 pr-2 pl-4 text-sm text-danger"
+				>
 					<span className="inline-flex min-w-0 items-start gap-1.5 py-1">
 						<CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
 						這題沒有記錄成功（{failure}），可以再選一次，或先跳過
@@ -191,7 +204,13 @@ function ReviewRunner({
 					</Button>
 				) : (
 					<>
-						<Button size="lg" className="flex-1" onClick={() => answer('forgot')} loading={saving === 'forgot'} aria-disabled={!!saving || undefined}>
+						<Button
+							size="lg"
+							className="flex-1"
+							onClick={() => answer('forgot')}
+							loading={saving === 'forgot'}
+							aria-disabled={!!saving || undefined}
+						>
 							<RotateCcw className="size-5" aria-hidden />
 							還不熟
 						</Button>
@@ -261,7 +280,9 @@ function RoundSummary({
 			</dl>
 			{forgot.length > 0 && (
 				<div className="border-t border-line px-2 py-2 sm:px-3">
-					<h3 className="px-2 pt-1 pb-1 text-meta font-semibold text-ink-2">還不熟的題目</h3>
+					<SectionLabel as="h3" className="px-2 pt-1 pb-1">
+						還不熟的題目
+					</SectionLabel>
 					<ul>
 						{forgot.map((n) => (
 							<li key={n.id}>
@@ -376,16 +397,7 @@ function DueReview({
 				exitLabel="結束複習"
 			/>
 		);
-	else if (error && !isFetching)
-		body = (
-			<div className="space-y-3">
-				<ErrorNote error={error} />
-				<Button onClick={() => refetch()}>
-					<RotateCw className="size-4" aria-hidden />
-					重新載入
-				</Button>
-			</div>
-		);
+	else if (error && !isFetching) body = <ErrorNote error={error} onRetry={() => void refetch()} retrying={isFetching} />;
 	else body = <PageLoader />;
 
 	return (
@@ -427,7 +439,10 @@ function CramReview({
 	onOpenNote: (id: string) => void;
 	onNewMistake: () => void;
 }) {
-	const { data, isPending, error, isPlaceholderData } = useNotes({ kind: 'mistake', ...(subjectId ? { subjectId } : {}) });
+	const { data, isPending, error, isPlaceholderData, refetch, isRefetching } = useNotes({
+		kind: 'mistake',
+		...(subjectId ? { subjectId } : {}),
+	});
 	const subjects = useSubjectMap();
 	const [random, setRandom] = useState(true);
 	const [includeMastered, setIncludeMastered] = useState(false);
@@ -547,18 +562,28 @@ function CramReview({
 					</h2>
 				</div>
 				<div className="space-y-4 px-4 pb-4 sm:px-5 sm:pb-5">
-					<p className="text-sm text-ink-2">
-						把某一科或某個標籤的錯題一次複習完。衝刺的作答只記在這一輪，不會改變間隔複習的排程。
-					</p>
+					<p className="text-sm text-ink-2">把某一科或某個標籤的錯題一次複習完。衝刺的作答只記在這一輪，不會改變間隔複習的排程。</p>
 					<div className="grid gap-4 sm:grid-cols-2">
 						<Field label="科目">
 							{(id, aria) => (
-								<SubjectSelect id={id} {...aria} value={subjectId} onChange={(v) => onScope({ subject: v, tag: null })} emptyLabel="所有科目" />
+								<SubjectSelect
+									id={id}
+									{...aria}
+									value={subjectId}
+									onChange={(v) => onScope({ subject: v, tag: null })}
+									emptyLabel="所有科目"
+								/>
 							)}
 						</Field>
 						<Field label="標籤">
 							{(id, aria) => (
-								<Select id={id} {...aria} value={tag ?? ''} onChange={(e) => onScope({ tag: e.target.value || null })} disabled={loading && !data}>
+								<Select
+									id={id}
+									{...aria}
+									value={tag ?? ''}
+									onChange={(e) => onScope({ tag: e.target.value || null })}
+									disabled={loading && !data}
+								>
 									<option value="">所有標籤</option>
 									{tags.map((t) => (
 										<option key={t.tag} value={t.tag}>
@@ -574,12 +599,14 @@ function CramReview({
 						<Switch checked={includeMastered} onChange={setIncludeMastered} label="包含已掌握的題目" />
 					</div>
 					{notes.length >= LIST_LIMIT && (
-						<p className="text-meta text-ink-3">錯題超過 {LIST_LIMIT} 題，這裡只包含最近更新的 {LIST_LIMIT} 題。</p>
+						<p className="text-meta text-ink-3">
+							錯題超過 {LIST_LIMIT} 題，這裡只包含最近更新的 {LIST_LIMIT} 題。
+						</p>
 					)}
 				</div>
 				<div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 sm:px-5">
 					{error ? (
-						<ErrorNote error={error} />
+						<ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />
 					) : (
 						<CramCount loading={loading} total={pool.length} masteredLeft={masteredLeft} hasAny={notes.length > 0} />
 					)}
@@ -666,7 +693,13 @@ export function ReviewView({
 					onNewMistake={onNewMistake}
 				/>
 			) : (
-				<DueReview subjectId={subjectId} onSubject={(subject) => onParams({ subject })} onMode={onMode} onOpenNote={onOpenNote} onBack={onBack} />
+				<DueReview
+					subjectId={subjectId}
+					onSubject={(subject) => onParams({ subject })}
+					onMode={onMode}
+					onOpenNote={onOpenNote}
+					onBack={onBack}
+				/>
 			)}
 		</div>
 	);
