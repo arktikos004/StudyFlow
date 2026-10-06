@@ -39,4 +39,4 @@
 | 設計審查 | ui-designer（Sonnet，只讀） | 完成（高 3、中 12、低 15；交給 s3/polish 與 s3/design） |
 | s3/polish：backlog 累積的頁面修正、共用元件遷移 | frontend-engineer | 已合併（第一輪 review：可合併；最後一輪 review：修正後合併） |
 | s3/design：共用元件與設計系統的修正 | ui-designer | 已合併（review：修正後合併；DARK_BAND 驗證後維持原值） |
-| 逐條驗收、README、Sprint review、回顧 | product-owner（Sonnet） | 進行中 |
+| 逐條驗收、README、Sprint review、回顧 | product-owner（Sonnet） | 完成（24 個故事：22 通過、2 部分通過〔TSK-2 觸控、CAL-2 Google 日曆提醒，待使用者手動驗證〕；見 sprint-review.md） |
