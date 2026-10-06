@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	badgeCapacity,
+	emailParts,
 	formatCount,
 	joinedLabel,
 	masteredNote,
@@ -118,5 +119,15 @@ describe('時區選單', () => {
 		expect(timezoneLabel('Europe/London', winter)).toBe('Europe/London（GMT+0）');
 		expect(timezoneLabel('Europe/London', summer)).toBe('Europe/London（GMT+1）');
 		expect(timezoneLabel('Not/AZone', winter)).toBe('Not/AZone');
+	});
+});
+
+describe('Email 的換行點（emailParts）', () => {
+	it('在 @ 與 . 前面斷開，接起來是原本的 Email', () => {
+		const email = 'alex.chen.2026@student.example.edu.tw';
+		expect(emailParts(email)).toEqual(['alex', '.chen', '.2026', '@student', '.example', '.edu', '.tw']);
+		expect(emailParts(email).join('')).toBe(email);
+		expect(emailParts('demo@example.com')).toEqual(['demo', '@example', '.com']);
+		expect(emailParts('')).toEqual([]);
 	});
 });

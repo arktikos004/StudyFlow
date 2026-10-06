@@ -2,6 +2,7 @@ import { Pencil } from 'lucide-react';
 import type { PublicUser } from '../../../shared/api-types';
 import { joinedLabel, type ProfileSummary } from '../../lib/profile-format';
 import { Avatar, Button, Card, ErrorNote } from '../ui';
+import { EmailText } from './ProfileEmail';
 import { ProfileStats } from './ProfileStats';
 
 /**
@@ -40,7 +41,9 @@ export function ProfileHeader({
 							<span className="sr-only">個人檔案：</span>
 							{user.displayName}
 						</h2>
-						<p className="mt-0.5 text-sm text-ink-2 [overflow-wrap:anywhere]">{user.email}</p>
+						<p className="mt-0.5 text-sm text-ink-2 [overflow-wrap:anywhere]">
+							<EmailText email={user.email} />
+						</p>
 						<p className="text-meta text-ink-3">
 							<time dateTime={joined.dateTime}>{joined.text}</time>
 						</p>

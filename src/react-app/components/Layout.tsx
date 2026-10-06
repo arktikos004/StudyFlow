@@ -514,7 +514,8 @@ export function Layout() {
 					))}
 				</ul>
 				<div className="-mx-2 mt-2 border-t border-line pt-2">
-					<LogoutButton onClick={logout} className="h-12" />
+					{/* 圖示和上面的選單項目一樣 20px，文字才對齊 */}
+					<LogoutButton onClick={logout} className="h-12 [&_svg]:size-5" />
 				</div>
 			</Dialog>
 

@@ -83,6 +83,14 @@ export function badgeCapacity(width: number, count: number, size: number, gap: n
 	return Math.max(0, Math.min(count - 1, fit));
 }
 
+/**
+ * Email 的換行點：在「@」與「.」前面斷開（alex.chen.2026@student.example 換行 .edu.tw），
+ * 不會在單字中間斷（example.e／du.tw）。回傳的片段依序接起來就是原本的 Email。
+ */
+export function emailParts(email: string): string[] {
+	return email.split(/(?=[@.])/).filter(Boolean);
+}
+
 /** 時區選單的常用選項；使用者目前的時區不在清單裡時排在最前面 */
 export const TIMEZONES = [
 	'Asia/Taipei',

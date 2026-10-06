@@ -7,6 +7,7 @@ import { api, ApiError } from '../../lib/api';
 import { timezoneLabel, timezoneOptions } from '../../lib/profile-format';
 import { useUpdateProfile, useUser } from '../../lib/queries';
 import { Button, Card, CardHeader, cn, Field, Input, Select } from '../ui';
+import { EmailText } from './ProfileEmail';
 
 const isFinePointer = () => window.matchMedia('(pointer: fine)').matches;
 
@@ -190,7 +191,9 @@ export function AccountCard() {
 			<div className="divide-y divide-line">
 				<dl className="px-4 pt-1 pb-4 sm:px-5">
 					<dt className="text-sm font-semibold text-ink-2">Email</dt>
-					<dd className="mt-1 text-dense text-ink [overflow-wrap:anywhere]">{user.email}</dd>
+					<dd className="mt-1 text-dense text-ink [overflow-wrap:anywhere]">
+						<EmailText email={user.email} />
+					</dd>
 					<dd className="mt-0.5 text-meta text-ink-3">登入時使用，目前無法變更</dd>
 				</dl>
 				<TimezoneForm user={user} />
