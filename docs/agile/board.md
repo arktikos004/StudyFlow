@@ -29,7 +29,7 @@
 | s2/tasks | frontend-engineer | TSK-1～4、任務頁改版 | 已合併（review：修正後合併） |
 | s2/timer | frontend-engineer | TMR-1～3、CAL-1、計時頁與月曆改版 | 已合併（review：月曆修正後合併、計時可合併） |
 | s2/notes | frontend-engineer | NOTE-1/2、筆記頁與考試頁改版 | 已合併（review：修正後合併） |
-| s2/shell | ui-designer | APP-1、APP-2、導覽、Auth 頁、品牌、動效 | 進行中 |
+| s2/shell | ui-designer | APP-1、APP-2、導覽、Auth 頁、品牌、動效 | 已合併（review：修正後合併） |
 
 ## Sprint 3：驗收
 

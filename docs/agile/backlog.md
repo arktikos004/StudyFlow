@@ -292,3 +292,50 @@ Lane 欄的格式是「負責的 lane（相依的 lane）」。
   - Dialog 的初始焦點。
 - **QA**：確認 Google 日曆匯入 .ics 後，VALARM 提醒會不會生效。
 
+
+## Sprint 2 第二波結束時的待辦
+
+**已經決定**
+- **成就 toast**：第一次使用時，靜默記下當時已解鎖的成就；已看過的紀錄只增不減，徽章收回後再解鎖不會再跳。紀錄存在各瀏覽器（`studyflow:achievements-seen:<userId>`）。
+- **「要一併完成任務嗎？」**：用 `useConfirm` 的 `tone: 'primary'`，確認鈕不用紅色。
+- **看板拖曳**：使用 `@dnd-kit/core`。鍵盤不用 dnd-kit 的感應器，改用卡片下方原本的按鈕。
+
+**Sprint 3 的修正**
+- **共用元件遷移**（s2/shell 已在 `ui.tsx` 新增，呼叫端還沒換）：
+  - `pages/Subject.tsx` 的 `LinkButton`、`TextLink`、`Figure`。
+  - `components/dashboard/parts.tsx` 的 `MoreLink`、`Unit`、`Duration`，以及引用它們的總覽、統計頁。
+  - `components/charts.tsx` 的 `TableToggle`。
+  - `components/settings/roving.ts` 的 `gridKeyTarget`，改完後刪掉 `roving.ts`。
+  - `pages/Timer.tsx` 的自動專注開關、`SubjectDialog.tsx` 的封存開關改用 `Switch` 的 `description`。
+  - `pages/Events.tsx` 自己寫的 `TextLink` 改用 ui 版。
+- **評估收進共用元件**：
+  - 筆記：`PinToggle`（可一般化成 `ToggleButton`）、`ThumbAction`。
+  - 任務：整格可點的標題按鈕、`usePrefersReducedMotion`、「顯示全部 N 項」切換、可清除的搜尋框。
+- **SubjectTag `variant="icon"`**：
+  - 沒有圖示時顯示的首字對比不足，淺色 6 色、深色 8 色低於 4.5:1。改成 19px 粗體（適用大字 3:1），或改顯示通用圖示。
+  - 首字改用 `Intl.Segmenter` 取第一個字素。
+- **單科頁**：
+  - 「新增錯題」改連 `/notes?new=mistake&subject=<id>`。
+  - 新增考試傳 `EventDialog` 的 `defaults.subjectId`。
+  - 第 462 行左右的 `box.disabled` 焦點處理已經用不到，可以刪掉（TaskCheckbox 改用 `aria-disabled`）。
+- **筆記**：刪除照片前沒有確認。
+- **設計**：
+  - 照片燈箱背景目前用 `backdrop:bg-black/85`，評估是否新增深色 token。
+  - DESIGN.md 註明：用 `::after` 讓整張卡可點時，標題按鈕要用 `outline-0`，不能用 `outline-none`，否則焦點框會消失。
+  - sonner 的關閉鈕只有 20px。
+  - `vite.config.ts` 的 manifest `background_color` 仍是淺色。
+  - DARK_BAND 的評估。
+- **後端**：`lib/queries.ts` export `TASK_KEYS`，`lib/task-queries.ts` 改用 import，不再複製一份。
+- **測試**：專案沒有 jsdom 環境，下列行為目前只靠人工檢查：
+  - `useTaskPatch` 的樂觀更新與回滾。
+  - 考前衝刺不呼叫 `/review`、今天到期的題目在開始時固定。
+
+**QA 畫面檢查（第二波）**
+- Auth 頁左側品牌欄用 `data-theme` 反轉深淺色：6 組主題色下的科目 chip 與焦點框對比要目視確認。
+- 指令面板：chunk 載入失敗的提示、Safari 的重試行為。
+- 看板：觸控長按拖曳、拖曳失敗退回原欄。
+
+**已知限制**
+- 子任務項目不能改名，要刪掉再新增；任務搜尋不比對子任務項目。
+- 指令面板的「開始專注」只前往計時頁，不會自動開始計時。
+- 部署新版後，舊分頁要的舊 chunk 已經不在伺服器上；指令面板會提示重新整理頁面。
