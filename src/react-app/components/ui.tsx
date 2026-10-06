@@ -479,7 +479,8 @@ export function PageLoader() {
 /**
  * 載入失敗的提示（圖示加文字，role="alert"）。
  * onRetry：有給就在右側顯示「重新載入」按鈕（通常傳 query 的 refetch），使用者不必重新整理頁面；
- * retrying：重試中（query 的 isRefetching），按鈕顯示轉圈並暫停點擊。不傳 onRetry 時和原本一樣只有訊息。
+ * retrying：重試中（query 的 isRefetching），按鈕顯示轉圈並忽略點擊；用 aria-disabled＋aria-busy（不用 disabled），焦點留在按鈕上。
+ * 不傳 onRetry 時和原本一樣只有訊息。
  */
 export function ErrorNote({ error, onRetry, retrying }: { error: unknown; onRetry?: () => void; retrying?: boolean }) {
 	return (
@@ -492,8 +493,17 @@ export function ErrorNote({ error, onRetry, retrying }: { error: unknown; onRetr
 				<span className="min-w-0">{error instanceof Error ? error.message : '載入失敗'}</span>
 			</span>
 			{onRetry && (
-				<Button size="sm" onClick={onRetry} loading={retrying}>
-					{!retrying && <RotateCw className="size-4" aria-hidden />}
+				// 重試中用 aria-disabled＋aria-busy 並忽略點擊，不用 disabled（Button 的 loading）：
+				// 停用的按鈕會讓焦點掉到 body，鍵盤使用者重試失敗後就找不回這個按鈕
+				<Button
+					size="sm"
+					aria-disabled={retrying || undefined}
+					aria-busy={retrying || undefined}
+					onClick={() => {
+						if (!retrying) onRetry();
+					}}
+				>
+					{retrying ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden /> : <RotateCw className="size-4" aria-hidden />}
 					重新載入
 				</Button>
 			)}

@@ -529,23 +529,23 @@
 			background-color: color-mix(in oklab, var(--accent-soft) 90%, var(--accent));
 		}
 	}
-	/* 按下：加深填色，並下沉 1px（reduced motion 時只保留顏色） */
-	.sf-btn-primary:active:not(:disabled) {
+	/* 按下：加深填色，並下沉 1px（reduced motion 時只保留顏色）。aria-disabled（忙碌中、保留焦點的停用）不給按下回饋 */
+	.sf-btn-primary:active:not(:disabled, [aria-disabled='true']) {
 		background-color: color-mix(in oklab, var(--accent) 88%, black);
 	}
-	.sf-btn-secondary:active:not(:disabled),
-	.sf-btn-ghost:active:not(:disabled) {
+	.sf-btn-secondary:active:not(:disabled, [aria-disabled='true']),
+	.sf-btn-ghost:active:not(:disabled, [aria-disabled='true']) {
 		background-color: var(--line);
 		color: var(--ink);
 	}
-	.sf-btn-danger:active:not(:disabled) {
+	.sf-btn-danger:active:not(:disabled, [aria-disabled='true']) {
 		background-color: color-mix(in oklab, var(--danger) 88%, black);
 	}
-	.sf-btn-soft:active:not(:disabled) {
+	.sf-btn-soft:active:not(:disabled, [aria-disabled='true']) {
 		background-color: color-mix(in oklab, var(--accent-soft) 82%, var(--accent));
 	}
 	@media (prefers-reduced-motion: no-preference) {
-		.sf-btn:active:not(:disabled) {
+		.sf-btn:active:not(:disabled, [aria-disabled='true']) {
 			transform: translateY(1px);
 		}
 	}

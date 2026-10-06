@@ -486,7 +486,7 @@
 |---|---|---|
 | `PageHeader` | `eyebrow?: ReactNode`、`className?`、`actionsClassName?` | eyebrow 在 h1 上方（13px ink-2，例如總覽的日期 `<time>`）。actionsClassName 套在動作列（例如手機撐滿 `w-full sm:w-auto`）。**下方間距從固定 24px 改成 `mb-section`**（手機 24、md 以上 32），後面的第一個區塊不要再加 `mt-*` |
 | `CardHeader` | `icon?: IconProp`（原本是 ReactNode） | 傳 lucide 元件 `icon={Clock}` 時統一 18px、ink-3、aria-hidden；傳元素照舊原樣顯示 |
-| `ErrorNote` | `onRetry?: () => void`、`retrying?: boolean` | 有 onRetry 時右側出現「重新載入」（sm secondary，RotateCw 圖示）；retrying 時按鈕轉圈並暫停點擊。通常 `onRetry={() => void refetch()} retrying={isRefetching}`。不傳時和原本一樣 |
+| `ErrorNote` | `onRetry?: () => void`、`retrying?: boolean` | 有 onRetry 時右側出現「重新載入」（sm secondary，RotateCw 圖示）；retrying 時按鈕轉圈、`aria-disabled`＋`aria-busy` 並忽略點擊（不用 `disabled`，鍵盤焦點留在按鈕上，重試失敗可以再按一次）。通常 `onRetry={() => void refetch()} retrying={isRefetching}`。不傳時和原本一樣 |
 
 新元件與工具：
 
