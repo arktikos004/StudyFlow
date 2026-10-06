@@ -21,8 +21,8 @@ import {
 } from '../components/ui';
 import { REVIEW_INTERVALS } from '../../shared/schemas';
 import { ApiError } from '../lib/api';
-import { usePinNote } from '../lib/notes-queries';
-import { useNote, useNotes, useSubjects, useSummary, useUser, type NoteFilters } from '../lib/queries';
+import { useNotesList, usePinNote } from '../lib/notes-queries';
+import { useNote, useSubjects, useSummary, useUser, type NoteFilters } from '../lib/queries';
 import { useDeepLink } from '../lib/timer-queries';
 
 type View = 'all' | 'mistake' | 'note' | 'review';
@@ -52,7 +52,7 @@ function NotesList({
 	onNew,
 	onClear,
 }: {
-	notesQuery: ReturnType<typeof useNotes>;
+	notesQuery: ReturnType<typeof useNotesList>;
 	/** 本人一則筆記或錯題都沒有：空狀態負責唯一的主要動作（頁首不放、篩選列隱藏） */
 	empty: boolean;
 	query: string;
@@ -83,7 +83,8 @@ function NotesList({
 	if (error) return <ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />;
 
 	if (notes.length === 0) {
-		if (filtered)
+		// 先看帳號是不是本來就沒有資料：這時頁首沒有動作、篩選列也隱藏，空狀態必須提供新增
+		if (filtered && !empty)
 			return (
 				<Card>
 					<EmptyState
@@ -273,11 +274,15 @@ export function NotesPage() {
 	);
 	const filtered = !!(subjectId || q || tag);
 	const due = summary.data?.reviewDueCount;
-	const notesQuery = useNotes(filters);
+	// 列表與「帳號有沒有任何筆記」只在列表檢視需要：複習檢視不發這兩個請求（review B2）
+	const listView = view !== 'review';
+	const notesQuery = useNotesList(filters, listView);
 	// 本人完全沒有筆記與錯題（不篩選的全部清單是空的）：頁首不放主要動作、篩選列隱藏，由空狀態負責（跨頁慣例）
-	const everything = useNotes({});
-	const empty = everything.data?.length === 0 && view !== 'review';
-	const count = view !== 'review' && !notesQuery.isPlaceholderData ? notesQuery.data?.length : undefined;
+	const everything = useNotesList({}, listView);
+	const empty = listView && everything.data?.length === 0;
+	// 還不知道有沒有資料（冷載入）：頁首動作、篩選列、列表都先不畫，不會先出現兩組 primary 再換成空狀態（review B1）
+	const checking = listView && everything.isPending;
+	const count = listView && !notesQuery.isPlaceholderData ? notesQuery.data?.length : undefined;
 	const summaryText = [
 		count === undefined || empty || (!filtered && count === 0) ? null : `${filtered ? '找到' : '共'} ${count} 則`,
 		due === undefined ? null : due > 0 ? `今天有 ${due} 題待複習` : '今天沒有待複習的題目',
@@ -291,8 +296,9 @@ export function NotesPage() {
 				title="筆記與錯題"
 				description={summaryText || undefined}
 				actions={
-					view !== 'review' &&
-					!empty && (
+					listView &&
+					!empty &&
+					!checking && (
 						<>
 							<Button onClick={() => setEditor({ kind: 'note' })}>
 								<NotebookPen className="size-4" aria-hidden />
@@ -308,7 +314,7 @@ export function NotesPage() {
 			/>
 
 			{/* 篩選列（跨頁慣例）：搜尋（flex-1）→ 種類 → 科目 → 標籤；沒有任何筆記時整列隱藏 */}
-			{!empty && (
+			{!empty && !checking && (
 				<div className="mb-5 flex flex-wrap items-center gap-2">
 					{view !== 'review' && (
 						<SearchInput
@@ -372,7 +378,7 @@ export function NotesPage() {
 				</p>
 			)}
 
-			{subjectParam && subjects.isPending ? (
+			{(subjectParam && subjects.isPending) || checking ? (
 				<PageLoader />
 			) : view === 'review' ? (
 				<ReviewView

@@ -165,7 +165,9 @@ export function EventsPage() {
 				title="考試與截止日"
 				description={events ? eventsSummary(upcoming, today) : undefined}
 				actions={
-					!empty && (
+					// 還在載入時也不放：不知道有沒有資料，避免先出現再換成空狀態（review B1）
+					!empty &&
+					!isPending && (
 						<Button variant="primary" onClick={() => setDialog({ subjectId })}>
 							<Plus className="size-4" aria-hidden />
 							新增考試或截止日
@@ -173,7 +175,7 @@ export function EventsPage() {
 					)
 				}
 			/>
-			{subjects.length > 0 && !empty && (
+			{subjects.length > 0 && !empty && !isPending && (
 				<div className="mb-5 flex flex-wrap items-center gap-2">
 					<div className="w-40">
 						<SubjectSelect aria-label="科目" value={subjectId} onChange={setSubjectId} emptyLabel="所有科目" />

@@ -110,6 +110,8 @@ export function TasksPage() {
 	const empty = !!tasks && all.length === 0;
 	// 完全沒有任務（不是篩選科目後才沒有）：頁首不放主要動作、篩選列隱藏，由空狀態負責（跨頁慣例）
 	const noData = empty && !subjectId;
+	// 第一次載入（還沒選科目、還不知道有沒有任務）：頁首動作與篩選列先不畫，不會先出現再換成空狀態（review B1）
+	const firstLoad = isPending && !subjectId;
 
 	const addButton = (label = '新增任務', variant: 'primary' | 'secondary' = 'primary') => (
 		<Button variant={variant} onClick={() => setDialog({})}>
@@ -202,10 +204,10 @@ export function TasksPage() {
 				title="學習任務"
 				description={noData ? undefined : tasks && !empty && <Summary {...summary} />}
 				// 完全沒有任務時，新增按鈕在空狀態裡（每個畫面只有一個主要動作）
-				actions={noData ? undefined : addButton()}
+				actions={noData || firstLoad ? undefined : addButton()}
 			/>
 
-			{!noData && (
+			{!noData && !firstLoad && (
 				<TaskToolbar
 					query={query}
 					onQueryChange={setQuery}

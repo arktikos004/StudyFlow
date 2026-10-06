@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { NoteItem } from '../../shared/api-types';
-import { api } from './api';
+import { api, qs } from './api';
+import type { NoteFilters } from './queries';
 
 // s2/notes 的資料 hook。
 
@@ -19,5 +20,18 @@ export function usePinNote() {
 			await qc.invalidateQueries({ queryKey: ['notes'] });
 		},
 		onError: (e) => toast.error(e instanceof Error ? `更改釘選沒有成功：${e.message}` : '更改釘選沒有成功，請再試一次'),
+	});
+}
+
+/**
+ * 和 queries.ts 的 useNotes 相同（同一個 query key 與請求，快取共用），另外可以用 enabled 暫停：
+ * 筆記頁在複習檢視時不需要列表，就不發這個請求。
+ */
+export function useNotesList(params: NoteFilters, enabled: boolean) {
+	return useQuery({
+		queryKey: ['notes', params],
+		queryFn: async () => (await api.get<{ notes: NoteItem[] }>(`/notes${qs(params)}`)).notes,
+		placeholderData: (prev) => prev,
+		enabled,
 	});
 }
