@@ -48,6 +48,8 @@ type Option = {
 	icon: ReactNode;
 	title: ReactNode;
 	meta?: ReactNode;
+	/** 後端的搜尋結果（打字時可能還是上一個關鍵字的結果） */
+	server?: boolean;
 };
 type Group = { key: string; label: string; options: Option[] };
 
@@ -121,6 +123,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 		// 有輸入：本機比對到的動作與頁面排最前面（立即出現，搜尋結果回來時不會把它擠走），接著是後端的四組
 		const local = [...actionOptions, ...pageOptions].slice(0, GROUP_LIMIT);
 		const data = search.data;
+		// 標示關鍵字用「產生這批結果的」關鍵字：還在顯示上一個關鍵字的結果（placeholder）時不標示，避免標錯字
+		const hl = data && !search.isPlaceholderData ? term : '';
 		const result: Group[] = [{ key: 'local', label: '動作與頁面', options: local }];
 		if (data) {
 			result.push(
@@ -132,7 +136,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 						to: resultHref('task', t.id),
 						icon:
 							t.status === 'done' ? <CircleCheck className={iconClass} aria-hidden /> : <ListChecks className={iconClass} aria-hidden />,
-						title: <Highlight text={t.title} query={trimmed} />,
+						title: <Highlight text={t.title} query={hl} />,
+						server: true,
 						meta: (
 							<>
 								<span>{t.status === 'done' ? '已完成' : t.dueDate ? `${formatDate(t.dueDate)} 到期` : '沒有期限'}</span>
@@ -150,7 +155,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 							key: `event:${ev.id}`,
 							to: resultHref('event', ev.id),
 							icon: <Icon className={iconClass} aria-hidden />,
-							title: <Highlight text={ev.title} query={trimmed} />,
+							title: <Highlight text={ev.title} query={hl} />,
+							server: true,
 							meta: (
 								<>
 									<span>
@@ -171,7 +177,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 							key: `note:${n.id}`,
 							to: resultHref('note', n.id),
 							icon: <Icon className={iconClass} aria-hidden />,
-							title: <Highlight text={n.title} query={trimmed} />,
+							title: <Highlight text={n.title} query={hl} />,
+							server: true,
 							meta: (
 								<>
 									<span>{n.kind === 'mistake' ? '錯題' : '筆記'}</span>
@@ -188,14 +195,15 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 						key: `subject:${s.id}`,
 						to: resultHref('subject', s.id),
 						icon: <SubjectDot color={s.color} className="size-3" />,
-						title: <Highlight text={s.name} query={trimmed} />,
+						title: <Highlight text={s.name} query={hl} />,
+						server: true,
 						meta: '科目總覽',
 					})),
 				},
 			);
 		}
 		return result;
-	}, [trimmed, search.data, timerActive]);
+	}, [trimmed, term, search.data, search.isPlaceholderData, timerActive]);
 
 	const visible = groups.filter((g) => g.options.length > 0);
 	const options = visible.flatMap((g) => g.options);
@@ -230,7 +238,12 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 		};
 	}, []);
 
+	// 輸入中、結果還沒更新：後端的結果屬於上一個關鍵字，先淡化並且不能選（本機的動作與頁面照常）
+	const serverStale = !!trimmed && (term !== trimmed || search.isPlaceholderData);
+	const selectable = (o: Option) => !(o.server && serverStale);
+
 	const select = (o: Option) => {
+		if (!selectable(o)) return;
 		navigated.current = true;
 		navigate(o.to);
 		onClose();
@@ -362,6 +375,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 											id={optionId(i)}
 											role="option"
 											aria-selected={isActive}
+											aria-disabled={!selectable(o) || undefined}
 											onMouseMove={() => {
 												if (!isActive) setActiveKey(o.key);
 											}}
@@ -369,8 +383,9 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 											onMouseDown={(e) => e.preventDefault()}
 											onClick={() => select(o)}
 											className={cn(
-												'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-1.5 transition-colors duration-120 ease-out',
+												'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-1.5 transition-[color,background-color,opacity] duration-120 ease-out',
 												isActive ? 'bg-accent-soft' : '',
+												!selectable(o) && 'cursor-default opacity-60',
 											)}
 										>
 											<span
