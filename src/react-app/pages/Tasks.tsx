@@ -36,7 +36,7 @@ export function TasksPage() {
 	const [subjectId, setSubjectId] = useState<string | null>(null);
 	const { query, setQuery, sort, setSort } = useTaskListParams();
 	const [dialog, setDialog] = useState<{ task?: TaskItem } | null>(null);
-	const { data: tasks, isPending, isFetching, error } = useTasks(subjectId ? { subjectId } : {});
+	const { data: tasks, isPending, isFetching, error, refetch, isRefetching } = useTasks(subjectId ? { subjectId } : {});
 	// 等科目也到齊再畫，科目 chip 與顏色不會晚一步才出現
 	const subjects = useSubjects();
 	const { data: events = [] } = useEvents();
@@ -108,6 +108,8 @@ export function TasksPage() {
 	const shown = view === 'board' ? searched : listed;
 	const searching = q.trim().length > 0;
 	const empty = !!tasks && all.length === 0;
+	// 完全沒有任務（不是篩選科目後才沒有）：頁首不放主要動作、篩選列隱藏，由空狀態負責（跨頁慣例）
+	const noData = empty && !subjectId;
 
 	const addButton = (label = '新增任務', variant: 'primary' | 'secondary' = 'primary') => (
 		<Button variant={variant} onClick={() => setDialog({})}>
@@ -118,15 +120,27 @@ export function TasksPage() {
 
 	let content: ReactNode;
 	if (isPending || subjects.isPending) content = <PageLoader />;
-	else if (error) content = <ErrorNote error={error} />;
-	else if (empty)
+	else if (error) content = <ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />;
+	else if (noData)
 		content = (
 			<Card>
 				<EmptyState
 					icon={<ListChecks />}
-					title={subjectId ? '這個科目還沒有任務' : '還沒有任務'}
+					title="還沒有任務"
 					description="把大目標拆成可以在一次讀書時間內完成的小任務，會更容易開始。"
-					action={addButton(subjectId ? '新增任務' : '新增第一個任務')}
+					action={addButton('新增第一個任務')}
+				/>
+			</Card>
+		);
+	else if (empty)
+		// 篩選科目後沒有任務：頁首的主要動作與篩選列照常顯示，這裡用 secondary
+		content = (
+			<Card>
+				<EmptyState
+					icon={<ListChecks />}
+					title="這個科目還沒有任務"
+					description="換個科目，或看看所有科目的任務。"
+					action={<Button onClick={() => setSubjectId(null)}>顯示所有科目</Button>}
 				/>
 			</Card>
 		);
@@ -165,7 +179,7 @@ export function TasksPage() {
 						icon={<ListChecks />}
 						title="沒有待辦任務"
 						description="目前的任務都完成了，可以排下一個任務。"
-						action={addButton()}
+						action={addButton('新增任務', 'secondary')}
 					/>
 				)}
 			</Card>
@@ -186,23 +200,25 @@ export function TasksPage() {
 		<div>
 			<PageHeader
 				title="學習任務"
-				description={empty ? undefined : tasks && <Summary {...summary} />}
+				description={noData ? undefined : tasks && !empty && <Summary {...summary} />}
 				// 完全沒有任務時，新增按鈕在空狀態裡（每個畫面只有一個主要動作）
-				actions={empty ? undefined : addButton()}
+				actions={noData ? undefined : addButton()}
 			/>
 
-			<TaskToolbar
-				query={query}
-				onQueryChange={setQuery}
-				view={view}
-				onViewChange={setView}
-				status={status}
-				onStatusChange={setStatus}
-				subjectId={subjectId}
-				onSubjectChange={setSubjectId}
-				sort={sort}
-				onSortChange={setSort}
-			/>
+			{!noData && (
+				<TaskToolbar
+					query={query}
+					onQueryChange={setQuery}
+					view={view}
+					onViewChange={setView}
+					status={status}
+					onStatusChange={setStatus}
+					subjectId={subjectId}
+					onSubjectChange={setSubjectId}
+					sort={sort}
+					onSortChange={setSort}
+				/>
+			)}
 
 			{/* 搜尋結果的報讀：有結果時也顯示在畫面上；沒有結果時畫面上已經有空狀態，這裡只給螢幕報讀器 */}
 			<p role="status" className={searching && shown.length > 0 ? 'mb-3 text-meta text-ink-2' : 'sr-only'}>

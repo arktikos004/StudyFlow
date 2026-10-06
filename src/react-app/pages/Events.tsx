@@ -8,7 +8,7 @@ import { useSubjectMark } from '../components/dashboard/hooks';
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SubjectSelect, SubjectTag } from '../components/subjects';
 import { CountdownTile } from '../components/countdown';
-import { Badge, Button, Card, cn, EmptyState, ErrorNote, PageHeader, PageLoader, TextLink } from '../components/ui';
+import { Badge, Button, Card, cn, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack, TextLink } from '../components/ui';
 import { EVENT_KIND_LABEL, formatDate } from '../lib/format';
 import { eventsSummary } from '../lib/notes-exams';
 import { useEvents, useSubjectMap, useSubjects, useUser } from '../lib/queries';
@@ -37,11 +37,20 @@ function EventCard({
 		<Card as="article" variant={past ? 'plain' : 'default'} className="flex h-full flex-col p-4 sm:p-5">
 			<div className="flex items-start gap-3 sm:gap-4">
 				{/* 倒數磚：規則與文案全站統一（components/countdown.tsx）；固定寬度讓卡片之間對齊 */}
-				<CountdownTile kind={event.kind} date={event.date} time={event.time} today={today} timeZone={timeZone} className="w-[5.25rem] px-2" />
+				<CountdownTile
+					kind={event.kind}
+					date={event.date}
+					time={event.time}
+					today={today}
+					timeZone={timeZone}
+					className="w-[5.25rem] px-2"
+				/>
 				<div className="min-w-0 flex-1">
 					<div className="flex items-start justify-between gap-2">
 						<div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-2 pointer-coarse:pt-3">
-							<Badge icon={event.kind === 'exam' ? <GraduationCap aria-hidden /> : <CalendarClock aria-hidden />}>{EVENT_KIND_LABEL[event.kind]}</Badge>
+							<Badge icon={event.kind === 'exam' ? <GraduationCap aria-hidden /> : <CalendarClock aria-hidden />}>
+								{EVENT_KIND_LABEL[event.kind]}
+							</Badge>
 							<SubjectTag subjectId={event.subjectId} />
 						</div>
 						<Button size="icon" variant="ghost" onClick={onEdit} aria-label={`編輯「${event.title}」`} className="-mt-0.5 -mr-2 shrink-0">
@@ -107,7 +116,7 @@ export function EventsPage() {
 	// 每 30 秒更新「今天」：頁面開著跨過午夜時，倒數也會跟著換日（依使用者時區）
 	const clock = useMinuteClock();
 	const today = localDate(clock, user.timezone);
-	const { data: events, isPending, error } = useEvents();
+	const { data: events, isPending, error, refetch, isRefetching } = useEvents();
 	const { data: subjects = [] } = useSubjects();
 	const [subjectId, setSubjectId] = useState<string | null>(null);
 	const [dialog, setDialog] = useState<DialogState>(null);
@@ -141,16 +150,12 @@ export function EventsPage() {
 	const upcoming = visible.filter((e) => e.date >= today);
 	const past = visible.filter((e) => e.date < today).reverse();
 	const subjectName = subjectId ? subjects.find((s) => s.id === subjectId)?.name : undefined;
+	// 一場考試或截止日都沒有：頁首不放主要動作、篩選列隱藏，由空狀態負責唯一的 primary（跨頁慣例）
+	const empty = events?.length === 0;
 
 	const card = (e: EventItem) => (
 		<li key={e.id} className="min-w-0">
-			<EventCard
-				event={e}
-				today={today}
-				timeZone={user.timezone}
-				onEdit={() => setDialog({ event: e })}
-				onAddTask={() => setTaskFor(e)}
-			/>
+			<EventCard event={e} today={today} timeZone={user.timezone} onEdit={() => setDialog({ event: e })} onAddTask={() => setTaskFor(e)} />
 		</li>
 	);
 
@@ -160,13 +165,15 @@ export function EventsPage() {
 				title="考試與截止日"
 				description={events ? eventsSummary(upcoming, today) : undefined}
 				actions={
-					<Button variant="primary" onClick={() => setDialog({ subjectId })}>
-						<Plus className="size-4" aria-hidden />
-						新增考試
-					</Button>
+					!empty && (
+						<Button variant="primary" onClick={() => setDialog({ subjectId })}>
+							<Plus className="size-4" aria-hidden />
+							新增考試或截止日
+						</Button>
+					)
 				}
 			/>
-			{subjects.length > 0 && (
+			{subjects.length > 0 && !empty && (
 				<div className="mb-5 flex flex-wrap items-center gap-2">
 					<div className="w-40">
 						<SubjectSelect aria-label="科目" value={subjectId} onChange={setSubjectId} emptyLabel="所有科目" />
@@ -177,24 +184,34 @@ export function EventsPage() {
 			{isPending ? (
 				<PageLoader />
 			) : error ? (
-				<ErrorNote error={error} />
+				<ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />
 			) : (
-				<>
+				<PageStack>
 					<section>
 						<h2 className="sr-only">即將到來</h2>
 						{upcoming.length === 0 ? (
 							<Card>
-								<EmptyState
-									icon={<GraduationCap />}
-									title={subjectName ? `「${subjectName}」沒有即將到來的考試或截止日` : '沒有即將到來的考試或截止日'}
-									description="新增考試日期後，可以替它列出準備任務，隨時掌握進度。"
-									action={
-										<Button variant="primary" onClick={() => setDialog({ subjectId })}>
-											<Plus className="size-4" aria-hidden />
-											{subjectName ? '新增這科的考試' : '新增考試'}
-										</Button>
-									}
-								/>
+								{empty ? (
+									<EmptyState
+										icon={<GraduationCap />}
+										title="還沒有考試或截止日"
+										description="新增考試日期後，可以替它列出準備任務，隨時掌握進度。"
+										action={
+											<Button variant="primary" onClick={() => setDialog({ subjectId: null })}>
+												<Plus className="size-4" aria-hidden />
+												新增考試或截止日
+											</Button>
+										}
+									/>
+								) : (
+									// 有資料、只是篩選後（或只剩已結束的）沒有即將到來的：頁首已經有主要動作，這裡用 secondary
+									<EmptyState
+										icon={<GraduationCap />}
+										title={subjectName ? `「${subjectName}」沒有即將到來的考試或截止日` : '沒有即將到來的考試或截止日'}
+										description={subjectName ? '換個科目，或看看所有科目。' : '已結束的考試在下方。'}
+										action={subjectName && <Button onClick={() => setSubjectId(null)}>清除篩選</Button>}
+									/>
+								)}
 							</Card>
 						) : (
 							<ul className="grid gap-3 sm:gap-4 lg:grid-cols-2">{upcoming.map(card)}</ul>
@@ -202,11 +219,20 @@ export function EventsPage() {
 					</section>
 
 					{past.length > 0 && (
-						<section className="mt-8">
+						<section>
 							<h2>
-								<Button variant="ghost" className="-ml-3" onClick={() => setShowPast((v) => !v)} aria-expanded={showPast} aria-controls={pastId}>
+								<Button
+									variant="ghost"
+									className="-ml-3"
+									onClick={() => setShowPast((v) => !v)}
+									aria-expanded={showPast}
+									aria-controls={pastId}
+								>
 									<ChevronDown
-										className={cn('size-4 transition-transform duration-180 ease-out motion-reduce:transition-none', !showPast && '-rotate-90')}
+										className={cn(
+											'size-4 transition-transform duration-180 ease-out motion-reduce:transition-none',
+											!showPast && '-rotate-90',
+										)}
 										aria-hidden
 									/>
 									已結束
@@ -218,7 +244,7 @@ export function EventsPage() {
 							</ul>
 						</section>
 					)}
-				</>
+				</PageStack>
 			)}
 
 			<EventDialog
