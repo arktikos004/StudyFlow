@@ -1,6 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Command, Ellipsis, LogOut, Search, Trophy, WifiOff } from 'lucide-react';
-import { createElement, lazy, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import {
+	Component,
+	createElement,
+	lazy,
+	Suspense,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+	type ReactNode,
+} from 'react';
 import { NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
@@ -17,7 +28,26 @@ import { Button, cn, Dialog, Kbd } from './ui';
 
 // 指令面板會用到科目元件與 zod（搜尋字數上限），分開打包：第一次打開時才下載，閒置時先預載
 const loadPalette = () => import('./CommandPalette');
-const CommandPalette = lazy(() => loadPalette().then((m) => ({ default: m.CommandPalette })));
+const makeLazyPalette = () => lazy(() => loadPalette().then((m) => ({ default: m.CommandPalette })));
+// React.lazy 會快取失敗的 promise：載入失敗時換一個新的 lazy 實例，下次打開才會重新下載
+let LazyPalette = makeLazyPalette();
+
+/**
+ * 指令面板的錯誤邊界：chunk 載入失敗（部署新版後舊分頁的 404、離線）或面板本身出錯時，
+ * 只關掉面板並提示，不讓整個 Layout 被換成錯誤畫面。只在面板打開時掛載，每次打開都是新的邊界。
+ */
+class PaletteBoundary extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+	state = { failed: false };
+	static getDerivedStateFromError() {
+		return { failed: true };
+	}
+	componentDidCatch() {
+		this.props.onError();
+	}
+	render() {
+		return this.state.failed ? null : this.props.children;
+	}
+}
 
 const APPLE = typeof navigator !== 'undefined' && isApplePlatform(navigator.platform || navigator.userAgent);
 const SHORTCUT_ARIA = APPLE ? 'Meta+K' : 'Control+K';
@@ -247,6 +277,12 @@ export function Layout() {
 	}, []);
 	const preload = () => void loadPalette().catch(() => {});
 
+	const onPaletteError = useCallback(() => {
+		LazyPalette = makeLazyPalette();
+		setPaletteOpen(false);
+		toast.error('搜尋載入失敗，請檢查網路後再試一次；仍然失敗請重新整理頁面');
+	}, []);
+
 	return (
 		<div className="min-h-dvh md:flex">
 			{/* 第一個可聚焦的元素：跳過導覽 */}
@@ -410,9 +446,11 @@ export function Layout() {
 			</Dialog>
 
 			{paletteOpen && (
-				<Suspense fallback={null}>
-					<CommandPalette onClose={closePalette} />
-				</Suspense>
+				<PaletteBoundary onError={onPaletteError}>
+					<Suspense fallback={null}>
+						<LazyPalette onClose={closePalette} />
+					</Suspense>
+				</PaletteBoundary>
 			)}
 		</div>
 	);
