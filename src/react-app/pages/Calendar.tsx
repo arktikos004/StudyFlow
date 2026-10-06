@@ -20,6 +20,7 @@ import { SessionDialog } from '../components/SessionDialog';
 import { SubjectTag } from '../components/subjects';
 import { Button, Card, ErrorNote, PageHeader, PageStack, Segmented } from '../components/ui';
 import { formatDate, formatMinutes, formatMonthDay } from '../lib/format';
+import { dateRange } from '../lib/polish-format';
 import { useEvents, useSubjectMap, useTasks, useUser } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
 import { useDeepLink, useEventsKeep, useMediaQuery, useMinuteClock, useSessionsKeep } from '../lib/timer-queries';
@@ -192,7 +193,7 @@ export function CalendarPage() {
 			? `${y} 年 ${Number(m)} 月`
 			: single
 				? formatDate(selected, selected.slice(0, 4) !== today.slice(0, 4))
-				: `${week[0].slice(0, 4)} 年 ${formatMonthDay(week[0])}–${formatMonthDay(week[6])}`;
+				: `${week[0].slice(0, 4)} 年 ${dateRange(formatMonthDay(week[0]), formatMonthDay(week[6]))}`;
 	const step =
 		view === 'month'
 			? { prev: '上個月', next: '下個月' }
