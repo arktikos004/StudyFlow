@@ -12,6 +12,12 @@ export type PublicUser = {
 	/** 讀書目標（分鐘）；null = 沒有設定 */
 	dailyGoalMinutes: number | null;
 	weeklyGoalMinutes: number | null;
+	/**
+	 * 頭像最後更新的時間（UTC 毫秒）；null = 沒有上傳。
+	 * 前端用 lib/api.ts 的 avatarUrl() 組出 /api/auth/avatar?v=<這個值>：每次更換都會變，不會用到快取的舊圖。
+	 * R2 的儲存位置（avatarKey）只在後端使用，不會出現在任何回應裡。
+	 */
+	avatarUpdatedAt: number | null;
 };
 
 export type EventItem = StudyEvent & { taskTotal: number; taskDone: number };
