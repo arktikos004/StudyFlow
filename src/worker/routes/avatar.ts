@@ -57,15 +57,17 @@ export const avatarRoutes = new Hono<AppEnv>()
 	.use(requireAuth)
 	.get('/', async (c) => {
 		// c.var.user 是驗證 session 時讀出的整列資料，不必再查一次 D1
-		const key = c.var.user.avatarKey;
-		const obj = key ? await c.env.BUCKET.get(key) : null;
+		const user = c.var.user;
+		const obj = user.avatarKey ? await c.env.BUCKET.get(user.avatarKey) : null;
 		if (!obj) avatarNotFound();
+		// 只有 v 等於目前的 avatarUpdatedAt（avatarUrl() 組出的網址）才讓瀏覽器快取一年；沒帶 v 或用舊的 v
+		// （例如過期的分頁）時每次都要重新驗證，否則換了頭像之後，同一個網址會一直拿到快取裡的舊圖
+		const current = c.req.query('v') === String(user.avatarUpdatedAt);
 		return new Response(obj.body, {
 			headers: {
 				'Content-Type': obj.httpMetadata?.contentType ?? 'application/octet-stream',
 				'Content-Length': String(obj.size),
-				// 前端的網址帶 ?v=<avatarUpdatedAt>，更換頭像就會換網址：同一個網址的內容不會變
-				'Cache-Control': 'private, max-age=31536000, immutable',
+				'Cache-Control': current ? 'private, max-age=31536000, immutable' : 'private, no-cache',
 				'Content-Disposition': 'inline',
 				'X-Content-Type-Options': 'nosniff',
 			},

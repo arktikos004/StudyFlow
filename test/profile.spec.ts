@@ -45,7 +45,7 @@ async function avatarObjects(userId: string) {
 const keyPattern = (userId: string) => new RegExp(`^users/${userId}/avatar-[0-9a-f-]{36}$`);
 
 describe('頭像（PRO-1）', () => {
-	it('上傳後取回同樣的內容；網址帶 ?v= 也一樣；標頭用偵測到的格式、不讓瀏覽器猜', async () => {
+	it('上傳後取回同樣的內容；標頭用偵測到的格式、不讓瀏覽器猜；只有目前的 ?v= 才快取一年', async () => {
 		const c = await registeredClient();
 		expect(c.user.avatarUpdatedAt).toBeNull();
 		const none = await c.get('/api/auth/avatar');
@@ -63,13 +63,20 @@ describe('頭像（PRO-1）', () => {
 		expect(key).toMatch(keyPattern(c.user.id));
 		expect((await env.BUCKET.head(key!))?.httpMetadata?.contentType).toBe('image/png');
 
-		for (const path of ['/api/auth/avatar', `/api/auth/avatar?v=${user.avatarUpdatedAt}`]) {
+		// review 2：v 等於目前的 avatarUpdatedAt（avatarUrl() 的網址）才 immutable；沒帶 v 或 v 不對時每次重新驗證
+		const cases: [string, string][] = [
+			[`/api/auth/avatar?v=${user.avatarUpdatedAt}`, 'private, max-age=31536000, immutable'],
+			['/api/auth/avatar', 'private, no-cache'],
+			[`/api/auth/avatar?v=${user.avatarUpdatedAt - 1}`, 'private, no-cache'],
+			['/api/auth/avatar?v=', 'private, no-cache'],
+		];
+		for (const [path, cacheControl] of cases) {
 			const img = await c.get(path);
 			expect(img.status, path).toBe(200);
 			expect(new Uint8Array(img.data)).toEqual(PNG_1X1);
 			expect(img.headers.get('content-type')).toBe('image/png');
 			expect(img.headers.get('content-length')).toBe(String(PNG_1X1.byteLength));
-			expect(img.headers.get('cache-control')).toBe('private, max-age=31536000, immutable');
+			expect(img.headers.get('cache-control'), path).toBe(cacheControl);
 			expect(img.headers.get('content-disposition')).toBe('inline');
 			expect(img.headers.get('x-content-type-options')).toBe('nosniff');
 		}
@@ -90,7 +97,12 @@ describe('頭像（PRO-1）', () => {
 		expect(await avatarObjects(c.user.id)).toEqual([secondKey]);
 		const jpeg = await c.get(`/api/auth/avatar?v=${second.avatarUpdatedAt}`);
 		expect(jpeg.headers.get('content-type')).toBe('image/jpeg');
+		expect(jpeg.headers.get('cache-control')).toBe('private, max-age=31536000, immutable');
 		expect(new Uint8Array(jpeg.data)).toEqual(JPEG);
+		// 過期的分頁還在用舊的 v：拿到的是新頭像，而且不會以舊網址被快取一年
+		const stale = await c.get(`/api/auth/avatar?v=${first.avatarUpdatedAt}`);
+		expect(new Uint8Array(stale.data)).toEqual(JPEG);
+		expect(stale.headers.get('cache-control')).toBe('private, no-cache');
 
 		const third = await uploadAvatar(c, WEBP, 'image/jpeg');
 		expect(third.avatarUpdatedAt).toBeGreaterThan(second.avatarUpdatedAt);
