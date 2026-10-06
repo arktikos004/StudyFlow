@@ -115,7 +115,7 @@ export function ChecklistEditor({
 							<Checkbox
 								checked={item.done}
 								onChange={() => toggle(item.id)}
-								label={<span className={cn('break-words', item.done && 'text-ink-3 line-through')}>{item.title}</span>}
+								label={<span className={cn('wrap-anywhere', item.done && 'text-ink-3 line-through')}>{item.title}</span>}
 								className="min-w-0 flex-1 py-1"
 							/>
 							{canMove && (

@@ -75,21 +75,7 @@ export function Legend({ items }: { items: { key?: string; label: string; color:
 	);
 }
 
-// ---- 數字卡 ----
-
-/** 單張數字卡（Sprint 1 相容保留；新的總覽／統計請改用 StatStrip，不要做一排長得一樣的數字卡） */
-export function StatTile({ label, value, sub, icon }: { label: string; value: ReactNode; sub?: ReactNode; icon?: ReactNode }) {
-	return (
-		<div className="rounded-xl border border-line bg-card p-4 shadow-sm">
-			<div className="flex items-center gap-1.5 text-sm text-ink-2">
-				{icon}
-				{label}
-			</div>
-			<div className="mt-1.5 font-num text-2xl font-semibold tabular-nums">{value}</div>
-			{sub && <div className="mt-0.5 text-xs text-ink-3">{sub}</div>}
-		</div>
-	);
-}
+// ---- 數字列 ----
 
 export type StatItem = { key?: string; label: ReactNode; value: ReactNode; sub?: ReactNode; icon?: ReactNode };
 
@@ -417,29 +403,31 @@ export function Heatmap({ data, today }: { data: { date: string; minutes: number
 					</table>
 				</div>
 			) : (
-				<div className="flex gap-1 overflow-x-auto pb-1" role="img" aria-label={summary}>
-					<div className="mr-1 grid shrink-0 grid-rows-7 gap-1 text-caption leading-none text-ink-3">
-						{['一', '', '三', '', '五', '', '日'].map((l, i) => (
-							<span key={i} className="flex h-3.5 items-center">
-								{l}
-							</span>
-						))}
-					</div>
-					{weeks.map((w) => (
-						<div key={w[0].date} className="grid shrink-0 grid-rows-7 gap-1">
-							{w.map((d) => (
-								<div
-									key={d.date}
-									title={`${formatDate(d.date)}：${d.minutes ? formatMinutes(d.minutes) : '沒有紀錄'}`}
-									className={cn(
-										'size-3.5 rounded-[3px]',
-										d.date > today ? 'bg-transparent' : HEAT_CLASS[heatLevel(d.minutes)],
-										d.date === today && 'ring-1 ring-ink-2 ring-offset-1 ring-offset-card',
-									)}
-								/>
-							))}
-						</div>
+				// 格子隨卡片寬度縮放：一欄星期標籤＋每週一欄（等寬、正方形），整張圖撐滿卡片，不再只占左半；最寬 40rem，大螢幕上格子不會太大
+				<div
+					className="grid max-w-[40rem] grid-flow-col grid-rows-7 gap-1"
+					style={{ gridTemplateColumns: `auto repeat(${weeks.length}, minmax(0, 1fr))` }}
+					role="img"
+					aria-label={summary}
+				>
+					{['一', '', '三', '', '五', '', '日'].map((l, i) => (
+						<span key={i} aria-hidden className="mr-1 flex items-center text-caption leading-none text-ink-3">
+							{l}
+						</span>
 					))}
+					{weeks.flatMap((w) =>
+						w.map((d) => (
+							<div
+								key={d.date}
+								title={`${formatDate(d.date)}：${d.minutes ? formatMinutes(d.minutes) : '沒有紀錄'}`}
+								className={cn(
+									'aspect-square w-full rounded-[3px]',
+									d.date > today ? 'bg-transparent' : HEAT_CLASS[heatLevel(d.minutes)],
+									d.date === today && 'ring-1 ring-ink-2 ring-offset-1 ring-offset-card',
+								)}
+							/>
+						)),
+					)}
 				</div>
 			)}
 			<div className="mt-2 flex flex-wrap items-center justify-between gap-2">

@@ -26,11 +26,14 @@ export function DueLabel({ dueDate, today, done }: { dueDate: string; today: str
 	return (
 		<span className="inline-flex items-center gap-1">
 			<CalendarDays className="size-3.5 shrink-0" aria-hidden />
-			<span className="sr-only">期限</span>
-			{info.kind === 'tomorrow' && '明天，'}
-			<time dateTime={dueDate} className="font-num tabular-nums">
-				{formatDate(dueDate)}
-			</time>
+			{/* 文字和日期包在同一個 span：外層的 gap 不會把「明天，」和日期撐開 */}
+			<span>
+				<span className="sr-only">期限</span>
+				{info.kind === 'tomorrow' && '明天，'}
+				<time dateTime={dueDate} className="font-num tabular-nums">
+					{formatDate(dueDate)}
+				</time>
+			</span>
 		</span>
 	);
 }

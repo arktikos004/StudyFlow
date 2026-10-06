@@ -1,19 +1,15 @@
-import { CalendarClock, CircleAlert, CircleCheck } from 'lucide-react';
-import { useId, useState, type ReactNode } from 'react';
+import { CalendarClock, CircleAlert, CircleCheck, type LucideIcon } from 'lucide-react';
+import { useId, useState } from 'react';
 import type { EventItem, Task, TaskItem } from '../../../shared/api-types';
 import type { TaskGroup, TaskGroupKey } from '../../lib/task-sort';
 import { TaskRow } from '../TaskItem';
-import { Button, Card, cn } from '../ui';
+import { Card, SectionLabel, ShowAllToggle, type SectionLabelTone } from '../ui';
 
 /** 已完成那一組一開始只顯示最近的幾項 */
 const DONE_LIMIT = 20;
 
-const GROUP_ICON: Partial<Record<TaskGroupKey, ReactNode>> = {
-	overdue: <CircleAlert className="size-4 shrink-0" aria-hidden />,
-	today: <CalendarClock className="size-4 shrink-0" aria-hidden />,
-	done: <CircleCheck className="size-4 shrink-0" aria-hidden />,
-};
-const GROUP_TONE: Partial<Record<TaskGroupKey, string>> = { overdue: 'text-danger', today: 'text-warning', done: 'text-success' };
+const GROUP_ICON: Partial<Record<TaskGroupKey, LucideIcon>> = { overdue: CircleAlert, today: CalendarClock, done: CircleCheck };
+const GROUP_TONE: Partial<Record<TaskGroupKey, SectionLabelTone>> = { overdue: 'danger', today: 'warning', done: 'success' };
 
 /** 清單檢視：依期限分組（或依排序方式排成一組），已完成的在最後 */
 export function TaskList({
@@ -32,7 +28,8 @@ export function TaskList({
 	onToggleItem: (task: Task | TaskItem, itemId: string) => void;
 }) {
 	return (
-		<div className="space-y-6">
+		// 群組之間 20px（同一個清單裡的分組，比區塊間距小，單項的群組不會讓節奏跳太大）
+		<div className="space-y-5">
 			{groups.map((g) => (
 				<GroupSection key={g.key} group={g} today={today} eventMap={eventMap} query={query} onOpen={onOpen} onToggleItem={onToggleItem} />
 			))}
@@ -61,17 +58,16 @@ function GroupSection({
 	const items = limited ? group.items.slice(0, DONE_LIMIT) : group.items;
 	return (
 		<section aria-labelledby={headingId}>
-			<h2 id={headingId} className="mb-2 flex items-center gap-1.5 px-1 text-sm font-semibold text-ink-2">
-				<span className={cn('inline-flex items-center gap-1.5', GROUP_TONE[group.key])}>
-					{GROUP_ICON[group.key]}
-					{group.title}
-				</span>
-				<span className="font-num font-normal text-ink-3 tabular-nums">
-					<span className="sr-only">，</span>
-					{group.items.length}
-					<span className="sr-only">項</span>
-				</span>
-			</h2>
+			<SectionLabel
+				id={headingId}
+				size="sm"
+				tone={GROUP_TONE[group.key]}
+				icon={GROUP_ICON[group.key]}
+				count={group.items.length}
+				className="mb-2 px-1"
+			>
+				{group.title}
+			</SectionLabel>
 			<Card as="div">
 				<ul className="divide-y divide-line">
 					{items.map((t) => (
@@ -89,9 +85,7 @@ function GroupSection({
 				</ul>
 				{group.key === 'done' && group.items.length > DONE_LIMIT && (
 					<div className="border-t border-line px-2 py-1.5">
-						<Button variant="ghost" size="sm" className="w-full" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
-							{showAll ? `只顯示前 ${DONE_LIMIT} 項` : `顯示全部 ${group.items.length} 項`}
-						</Button>
+						<ShowAllToggle expanded={showAll} onToggle={() => setShowAll((v) => !v)} total={group.items.length} limit={DONE_LIMIT} />
 					</div>
 				)}
 			</Card>

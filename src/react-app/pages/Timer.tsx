@@ -130,14 +130,14 @@ function OptionField({ option, value, hint }: { option: NumericOption; value: nu
 }
 
 /** 番茄鐘設定：平常只顯示一行摘要，按「調整」展開（專注空間保持安靜） */
-function PomodoroSettings({ s }: { s: TimerState }) {
+function PomodoroSettings({ s, className }: { s: TimerState; className?: string }) {
 	const [open, setOpen] = useState(false);
 	const id = useId();
 	return (
-		<section aria-labelledby={`${id}-title`} className="w-full max-w-xl border-t border-line pt-5">
+		<section aria-labelledby={`${id}-title`} className={cn('w-full max-w-xl border-t border-line pt-5', className)}>
 			<div className="flex items-center justify-between gap-3">
 				<div className="min-w-0">
-					<h2 id={`${id}-title`} className="text-h3 font-semibold">
+					<h2 id={`${id}-title`} className="text-h2 font-semibold">
 						番茄鐘設定
 					</h2>
 					<p className="text-meta text-pretty text-ink-3">
@@ -217,7 +217,7 @@ function NoiseControls({ focusRunning }: { focusRunning: boolean }) {
 	return (
 		<section aria-labelledby={`${id}-title`} className="w-full max-w-xl border-t border-line pt-5">
 			<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-				<h2 id={`${id}-title`} className="text-h3 font-semibold">
+				<h2 id={`${id}-title`} className="text-h2 font-semibold">
 					白噪音
 				</h2>
 				{on && (
@@ -260,6 +260,7 @@ function NoiseControls({ focusRunning }: { focusRunning: boolean }) {
 /**
  * 學習紀錄列表：可以切換日期，每筆都能編輯（整列）與刪除。
  * 時間依 user.timezone 顯示。
+ * errorShownAbove：今天的紀錄載入失敗時，頁面上方已經顯示錯誤與「重新載入」，這裡只說明，不重複一個錯誤橫幅。
  */
 function SessionLog({
 	date,
@@ -267,17 +268,21 @@ function SessionLog({
 	onDateChange,
 	onEdit,
 	onCreate,
+	errorShownAbove,
+	className,
 }: {
 	date: string;
 	today: string;
 	onDateChange: (date: string) => void;
 	onEdit: (session: StudySession) => void;
 	onCreate: () => void;
+	errorShownAbove: boolean;
+	className?: string;
 }) {
 	const user = useUser();
 	const tz = user.timezone;
 	const subjectMap = useSubjectMap();
-	const { data: sessions, isPending, error } = useStudySessions({ from: date, to: date });
+	const { data: sessions, isPending, error, refetch, isRefetching } = useStudySessions({ from: date, to: date });
 	const remove = useDeleteSession();
 	const [confirm, confirmDialog] = useConfirm();
 	const list = sessions ?? [];
@@ -296,7 +301,7 @@ function SessionLog({
 	};
 
 	return (
-		<Card className="self-start">
+		<Card className={cn('self-start', className)}>
 			<CardHeader
 				title="學習紀錄"
 				action={
@@ -324,13 +329,17 @@ function SessionLog({
 					</Button>
 				)}
 			</div>
-			<div className="flex items-baseline gap-3 px-4 pb-3 sm:px-5">
-				<span className="font-num text-num-lg font-semibold tabular-nums">{formatMinutes(total)}</span>
-				<span className="text-meta text-ink-3">{list.length} 段學習</span>
-			</div>
-			{error ? (
+			{!error && (
+				<div className="flex items-baseline gap-3 px-4 pb-3 sm:px-5">
+					<span className="font-num text-num-lg font-semibold tabular-nums">{formatMinutes(total)}</span>
+					<span className="text-meta text-ink-3">{list.length} 段學習</span>
+				</div>
+			)}
+			{error && date === today && errorShownAbove ? (
+				<p className="border-t border-line px-4 py-3 text-meta text-ink-3 sm:px-5">學習紀錄沒有載入，請按頁面上方的「重新載入」</p>
+			) : error ? (
 				<div className="px-4 pb-4 sm:px-5">
-					<ErrorNote error={error} />
+					<ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />
 				</div>
 			) : isPending ? (
 				<PageLoader />
@@ -397,8 +406,12 @@ export function TimerPage() {
 	const today = todayOf(user.timezone);
 	const subjectMap = useSubjectMap();
 	const toneOf = useSubjectTone();
-	const { data: tasks = [] } = useTasks();
-	const { data: todaySessions = [] } = useStudySessions({ from: today, to: today });
+	const tasksQuery = useTasks();
+	const todayQuery = useStudySessions({ from: today, to: today });
+	const tasks = tasksQuery.data ?? [];
+	const todaySessions = todayQuery.data ?? [];
+	// 今天的紀錄或任務載入失敗：頁首摘要不能說「今天還沒有學習紀錄」，任務選單也會是空的，所以在上方說明並提供重新載入
+	const failed = [todayQuery, tasksQuery].filter((q) => q.error);
 	const [confirm, confirmDialog] = useConfirm();
 	const [logDate, setLogDate] = useState(today);
 	const [dialog, setDialog] = useState<{ session?: StudySession } | null>(null);
@@ -442,6 +455,7 @@ export function TimerPage() {
 	}
 
 	const pomodoro = s.mode === 'pomodoro';
+	const showSettings = pomodoro && s.phase === 'idle';
 	const active = s.phase !== 'idle';
 	const isBreak = s.phase === 'break';
 	const waitingBreak = isBreak && !s.running;
@@ -506,12 +520,31 @@ export function TimerPage() {
 			<PageHeader
 				title="學習計時"
 				description={
-					todayMinutes > 0 || round.done > 0 ? `今天已讀 ${formatMinutes(todayMinutes)}，完成 ${round.done} 個番茄` : '今天還沒有學習紀錄'
+					todayQuery.error
+						? undefined
+						: todayMinutes > 0 || round.done > 0
+							? `今天已讀 ${formatMinutes(todayMinutes)}，完成 ${round.done} 個番茄`
+							: '今天還沒有學習紀錄'
 				}
 			/>
-			<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
+			{failed.length > 0 && (
+				<div className="mb-section">
+					<ErrorNote
+						error={failed[0].error}
+						onRetry={() => failed.forEach((q) => void q.refetch())}
+						retrying={failed.some((q) => q.isRefetching)}
+					/>
+				</div>
+			)}
+			{/*
+			 * 桌面：左欄是計時器與番茄鐘設定，右欄是學習紀錄（跨兩列）。
+			 * - 第一列 auto、第二列 1fr：學習紀錄比左欄高時，多出來的高度只給第二列，計時器與設定之間不會被撐出空白（review A2）。
+			 * - DOM 順序就是手機上的順序：計時器 → 學習紀錄 → 番茄鐘設定（紀錄比調整設定常用），不用 order 重排，
+			 *   螢幕報讀器與 Tab 的順序和畫面一致；桌面上是由左而右、由上而下（計時器 → 右邊的紀錄 → 左下的設定）。
+			 */}
+			<div className={cn('grid grid-cols-1 gap-section lg:grid-cols-[minmax(0,1fr)_22rem]', showSettings && 'lg:grid-rows-[auto_1fr]')}>
 				{/* 專注空間：沒有卡片外框，只有計時環與操作 */}
-				<section aria-label="計時器" className="flex min-w-0 flex-col items-center gap-6">
+				<section aria-label="計時器" className="flex min-w-0 flex-col items-center gap-6 lg:col-start-1 lg:row-start-1">
 					<Segmented<TimerMode>
 						label="計時模式"
 						value={s.mode}
@@ -627,8 +660,6 @@ export function TimerPage() {
 					</div>
 
 					<NoiseControls focusRunning={s.phase === 'focus' && s.running} />
-
-					{pomodoro && !active && <PomodoroSettings s={s} />}
 				</section>
 
 				<SessionLog
@@ -637,7 +668,11 @@ export function TimerPage() {
 					onDateChange={setLogDate}
 					onEdit={(session) => setDialog({ session })}
 					onCreate={() => setDialog({})}
+					errorShownAbove={!!todayQuery.error}
+					className={cn('lg:col-start-2 lg:row-start-1', showSettings && 'lg:row-span-2')}
 				/>
+
+				{showSettings && <PomodoroSettings s={s} className="self-start justify-self-center lg:col-start-1 lg:row-start-2" />}
 			</div>
 			<SessionDialog open={!!dialog} session={dialog?.session} defaultDate={logDate} onClose={() => setDialog(null)} />
 			{confirmDialog}

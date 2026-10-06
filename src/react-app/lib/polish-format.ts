@@ -14,3 +14,11 @@ export function firstGrapheme(text: string): string {
 	}
 	return Array.from(s)[0] ?? '';
 }
+
+/**
+ * 日期範圍（跨頁慣例）：「9/7（一）至 10/6（二）」「10/5 至 10/11」，用「至」，不用破折號。
+ * a、b 是已經格式化好的日期；「至」後面接數字時空一格，前面是全形括號就不空。
+ */
+export function dateRange(a: string, b: string): string {
+	return `${a}${/[）)]$/.test(a) ? '' : ' '}至 ${b}`;
+}

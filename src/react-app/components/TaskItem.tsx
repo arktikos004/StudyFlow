@@ -7,7 +7,7 @@ import { spentOf } from '../lib/task-format';
 import { descriptionSnippet, searchTerms } from '../lib/task-sort';
 import { SubjectTag } from './subjects';
 import { ChecklistCount, DueLabel, EventLabel, TaskStatusBadges, TaskTimeLabel } from './tasks/TaskMeta';
-import { Checkbox, cn, Highlight } from './ui';
+import { Checkbox, cn, Highlight, StretchedButton } from './ui';
 
 type Pending = { done: boolean; status: Task['status']; updatedAt: number };
 /** 儲存成功後，等清單更新的上限（毫秒） */
@@ -98,24 +98,21 @@ export function TaskRow({
 }
 
 /**
- * 任務標題按鈕：::after 撐滿外層（需要 relative 的容器），整格都可以點；
+ * 任務標題按鈕（共用的 StretchedButton）：::after 撐滿外層（需要 relative 的容器），整格都可以點；
  * 同一格裡的其他按鈕要加 relative 才會疊在上面。焦點框畫在整格外圍。
  */
 export function TaskTitleButton({ title, query, done, onOpen }: { title: string; query: string; done: boolean; onOpen: () => void }) {
 	return (
-		<button
-			type="button"
+		<StretchedButton
 			onClick={onOpen}
 			data-task-title
 			className={cn(
-				'block w-full text-left text-dense break-words decoration-line-strong underline-offset-4 hover:underline',
-				"after:absolute after:-inset-1 after:rounded-md after:content-['']",
-				'focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-accent',
+				'text-dense wrap-anywhere decoration-line-strong underline-offset-4 hover:underline',
 				done ? 'text-ink-3 line-through' : 'text-ink',
 			)}
 		>
 			<Highlight text={title} query={query} />
-		</button>
+		</StretchedButton>
 	);
 }
 
@@ -124,7 +121,7 @@ export function DescriptionSnippet({ task, query }: { task: Pick<Task, 'title' |
 	const snippet = query ? descriptionSnippet(task, searchTerms(query)) : null;
 	if (!snippet) return null;
 	return (
-		<p className="mt-0.5 line-clamp-2 text-meta break-words text-ink-2">
+		<p className="mt-0.5 line-clamp-2 text-meta wrap-anywhere text-ink-2">
 			<Highlight text={snippet} query={query} />
 		</p>
 	);
@@ -189,7 +186,7 @@ export function TaskMetaLine({
 							<Checkbox
 								checked={item.done}
 								onChange={() => onToggleItem(task, item.id)}
-								label={<span className={cn('break-words', item.done && 'text-ink-3 line-through')}>{item.title}</span>}
+								label={<span className={cn('wrap-anywhere', item.done && 'text-ink-3 line-through')}>{item.title}</span>}
 								className="w-full rounded-md px-2.5 hover:bg-subtle"
 							/>
 						</li>

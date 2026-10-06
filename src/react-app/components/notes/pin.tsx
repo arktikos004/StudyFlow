@@ -1,12 +1,12 @@
 import { Pin } from 'lucide-react';
-import { Button, cn } from '../ui';
+import { ToggleButton } from '../ui';
 
 /**
- * 釘選開關（NOTE-1）：aria-pressed 表示狀態，名稱固定是「釘選」，不隨狀態改字。
- * 釘選中：實心圖釘、accent-soft 底（形狀與顏色都不同，不只靠顏色）。
- * 儲存中用 aria-disabled（不用 disabled，焦點才不會掉到 body），並忽略重複點擊。
+ * 釘選開關（NOTE-1）：內部是共用的 ToggleButton（aria-pressed、按下時 accent-soft 底與實心圖釘，形狀與顏色都不同）。
+ * 名稱固定是「釘選」，不隨狀態改字；儲存中用 aria-disabled＋aria-busy（不用 disabled，焦點才不會掉到 body）。
  * - icon：卡片角落的圖示按鈕（桌面 36px、觸控 44px），名稱帶筆記標題
  * - text：詳細內容裡的「釘選」按鈕
+ * 對外的 props 不變。
  */
 export function PinToggle({
 	pinned,
@@ -27,41 +27,23 @@ export function PinToggle({
 	noteId?: string;
 	className?: string;
 }) {
-	const props = {
-		'aria-pressed': pinned,
-		'aria-disabled': busy || undefined,
-		'aria-busy': busy || undefined,
-		onClick: () => {
-			if (!busy) onToggle();
-		},
-		'data-pin-id': noteId,
-	};
-	const icon = <Pin className={cn('size-4', pinned && 'fill-current')} aria-hidden />;
 	if (variant === 'text')
 		return (
-			<Button
-				{...props}
-				size="sm"
-				className={cn(pinned && 'border-transparent bg-accent-soft text-accent-ink hover:bg-accent-soft', busy && 'opacity-70', className)}
-			>
-				{icon}
+			<ToggleButton pressed={pinned} onPressedChange={onToggle} busy={busy} icon={Pin} data-pin-id={noteId} className={className}>
 				釘選
-			</Button>
+			</ToggleButton>
 		);
 	return (
-		<Button
-			{...props}
-			variant="ghost"
-			size="icon"
+		<ToggleButton
+			variant="icon"
+			pressed={pinned}
+			onPressedChange={onToggle}
+			busy={busy}
+			icon={Pin}
 			aria-label={`釘選「${title}」`}
 			title={pinned ? '取消釘選' : '釘選到最前面'}
-			className={cn(
-				pinned ? 'bg-accent-soft text-accent-ink hover:bg-accent-soft hover:text-accent-ink' : 'text-ink-3',
-				busy && 'opacity-70',
-				className,
-			)}
-		>
-			{icon}
-		</Button>
+			data-pin-id={noteId}
+			className={className}
+		/>
 	);
 }

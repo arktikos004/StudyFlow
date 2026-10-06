@@ -96,7 +96,7 @@ export function AppearanceCard() {
 	return (
 		<Card>
 			<CardHeader title="外觀" />
-			<div className="space-y-5 px-4 pb-5 sm:px-5">
+			<div className="space-y-5 px-4 pt-2 pb-5 sm:px-5">
 				<div className="space-y-2">
 					<p id={modeLabelId} className="text-sm font-semibold text-ink-2">
 						深淺色

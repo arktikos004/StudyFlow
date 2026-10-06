@@ -343,7 +343,8 @@ function moveInGrid(tone: number, hue: number, key: string, blocks: 1 | 2): { to
 
 const toPercent = (x: number) => Math.round(x * 100);
 const HUE_TRACK = `linear-gradient(to right, ${[0, 60, 120, 180, 240, 300, 360].map((h) => `hsl(${h} 100% 50%)`).join(', ')})`;
-// 原生 range：軌道畫色相漸層，20px 圓形把手；觸控範圍是整個 44px 高的 input
+// 原生 range：軌道畫色相漸層，20px 圓形把手；觸控範圍是整個 44px 高的 input。
+// 把手的 border-white 是 DESIGN.md §7「跨頁慣例」允許的例外：把手疊在任何顏色上都要看得見，不能跟著主題換色（外圈再加一圈半透明黑）
 const HUE_RANGE = cn(
 	'h-11 w-full max-w-[22.25rem] cursor-pointer appearance-none bg-transparent',
 	'[&::-webkit-slider-runnable-track]:h-3 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:[background:var(--hue-track)]',
@@ -500,6 +501,7 @@ function SatValSquare({ hsv, onChange }: { hsv: Hsv; onChange: (next: Hsv) => vo
 			className="relative h-36 w-full max-w-[22.25rem] cursor-crosshair touch-none rounded-lg select-none"
 			style={{ background: `linear-gradient(to top, black, transparent), linear-gradient(to right, white, hsl(${hsv.h} 100% 50%))` }}
 		>
+			{/* 把手的 border-white 是跨頁慣例允許的例外（選色器把手在任何顏色上都要看得見） */}
 			<span
 				aria-hidden
 				className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1px_rgb(0_0_0/0.4),0_1px_4px_rgb(0_0_0/0.3)]"

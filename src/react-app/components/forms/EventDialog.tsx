@@ -147,7 +147,7 @@ export function EventDialog({
 			<Dialog
 				open={open}
 				onClose={onClose}
-				title={event ? '編輯考試／截止日' : '新增考試／截止日'}
+				title={event ? '編輯考試或截止日' : '新增考試或截止日'}
 				footer={
 					<DialogFooter formId="event-form" onClose={onClose} onDelete={event && onDelete} saving={create.isPending || update.isPending} />
 				}

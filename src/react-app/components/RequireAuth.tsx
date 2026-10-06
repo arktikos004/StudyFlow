@@ -4,13 +4,13 @@ import { useMe } from '../lib/queries';
 import { ErrorNote, PageLoader } from './ui';
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-	const { data: user, isPending, error } = useMe();
+	const { data: user, isPending, error, refetch, isRefetching } = useMe();
 	const location = useLocation();
 	if (isPending) return <PageLoader />;
 	if (error)
 		return (
 			<div className="mx-auto max-w-md p-6">
-				<ErrorNote error={error} />
+				<ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />
 			</div>
 		);
 	if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;

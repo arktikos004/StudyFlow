@@ -25,7 +25,7 @@ export function ProfileCard() {
 		<Card>
 			<CardHeader title="個人資料" />
 			<form
-				className="space-y-4 px-4 pb-5 sm:px-5"
+				className="space-y-4 px-4 pt-2 pb-5 sm:px-5"
 				onSubmit={(e) => {
 					e.preventDefault();
 					update.mutate({ displayName: displayName.trim(), timezone });

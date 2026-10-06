@@ -18,8 +18,9 @@ import { DayHeaderButton, TimeGrid, type AllDayItem, type TimedItem } from '../c
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SessionDialog } from '../components/SessionDialog';
 import { SubjectTag } from '../components/subjects';
-import { Button, Card, PageHeader, Segmented } from '../components/ui';
+import { Button, Card, ErrorNote, PageHeader, PageStack, Segmented } from '../components/ui';
 import { formatDate, formatMinutes, formatMonthDay } from '../lib/format';
+import { dateRange } from '../lib/polish-format';
 import { useEvents, useSubjectMap, useTasks, useUser } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
 import { useDeepLink, useEventsKeep, useMediaQuery, useMinuteClock, useSessionsKeep } from '../lib/timer-queries';
@@ -114,10 +115,17 @@ export function CalendarPage() {
 	const week = weekDays(selected);
 	const [from, to] = view === 'month' ? [grid[0], grid[41]] : [week[0], week[6]];
 	// 換月份或週次時保留上一個範圍的資料，新資料到之前 chip、分鐘數、方塊不會閃成空白
-	const { data: events = [] } = useEventsKeep({ from, to });
-	const { data: tasks = [] } = useTasks();
+	const eventsQuery = useEventsKeep({ from, to });
+	const tasksQuery = useTasks();
 	// 前一天開始、跨午夜到範圍第一天的紀錄也要畫出來
-	const { data: sessions = [] } = useSessionsKeep({ from: addDays(from, -1), to });
+	const sessionsQuery = useSessionsKeep({ from: addDays(from, -1), to });
+	const events = useMemo(() => eventsQuery.data ?? [], [eventsQuery.data]);
+	const tasks = useMemo(() => tasksQuery.data ?? [], [tasksQuery.data]);
+	const sessions = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data]);
+	// 載入失敗不能顯示成「沒有安排」：頁面上方顯示錯誤與「重新載入」，摘要與日面板也不說「沒有…」
+	const failed = [eventsQuery, tasksQuery, sessionsQuery].filter((q) => q.error);
+	const itemsFailed = !!eventsQuery.error || !!tasksQuery.error;
+	const sessionsFailed = !!sessionsQuery.error;
 
 	const itemsByDate = useMemo(() => {
 		const map = new Map<string, DayItems>();
@@ -169,6 +177,7 @@ export function CalendarPage() {
 		}
 		const parts = [exams && `${exams} 場考試`, deadlines && `${deadlines} 個截止日`, due && `${due} 項任務到期`].filter(Boolean).join('、');
 		const lead = view === 'month' ? `${Number(month.slice(5))} 月` : '這週';
+		if (failed.length) return undefined;
 		if (!parts && studied < 1) return `${lead}還沒有安排`;
 		return `${lead}${parts ? `：${parts}` : ''}${studied >= 1 ? `${parts ? '，' : '：'}已讀 ${formatMinutes(studied)}` : ''}`;
 	})();
@@ -184,7 +193,7 @@ export function CalendarPage() {
 			? `${y} 年 ${Number(m)} 月`
 			: single
 				? formatDate(selected, selected.slice(0, 4) !== today.slice(0, 4))
-				: `${week[0].slice(0, 4)} 年 ${formatMonthDay(week[0])}–${formatMonthDay(week[6])}`;
+				: `${week[0].slice(0, 4)} 年 ${dateRange(formatMonthDay(week[0]), formatMonthDay(week[6]))}`;
 	const step =
 		view === 'month'
 			? { prev: '上個月', next: '下個月' }
@@ -268,6 +277,7 @@ export function CalendarPage() {
 						subjectName={subjectName}
 						toneOf={toneOf}
 						showHeader={!single}
+						itemsFailed={itemsFailed}
 						onSession={(session) => setSessionDialog({ session })}
 						onEvent={(event) => setEventDialog({ event })}
 						onTask={(task) => setTaskDialog({ task })}
@@ -301,34 +311,45 @@ export function CalendarPage() {
 					<>
 						<Button onClick={() => setTaskDialog({ date: selected })}>
 							<ListPlus className="size-4" aria-hidden />
-							任務
+							<span className="sr-only">新增</span>任務
 						</Button>
 						<Button variant="primary" onClick={() => setEventDialog({ date: selected })}>
 							<Plus className="size-4" aria-hidden />
-							考試／截止日
+							<span className="sr-only">新增</span>考試或截止日
 						</Button>
 					</>
 				}
 			/>
 
-			<div className={view === 'month' ? 'grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]' : 'flex flex-col gap-5'}>
-				{grid_}
-				<DayPanel
-					className={view === 'month' ? 'self-start' : 'w-full lg:max-w-2xl'}
-					date={selected}
-					today={today}
-					timeZone={tz}
-					events={selectedItems?.events ?? []}
-					tasks={selectedItems?.tasks ?? []}
-					sessions={selectedSessions}
-					onEvent={(event) => setEventDialog({ event })}
-					onTask={(task) => setTaskDialog({ task })}
-					onSession={(session) => setSessionDialog({ session })}
-					onNewEvent={() => setEventDialog({ date: selected })}
-					onNewTask={() => setTaskDialog({ date: selected })}
-					onNewSession={() => setSessionDialog({ date: selected })}
-				/>
-			</div>
+			<PageStack>
+				{failed.length > 0 && (
+					<ErrorNote
+						error={failed[0].error}
+						onRetry={() => failed.forEach((q) => void q.refetch())}
+						retrying={failed.some((q) => q.isRefetching)}
+					/>
+				)}
+				<div className={view === 'month' ? 'grid grid-cols-1 gap-section lg:grid-cols-[minmax(0,1fr)_20rem]' : 'flex flex-col gap-section'}>
+					{grid_}
+					<DayPanel
+						className={view === 'month' ? 'self-start' : 'w-full lg:max-w-2xl'}
+						date={selected}
+						today={today}
+						timeZone={tz}
+						events={selectedItems?.events ?? []}
+						tasks={selectedItems?.tasks ?? []}
+						sessions={selectedSessions}
+						onEvent={(event) => setEventDialog({ event })}
+						onTask={(task) => setTaskDialog({ task })}
+						onSession={(session) => setSessionDialog({ session })}
+						onNewEvent={() => setEventDialog({ date: selected })}
+						onNewTask={() => setTaskDialog({ date: selected })}
+						onNewSession={() => setSessionDialog({ date: selected })}
+						itemsFailed={itemsFailed}
+						sessionsFailed={sessionsFailed}
+					/>
+				</div>
+			</PageStack>
 
 			{openId && <OpenTarget id={openId} onResolve={onResolve} />}
 			<EventDialog open={!!eventDialog} event={eventDialog?.event} defaultDate={eventDialog?.date} onClose={() => setEventDialog(null)} />

@@ -3,7 +3,6 @@ import {
 	Brain,
 	CalendarClock,
 	CalendarDays,
-	ChevronDown,
 	ChevronRight,
 	CircleAlert,
 	CircleCheck,
@@ -23,9 +22,10 @@ import {
 import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import type { EventItem, SubjectOverview, TaskItem } from '../../shared/api-types';
-import { diffDays, today as todayOf, zonedTime } from '../../shared/dates';
+import { today as todayOf } from '../../shared/dates';
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SubjectDialog } from '../components/settings/SubjectDialog';
+import { CountdownTile } from '../components/countdown';
 import { SubjectIconTile } from '../components/subjects';
 import { TaskCheckbox } from '../components/TaskItem';
 import {
@@ -35,7 +35,6 @@ import {
 	Card,
 	CardHeader,
 	cn,
-	Countdown,
 	EmptyState,
 	ErrorNote,
 	Figure,
@@ -43,18 +42,19 @@ import {
 	NumDisplay,
 	PageHeader,
 	PageLoader,
+	PageStack,
 	ProgressBar,
+	ShowAllToggle,
 	TextLink,
 } from '../components/ui';
 import { ApiError } from '../lib/api';
 import { EVENT_KIND_LABEL, formatDate, formatMinutes } from '../lib/format';
-import { countdownTone, type CountdownTone } from '../lib/notes-exams';
 import { dropKept, keepSaved, mergeKept, pruneKept, type KeptTask } from '../lib/polish-kept';
 import { useTaskResults } from '../lib/polish-queries';
 import { useSubjectOverview, useSubjects, useUser } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
 import { splitMinutes } from '../lib/subjects-format';
-import { timer, useNow, useTimerState } from '../lib/timer';
+import { timer, useTimerState } from '../lib/timer';
 
 // 單科總覽（SUB-3）：/subjects/:id，資料用一次 API（useSubjectOverview）取得。
 // 焦點是「下一場考試還有幾天、準備到哪裡」；其次是這科的待辦、讀書時間與錯題。
@@ -64,16 +64,23 @@ const TASK_LIMIT = 6;
 
 // ---- 小元件 ----
 
-function ShowMore({ open, onToggle, hidden, unit }: { open: boolean; onToggle: () => void; hidden: number; unit: string }) {
+/** 卡片底部的「顯示全部 N 項／只顯示前 N 項」（共用的 ShowAllToggle） */
+function ShowMore({
+	open,
+	onToggle,
+	total,
+	limit,
+	unit,
+}: {
+	open: boolean;
+	onToggle: () => void;
+	total: number;
+	limit: number;
+	unit: string;
+}) {
 	return (
 		<div className="border-t border-line px-2 py-1.5 sm:px-3">
-			<Button variant="ghost" size="sm" aria-expanded={open} onClick={onToggle}>
-				{open ? '收起' : `再顯示 ${hidden} ${unit}`}
-				<ChevronDown
-					className={cn('size-4 transition-transform duration-180 ease-out motion-reduce:transition-none', open && 'rotate-180')}
-					aria-hidden
-				/>
-			</Button>
+			<ShowAllToggle expanded={open} onToggle={onToggle} total={total} limit={limit} unit={unit} />
 		</div>
 	);
 }
@@ -131,48 +138,6 @@ function KindBadge({ kind }: { kind: EventItem['kind'] }) {
 	);
 }
 
-/**
- * 倒數磚的顏色，規則和考試頁相同（countdownTone，DESIGN.md §1 第 5 條）：
- * 紅色只給 3 天內（含今天）的考試；截止日不用紅色，今天截止的用 warning（今天到期）；其他是中性色。
- */
-const TILE_TONE: Record<CountdownTone, string> = {
-	urgent: 'bg-danger-soft text-danger',
-	today: 'bg-warning-soft text-warning',
-	normal: 'bg-subtle text-ink',
-	past: 'bg-subtle text-ink-3',
-};
-
-/** 倒數磚。今天、有時間、還沒開始：即時倒數 h:mm:ss（依使用者時區換算開始時間）。 */
-function DayTile({ kind, date, time, days, timeZone }: { kind: EventItem['kind']; date: string; time: string | null; days: number; timeZone: string }) {
-	const startsAt = days === 0 && time ? zonedTime(date, time, timeZone) : null;
-	const now = useNow(startsAt !== null);
-	const secondsLeft = startsAt !== null ? Math.floor((startsAt - now) / 1000) : null;
-	return (
-		<div
-			className={cn(
-				'flex min-w-20 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2.5 text-center',
-				TILE_TONE[countdownTone(kind, days)],
-			)}
-		>
-			{secondsLeft !== null && secondsLeft > 0 ? (
-				<>
-					<span className="text-caption">距離開始</span>
-					<Countdown seconds={secondsLeft} size="md" />
-				</>
-			) : days === 0 ? (
-				<span className="text-h2 font-semibold">今天</span>
-			) : (
-				<>
-					<span className="text-caption">還有</span>
-					<NumDisplay unit="天" className="[&>span:last-child]:text-current">
-						{days}
-					</NumDisplay>
-				</>
-			)}
-		</div>
-	);
-}
-
 function EventMeta({ event, today }: { event: EventItem; today: string }) {
 	const date = formatDate(event.date, event.date.slice(0, 4) !== today.slice(0, 4));
 	return (
@@ -189,18 +154,33 @@ function EventMeta({ event, today }: { event: EventItem; today: string }) {
 }
 
 /** 下一場考試或截止日：倒數磚、名稱、時間地點、準備進度（連結到這場的任務完成數） */
-function NextEvent({ event, today, timeZone, color, onOpen }: { event: EventItem; today: string; timeZone: string; color: string; onOpen: () => void }) {
+function NextEvent({
+	event,
+	today,
+	timeZone,
+	color,
+	onOpen,
+}: {
+	event: EventItem;
+	today: string;
+	timeZone: string;
+	color: string;
+	onOpen: () => void;
+}) {
 	const labelId = useId();
-	const days = diffDays(today, event.date);
 	const pct = event.taskTotal ? Math.round((event.taskDone / event.taskTotal) * 100) : 0;
 	const progressText = `${event.taskDone}／${event.taskTotal} 項任務，${pct}%`;
 	return (
 		<div className="flex items-start gap-4 px-4 pt-1 pb-4 sm:px-5">
-			<DayTile kind={event.kind} date={event.date} time={event.time} days={days} timeZone={timeZone} />
+			<CountdownTile kind={event.kind} date={event.date} time={event.time} today={today} timeZone={timeZone} />
 			<div className="min-w-0 flex-1 space-y-3">
 				<div>
 					<KindBadge kind={event.kind} />
-					<button type="button" onClick={onOpen} className="mt-1 block text-left text-h3 font-semibold break-words text-ink hover:underline">
+					<button
+						type="button"
+						onClick={onOpen}
+						className="mt-1 block text-left text-h3 font-semibold wrap-anywhere text-ink hover:underline"
+					>
 						{event.title}
 					</button>
 					<EventMeta event={event} today={today} />
@@ -215,7 +195,14 @@ function NextEvent({ event, today, timeZone, color, onOpen }: { event: EventItem
 								<span className="font-semibold text-ink">{event.taskDone}</span>／{event.taskTotal} 項任務，{pct}%
 							</span>
 						</div>
-						<ProgressBar value={event.taskDone} max={event.taskTotal} labelledBy={labelId} valueText={progressText} color={color} size="sm" />
+						<ProgressBar
+							value={event.taskDone}
+							max={event.taskTotal}
+							labelledBy={labelId}
+							valueText={progressText}
+							color={color}
+							size="sm"
+						/>
 					</div>
 				) : (
 					<p className="text-meta text-ink-3">還沒有準備任務：新增任務時選擇這場{EVENT_KIND_LABEL[event.kind]}，就會計入準備進度。</p>
@@ -225,28 +212,20 @@ function NextEvent({ event, today, timeZone, color, onOpen }: { event: EventItem
 	);
 }
 
-function EventRow({ event, today, onOpen }: { event: EventItem; today: string; onOpen: () => void }) {
-	const days = diffDays(today, event.date);
+function EventRow({ event, today, timeZone, onOpen }: { event: EventItem; today: string; timeZone: string; onOpen: () => void }) {
 	const date = formatDate(event.date, event.date.slice(0, 4) !== today.slice(0, 4));
-	const meta = [EVENT_KIND_LABEL[event.kind], event.time ? `${date} ${event.time}` : date, event.taskTotal ? `準備 ${event.taskDone}／${event.taskTotal}` : null];
+	const meta = [
+		EVENT_KIND_LABEL[event.kind],
+		event.time ? `${date} ${event.time}` : date,
+		event.taskTotal ? `準備 ${event.taskDone}／${event.taskTotal}` : null,
+	];
 	return (
 		<button
 			type="button"
 			onClick={onOpen}
 			className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-120 ease-out hover:bg-subtle sm:px-5"
 		>
-			<span className={cn('flex h-10 w-14 shrink-0 items-center justify-center rounded-lg', TILE_TONE[countdownTone(event.kind, days)])}>
-				{days === 0 ? (
-					<span className="text-sm font-semibold">今天</span>
-				) : (
-					<>
-						<span className="sr-only">還有</span>
-						<NumDisplay size="sm" unit="天" className="[&>span:last-child]:text-current">
-							{days}
-						</NumDisplay>
-					</>
-				)}
-			</span>
+			<CountdownTile kind={event.kind} date={event.date} today={today} timeZone={timeZone} size="sm" className="w-[4.75rem]" />
 			<span className="min-w-0 flex-1">
 				<span className="block truncate text-dense text-ink">{event.title}</span>
 				<span className="block truncate text-meta text-ink-3">{meta.filter(Boolean).join('，')}</span>
@@ -276,11 +255,7 @@ function UpcomingCard({
 	const visible = showAll ? rest : rest.slice(0, EVENT_LIMIT);
 	return (
 		<Card>
-			<CardHeader
-				title="即將到來"
-				icon={<GraduationCap className="size-[18px] text-ink-3" aria-hidden />}
-				meta={events.length ? `${events.length} 場` : undefined}
-			/>
+			<CardHeader title="即將到來" icon={GraduationCap} meta={events.length ? `${events.length} 場` : undefined} />
 			{next ? (
 				<>
 					<NextEvent event={next} today={today} timeZone={timeZone} color={color} onOpen={() => onOpen(next)} />
@@ -288,13 +263,13 @@ function UpcomingCard({
 						<ul className="divide-y divide-line border-t border-line">
 							{visible.map((e) => (
 								<li key={e.id}>
-									<EventRow event={e} today={today} onOpen={() => onOpen(e)} />
+									<EventRow event={e} today={today} timeZone={timeZone} onOpen={() => onOpen(e)} />
 								</li>
 							))}
 						</ul>
 					)}
 					{rest.length > EVENT_LIMIT && (
-						<ShowMore open={showAll} onToggle={() => setShowAll((v) => !v)} hidden={rest.length - EVENT_LIMIT} unit="場" />
+						<ShowMore open={showAll} onToggle={() => setShowAll((v) => !v)} total={rest.length} limit={EVENT_LIMIT} unit="場" />
 					)}
 				</>
 			) : (
@@ -345,7 +320,10 @@ function TaskLine({ task, today, onOpen }: { task: TaskItem; today: string; onOp
 	const done = task.status === 'done';
 	const checked = task.checklist.filter((c) => c.done).length;
 	const over = !!task.estimatedMinutes && task.spentMinutes > task.estimatedMinutes;
-	const time = [task.spentMinutes > 0 && `已投入 ${formatMinutes(task.spentMinutes)}`, task.estimatedMinutes && `預估 ${formatMinutes(task.estimatedMinutes)}`]
+	const time = [
+		task.spentMinutes > 0 && `已投入 ${formatMinutes(task.spentMinutes)}`,
+		task.estimatedMinutes && `預估 ${formatMinutes(task.estimatedMinutes)}`,
+	]
 		.filter(Boolean)
 		.join('／');
 	return (
@@ -357,7 +335,7 @@ function TaskLine({ task, today, onOpen }: { task: TaskItem; today: string; onOp
 				<button
 					type="button"
 					onClick={onOpen}
-					className={cn('text-left text-dense break-words hover:underline', done ? 'text-ink-3 line-through' : 'text-ink')}
+					className={cn('text-left text-dense wrap-anywhere hover:underline', done ? 'text-ink-3 line-through' : 'text-ink')}
 				>
 					{task.title}
 				</button>
@@ -457,7 +435,7 @@ function TasksCard({
 		<Card>
 			<CardHeader
 				title="未完成的任務"
-				icon={<ListChecks className="size-[18px] text-ink-3" aria-hidden />}
+				icon={ListChecks}
 				meta={tasks.length ? `${tasks.length} 項` : undefined}
 				action={shown.length > 0 && add}
 			/>
@@ -469,7 +447,7 @@ function TasksCard({
 						))}
 					</ul>
 					{shown.length > TASK_LIMIT && (
-						<ShowMore open={showAll} onToggle={() => setShowAll((v) => !v)} hidden={shown.length - TASK_LIMIT} unit="項" />
+						<ShowMore open={showAll} onToggle={() => setShowAll((v) => !v)} total={shown.length} limit={TASK_LIMIT} unit="項" />
 					)}
 				</>
 			) : (
@@ -496,8 +474,8 @@ function StudyTimeCard({
 }) {
 	return (
 		<Card>
-			<CardHeader title="讀書時間" icon={<Clock className="size-[18px] text-ink-3" aria-hidden />} />
-			<dl className="grid grid-cols-2 border-t border-line">
+			<CardHeader title="讀書時間" icon={Clock} />
+			<dl className="grid grid-cols-2">
 				<Figure label="本週" sub="週一起算">
 					<MinutesFigure minutes={week} />
 				</Figure>
@@ -532,7 +510,7 @@ function MistakesCard({ mistakes, subjectId, color }: { mistakes: SubjectOvervie
 	const pct = total ? Math.round((mastered / total) * 100) : 0;
 	return (
 		<Card>
-			<CardHeader title="錯題" icon={<Brain className="size-[18px] text-ink-3" aria-hidden />} />
+			<CardHeader title="錯題" icon={Brain} />
 			{total === 0 ? (
 				<EmptyState
 					variant="inline"
@@ -543,7 +521,7 @@ function MistakesCard({ mistakes, subjectId, color }: { mistakes: SubjectOvervie
 				/>
 			) : (
 				<>
-					<dl className="grid grid-cols-3 border-t border-line">
+					<dl className="grid grid-cols-3">
 						<Figure label="總數">
 							<NumDisplay unit="題">{total}</NumDisplay>
 						</Figure>
@@ -623,7 +601,7 @@ function Overview({ data }: { data: SubjectOverview }) {
 					<span className="flex items-center gap-3">
 						{/* 直接用這次 API 回傳的科目資料：不必等科目清單（另一個請求），直接開啟這一頁時方塊不會晚一拍才出現 */}
 						<SubjectIconTile name={subject.name} tone={tone} icon={subject.icon} />
-						<span className="min-w-0 break-words">{subject.name}</span>
+						<span className="min-w-0 wrap-anywhere">{subject.name}</span>
 					</span>
 				}
 				description={
@@ -644,8 +622,8 @@ function Overview({ data }: { data: SubjectOverview }) {
 			/>
 
 			{/* 桌面兩欄（3：2）；手機依 DOM 順序：考試、任務、讀書時間、錯題 */}
-			<div className="grid items-start gap-5 lg:grid-cols-5">
-				<div className="min-w-0 space-y-5 lg:col-span-3">
+			<div className="grid grid-cols-1 items-start gap-section lg:grid-cols-5">
+				<PageStack className="min-w-0 lg:col-span-3">
 					<UpcomingCard
 						events={upcomingEvents}
 						today={today}
@@ -661,11 +639,17 @@ function Overview({ data }: { data: SubjectOverview }) {
 						onOpen={(task) => setTaskDialog({ task })}
 						onAdd={() => setTaskDialog({})}
 					/>
-				</div>
-				<div className="min-w-0 space-y-5 lg:col-span-2">
-					<StudyTimeCard week={minutes.week} last30={minutes.last30} goal={subject.weeklyGoalMinutes} color={mark} onSetGoal={() => setEditing(true)} />
+				</PageStack>
+				<PageStack className="min-w-0 lg:col-span-2">
+					<StudyTimeCard
+						week={minutes.week}
+						last30={minutes.last30}
+						goal={subject.weeklyGoalMinutes}
+						color={mark}
+						onSetGoal={() => setEditing(true)}
+					/>
 					<MistakesCard mistakes={mistakes} subjectId={subject.id} color={mark} />
-				</div>
+				</PageStack>
 			</div>
 
 			<SubjectDialog
@@ -676,7 +660,12 @@ function Overview({ data }: { data: SubjectOverview }) {
 				onDeleted={() => navigate('/settings', { replace: true })}
 			/>
 			<TaskDialog open={!!taskDialog} task={taskDialog?.task} defaults={{ subjectId: subject.id }} onClose={() => setTaskDialog(null)} />
-			<EventDialog open={!!eventDialog} event={eventDialog?.event} defaults={{ subjectId: subject.id }} onClose={() => setEventDialog(null)} />
+			<EventDialog
+				open={!!eventDialog}
+				event={eventDialog?.event}
+				defaults={{ subjectId: subject.id }}
+				onClose={() => setEventDialog(null)}
+			/>
 		</div>
 	);
 }
@@ -706,14 +695,7 @@ export function SubjectPage() {
 	if (isPending) return <PageLoader />;
 	if (error) {
 		if (error instanceof ApiError && error.status === 404) return <SubjectNotFound />;
-		return (
-			<div className="space-y-3">
-				<ErrorNote error={error} />
-				<Button onClick={() => refetch()} loading={isRefetching}>
-					重新載入
-				</Button>
-			</div>
-		);
+		return <ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />;
 	}
 	return <Overview key={data.subject.id} data={data} />;
 }

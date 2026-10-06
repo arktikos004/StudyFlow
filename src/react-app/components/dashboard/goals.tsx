@@ -77,7 +77,7 @@ export function GoalsCard({ goals, todayMinutes, weekMinutes }: { goals: Goals; 
 		<Card>
 			<CardHeader
 				title="讀書目標"
-				icon={<Target className="size-[18px] text-ink-3" aria-hidden />}
+				icon={Target}
 				action={
 					hasAny && (
 						<MoreLink to="/settings#goals" aria-label="調整讀書目標">

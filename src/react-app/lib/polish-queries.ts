@@ -4,6 +4,11 @@ import type { TaskItem } from '../../shared/api-types';
 
 // s3/polish 的資料 hook。lib/queries.ts 屬於後端，這裡只觀察它送出的請求結果，不另外打 API。
 
+/** 刪除成功的回應（DELETE 一律回 `{ ok: true }`） */
+function isDeleted(data: unknown): boolean {
+	return !!data && typeof data === 'object' && 'ok' in data && data.ok === true;
+}
+
 /** 回應是不是 `{ task }`（POST／PATCH /tasks 的回應） */
 function savedTask(data: unknown): TaskItem | null {
 	if (!data || typeof data !== 'object' || !('task' in data)) return null;
@@ -23,7 +28,10 @@ export function useTaskResults({ onSaved, onRemoved }: { onSaved: (task: TaskIte
 	const onSuccess = useEffectEvent((data: unknown, variables: unknown) => {
 		const task = savedTask(data);
 		if (task) onSaved(task);
-		else if (typeof variables === 'string') onRemoved(variables);
+		// 刪除的 mutation（lib/queries.ts 的 useDeleteTask 等）變數就是 id 字串，回應是 { ok: true }。
+		// 這裡分不出刪的是任務、考試還是筆記：假設是所有資料的 id 都是 UUID、不會互相撞號，
+		// 呼叫端只拿它和自己手上的任務 id 比對（dropKept 找不到就原樣回傳），所以刪除其他資料不會有影響。
+		else if (typeof variables === 'string' && isDeleted(data)) onRemoved(variables);
 	});
 	useEffect(
 		() =>

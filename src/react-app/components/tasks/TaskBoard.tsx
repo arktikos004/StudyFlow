@@ -19,10 +19,9 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { EventItem, TaskItem } from '../../../shared/api-types';
 import { STATUS_LABEL } from '../../lib/format';
-import { usePrefersReducedMotion } from '../../lib/task-queries';
 import { neighborStatuses, TASK_STATUS_ORDER, type TaskStatus } from '../../lib/task-sort';
 import { DescriptionSnippet, TaskCheckbox, TaskMetaLine, TaskTitleButton } from '../TaskItem';
-import { Badge, Button, cn, Highlight } from '../ui';
+import { Badge, Button, cn, Highlight, ShowAllToggle, usePrefersReducedMotion } from '../ui';
 import { TaskStatusBadges } from './TaskMeta';
 
 const COLUMN_ICON: Record<TaskStatus, LucideIcon> = { todo: Circle, doing: CircleDot, done: CircleCheck };
@@ -268,10 +267,8 @@ function BoardColumn({
 					</li>
 				)}
 			</ul>
-			{tasks.length > DONE_LIMIT && status === 'done' && (
-				<Button variant="ghost" size="sm" className="mt-2 w-full" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
-					{showAll ? `只顯示前 ${DONE_LIMIT} 項` : `顯示全部 ${tasks.length} 項`}
-				</Button>
+			{status === 'done' && (
+				<ShowAllToggle expanded={showAll} onToggle={() => setShowAll((v) => !v)} total={tasks.length} limit={DONE_LIMIT} className="mt-2" />
 			)}
 		</section>
 	);
@@ -344,7 +341,7 @@ function CardPreview({ task, today, event, query }: { task: TaskItem; today: str
 					{done && <Check className="size-3.5" strokeWidth={3} />}
 				</span>
 				<div className="min-w-0 flex-1">
-					<p className={cn('text-dense break-words', done ? 'text-ink-3 line-through' : 'text-ink')}>
+					<p className={cn('text-dense wrap-anywhere', done ? 'text-ink-3 line-through' : 'text-ink')}>
 						<Highlight text={task.title} query={query} />
 					</p>
 					<TaskMetaLine task={task} today={today} event={event} />

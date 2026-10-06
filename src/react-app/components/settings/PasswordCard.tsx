@@ -30,7 +30,7 @@ export function PasswordCard() {
 	return (
 		<Card>
 			<CardHeader title="變更密碼" />
-			<form onSubmit={onSubmit} className="space-y-4 px-4 pb-5 sm:px-5" noValidate>
+			<form onSubmit={onSubmit} className="space-y-4 px-4 pt-2 pb-5 sm:px-5" noValidate>
 				<Field label="目前密碼">
 					{(id) => (
 						<Input

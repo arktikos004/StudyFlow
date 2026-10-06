@@ -93,6 +93,7 @@ export function TimeGrid({
 	subjectName,
 	toneOf,
 	showHeader,
+	itemsFailed = false,
 	...on
 }: {
 	days: string[];
@@ -108,6 +109,8 @@ export function TimeGrid({
 	toneOf: (subjectId: string | null) => SubjectTone;
 	/** 週檢視顯示欄頭；手機單日時欄頭改成外面的一週日期列 */
 	showHeader: boolean;
+	/** 考試與任務載入失敗：單日的全天列不說「沒有…」（錯誤由頁面顯示） */
+	itemsFailed?: boolean;
 } & Handlers) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	// 欄頭是捲動區裡的 sticky 列，scrollTop = 7 小時剛好讓 07:00 貼在欄頭下緣（再往上留一點，時間標籤才不會被切到）。
@@ -190,7 +193,9 @@ export function TimeGrid({
 										還有 {items.length - shown.length} 項
 									</button>
 								)}
-								{items.length === 0 && single && <span className="px-1 text-caption text-ink-3">沒有考試或任務期限</span>}
+								{items.length === 0 && single && (
+									<span className="px-1 text-caption text-ink-3">{itemsFailed ? '考試與任務沒有載入' : '沒有考試或任務期限'}</span>
+								)}
 							</div>
 						);
 					})}

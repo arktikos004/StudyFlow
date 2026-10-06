@@ -102,6 +102,23 @@ function SubjectForm({
 				)}
 			</Field>
 
+			<div role="group" aria-labelledby={colorLabelId} className="space-y-2">
+				<p id={colorLabelId} className="text-sm font-semibold text-ink-2">
+					顏色
+				</p>
+				<ColorPicker value={color} onChange={setPicked} subjects={subjects} selfId={subject?.id} name={name} icon={icon} />
+			</div>
+
+			<div className="space-y-2">
+				<div className="flex items-baseline gap-2">
+					<p id={iconLabelId} className="text-sm font-semibold text-ink-2">
+						圖示
+					</p>
+					<span className="text-meta text-ink-3">{subjectIcon(icon)?.label ?? '不使用'}</span>
+				</div>
+				<IconPicker value={icon} onChange={setIcon} tone={toneOf(color)} labelledBy={iconLabelId} />
+			</div>
+
 			<div className="space-y-2">
 				<GoalField
 					label="每週目標"
@@ -115,23 +132,6 @@ function SubjectForm({
 					inputRef={goalRef}
 				/>
 				<GoalSumWarning total={goalTotal} weekly={user.weeklyGoalMinutes} />
-			</div>
-
-			<div className="space-y-2">
-				<div className="flex items-baseline gap-2">
-					<p id={iconLabelId} className="text-sm font-semibold text-ink-2">
-						圖示
-					</p>
-					<span className="text-meta text-ink-3">{subjectIcon(icon)?.label ?? '不使用'}</span>
-				</div>
-				<IconPicker value={icon} onChange={setIcon} tone={toneOf(color)} labelledBy={iconLabelId} />
-			</div>
-
-			<div role="group" aria-labelledby={colorLabelId} className="space-y-2">
-				<p id={colorLabelId} className="text-sm font-semibold text-ink-2">
-					顏色
-				</p>
-				<ColorPicker value={color} onChange={setPicked} subjects={subjects} selfId={subject?.id} name={name} icon={icon} />
 			</div>
 
 			{subject && (
