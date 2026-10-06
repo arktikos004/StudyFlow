@@ -2,6 +2,7 @@
 // s4/profile-api 合併後：改用 lib/queries.ts 的 useProfileSummary、useUploadAvatar、useDeleteAvatar 與 lib/api.ts 的 avatarUrl，
 // 並刪除這個檔案（呼叫端只有 components/settings/Profile*.tsx 與 components/Layout.tsx）。
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import type { PublicUser } from '../../shared/api-types';
 import { api } from './api';
 import type { ProfileSummary } from './profile-format';
@@ -17,7 +18,10 @@ export function avatarUrl(user: PublicUser): string | null {
 	return v ? `/api/auth/avatar?v=${v}` : null;
 }
 
-/** 上傳頭像（multipart 'file'）；成功後重新取得 /auth/me，三個地方的頭像一起換 */
+/**
+ * 上傳頭像（multipart 'file'）；成功後重新取得 /auth/me，三個地方的頭像一起換。
+ * 和 s4/profile-api 的 hook 一樣自己顯示成功與失敗的 toast，介面不另外顯示。
+ */
 export function useUploadAvatar() {
 	const qc = useQueryClient();
 	return useMutation({
@@ -26,15 +30,23 @@ export function useUploadAvatar() {
 			form.append('file', file, 'avatar.jpg');
 			return api.put('/auth/avatar', form);
 		},
-		onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+		onSuccess: async () => {
+			await qc.invalidateQueries({ queryKey: ['me'] });
+			toast.success('已更新照片');
+		},
+		onError: (e) => toast.error(e.message),
 	});
 }
 
-/** 移除頭像；成功後重新取得 /auth/me */
+/** 移除頭像；成功後重新取得 /auth/me。成功與失敗的 toast 由 hook 顯示 */
 export function useDeleteAvatar() {
 	const qc = useQueryClient();
 	return useMutation({
 		mutationFn: () => api.del('/auth/avatar'),
-		onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+		onSuccess: async () => {
+			await qc.invalidateQueries({ queryKey: ['me'] });
+			toast.success('已移除照片');
+		},
+		onError: (e) => toast.error(e.message),
 	});
 }

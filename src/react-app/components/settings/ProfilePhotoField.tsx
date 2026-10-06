@@ -7,7 +7,8 @@ import { Avatar, Button } from '../ui';
 /**
  * 頭像照片（由 props 控制，儲存時才真的上傳或移除）：96px 預覽、上傳／更換照片、移除照片。
  * - 選檔後在瀏覽器裡置中裁成正方形、縮到 512px、轉 JPEG（lib/profile-image.ts），處理中按鈕轉圈。
- * - 狀態說明用 aria-live 念出來（「新照片會在儲存後套用」）；錯誤（處理失敗、或呼叫端傳入的上傳失敗）是 role="alert"。
+ * - 狀態說明用 aria-live 念出來（「新照片會在儲存後套用」）；照片處理失敗（讀不出來、不是圖片）是 role="alert"。
+ *   上傳與移除的結果由 hook 的 toast 顯示，不在這裡。
  * - 預覽的首字跟著輸入中的暱稱（name）。
  */
 export function ProfilePhotoField({
@@ -15,15 +16,12 @@ export function ProfilePhotoField({
 	currentSrc,
 	draft,
 	onDraftChange,
-	error,
 	disabled,
 }: {
 	name: string;
 	currentSrc: string | null;
 	draft: PhotoDraft;
 	onDraftChange: (draft: PhotoDraft) => void;
-	/** 上傳或移除失敗的訊息（呼叫端儲存時發生） */
-	error?: string;
 	disabled?: boolean;
 }) {
 	const labelId = useId();
@@ -41,7 +39,6 @@ export function ProfilePhotoField({
 	}, []);
 
 	const preview = draftPreview(draft, currentSrc);
-	const message = processError ?? error;
 
 	const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
@@ -88,10 +85,10 @@ export function ProfilePhotoField({
 					<p id={noteId} aria-live="polite" className="mt-2 text-meta text-ink-3">
 						{photoNote(draft)}
 					</p>
-					{message && (
+					{processError && (
 						<p role="alert" className="mt-1 flex items-start gap-1.5 text-meta text-danger">
 							<CircleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-							<span>{message}</span>
+							<span>{processError}</span>
 						</p>
 					)}
 				</div>

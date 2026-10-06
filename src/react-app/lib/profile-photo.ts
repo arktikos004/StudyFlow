@@ -26,10 +26,3 @@ export function photoNote(draft: PhotoDraft): string {
 	if (draft.kind === 'remove') return '儲存後會移除照片，改用暱稱的第一個字';
 	return 'JPEG、PNG 或 WebP，會置中裁成正方形';
 }
-
-/** 儲存成功的提示：只換了照片時用（暱稱也改了的話由「已更新個人資料」一起涵蓋） */
-export function photoSavedMessage(draft: PhotoDraft): string | null {
-	if (draft.kind === 'set') return '已更新照片';
-	if (draft.kind === 'remove') return '已移除照片';
-	return null;
-}
