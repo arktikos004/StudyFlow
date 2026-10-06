@@ -455,6 +455,7 @@ export function TimerPage() {
 	}
 
 	const pomodoro = s.mode === 'pomodoro';
+	const showSettings = pomodoro && s.phase === 'idle';
 	const active = s.phase !== 'idle';
 	const isBreak = s.phase === 'break';
 	const waitingBreak = isBreak && !s.running;
@@ -537,9 +538,11 @@ export function TimerPage() {
 			)}
 			{/*
 			 * 桌面：左欄是計時器與番茄鐘設定，右欄是學習紀錄（跨兩列）。
-			 * 手機依 DOM 順序：計時器 → 學習紀錄 → 番茄鐘設定（紀錄比調整設定常用，不要排在最底下）。
+			 * - 第一列 auto、第二列 1fr：學習紀錄比左欄高時，多出來的高度只給第二列，計時器與設定之間不會被撐出空白（review A2）。
+			 * - DOM 順序就是手機上的順序：計時器 → 學習紀錄 → 番茄鐘設定（紀錄比調整設定常用），不用 order 重排，
+			 *   螢幕報讀器與 Tab 的順序和畫面一致；桌面上是由左而右、由上而下（計時器 → 右邊的紀錄 → 左下的設定）。
 			 */}
-			<div className="grid grid-cols-1 gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
+			<div className={cn('grid grid-cols-1 gap-section lg:grid-cols-[minmax(0,1fr)_22rem]', showSettings && 'lg:grid-rows-[auto_1fr]')}>
 				{/* 專注空間：沒有卡片外框，只有計時環與操作 */}
 				<section aria-label="計時器" className="flex min-w-0 flex-col items-center gap-6 lg:col-start-1 lg:row-start-1">
 					<Segmented<TimerMode>
@@ -666,10 +669,10 @@ export function TimerPage() {
 					onEdit={(session) => setDialog({ session })}
 					onCreate={() => setDialog({})}
 					errorShownAbove={!!todayQuery.error}
-					className="lg:col-start-2 lg:row-span-2 lg:row-start-1"
+					className={cn('lg:col-start-2 lg:row-start-1', showSettings && 'lg:row-span-2')}
 				/>
 
-				{pomodoro && !active && <PomodoroSettings s={s} className="justify-self-center lg:col-start-1 lg:row-start-2" />}
+				{showSettings && <PomodoroSettings s={s} className="self-start justify-self-center lg:col-start-1 lg:row-start-2" />}
 			</div>
 			<SessionDialog open={!!dialog} session={dialog?.session} defaultDate={logDate} onClose={() => setDialog(null)} />
 			{confirmDialog}
