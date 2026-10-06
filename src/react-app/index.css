@@ -39,6 +39,9 @@
 	--warning-soft: #fff0d2;
 	--mark: #f8ef96;
 	--backdrop: rgb(22 29 49 / 0.4);
+	/* 深色遮罩：照片燈箱這類「看內容」的覆蓋層，淺色模式也要夠暗；on-scrim 是遮罩上的文字與圖示 */
+	--scrim: rgb(12 15 24 / 0.9);
+	--on-scrim: #f3f0ea;
 
 	/* 圖表：未完成等其餘項目；熱度圖從主題色推導（heat-0 = subtle） */
 	--chart-rest: #c1bdb5;
@@ -97,6 +100,8 @@
 	--warning-soft: #3b2b07;
 	--mark: #574e0e;
 	--backdrop: rgb(0 0 0 / 0.6);
+	--scrim: rgb(0 0 0 / 0.85);
+	--on-scrim: #f3f0ea;
 
 	--chart-rest: #6c727e;
 	--heat-1: color-mix(in oklab, var(--accent) 10%, var(--accent-soft));
@@ -112,6 +117,20 @@
 	--logo-tile: var(--ink);
 	--logo-ink: var(--accent-soft);
 	--logo-mark: #ffcf33;
+}
+
+/*
+ * ==== 區塊間距（DESIGN.md §5）====
+ * 區塊與區塊之間：手機 24、桌面（md 以上）32。工具類：gap-section、space-y-section、mb-section、mt-section；元件：PageStack。
+ * 不放在 [data-theme] 區塊裡：局部預覽（data-theme="light"）不會把它重設回手機的值。
+ */
+:root {
+	--section-gap: 1.5rem;
+}
+@media (width >= 48rem) {
+	:root {
+		--section-gap: 2rem;
+	}
 }
 
 /*
@@ -258,6 +277,8 @@
 	--color-warning-soft: var(--warning-soft);
 	--color-mark: var(--mark);
 	--color-backdrop: var(--backdrop);
+	--color-scrim: var(--scrim);
+	--color-on-scrim: var(--on-scrim);
 	--color-chart-rest: var(--chart-rest);
 	--color-chart-grid: var(--chart-grid);
 	--color-chart-axis: var(--chart-axis);
@@ -265,6 +286,9 @@
 	--color-heat-2: var(--heat-2);
 	--color-heat-3: var(--heat-3);
 	--color-heat-4: var(--heat-4);
+
+	/* 區塊間距：gap-section、space-y-section、mb-section… */
+	--spacing-section: var(--section-gap);
 
 	--shadow-sm: var(--elevation-sm);
 	--shadow-md: var(--elevation-md);
@@ -453,10 +477,14 @@
 		.sf-btn-sm {
 			min-height: 2.25rem;
 		}
+		/*
+		 * ::after 的定位基準是 padding box（按鈕有 1px 邊框，所以比外框小 2px）。
+		 * 百分比是相對於 padding box 的寬高：比 44px 小就往外補到 44px，否則只往外 1px 蓋住邊框。
+		 */
 		.sf-btn-sm::after {
 			content: '';
 			position: absolute;
-			inset: -0.25rem 0;
+			inset: min(-1px, calc((100% - 2.75rem) / 2));
 		}
 		.sf-btn-icon {
 			width: 2.75rem;
@@ -528,6 +556,97 @@
 		cursor: progress;
 	}
 
+	/* ---- ToggleButton（aria-pressed）：按下時 accent-soft 底、accent-ink 字；圖示另外轉成實心，不只靠顏色 ---- */
+	/* 圖示版沒按下時是 ink-3（:where 不加權重：ghost 的 hover／按下照常轉成 ink） */
+	.sf-toggle-icon:where([aria-pressed='false']) {
+		color: var(--ink-3);
+	}
+	.sf-btn.sf-toggle[aria-pressed='true'] {
+		border-color: transparent;
+		background-color: var(--accent-soft);
+		color: var(--accent-ink);
+	}
+	@media (hover: hover) {
+		.sf-btn.sf-toggle[aria-pressed='true']:hover {
+			background-color: color-mix(in oklab, var(--accent-soft) 90%, var(--accent));
+		}
+	}
+	.sf-btn.sf-toggle[aria-pressed='true']:active {
+		background-color: color-mix(in oklab, var(--accent-soft) 82%, var(--accent));
+	}
+	/* 忙碌中：用 aria-disabled（不用 disabled，焦點才不會掉到 body），外觀淡一點、按下不下沉 */
+	.sf-btn.sf-toggle[aria-disabled='true'] {
+		opacity: 0.7;
+		transform: none;
+	}
+	.sf-btn-block {
+		width: 100%;
+	}
+
+	/* ---- MiniIconButton：看起來 28px 的圓形圖示按鈕（照片角落的刪除、移除），點擊範圍用 ::after 擴大到 44px ---- */
+	.sf-mini-btn {
+		position: relative;
+		display: grid;
+		flex-shrink: 0;
+		place-items: center;
+		width: 1.75rem;
+		height: 1.75rem;
+		border: 1px solid var(--line);
+		border-radius: 9999px;
+		background-color: color-mix(in oklab, var(--card) 90%, transparent);
+		color: var(--ink);
+		box-shadow: var(--elevation-sm);
+		transition-property: background-color, color;
+		transition-duration: var(--dur-press);
+		transition-timing-function: var(--ease-out);
+	}
+	/* padding box 是 26px（28 − 邊框 2）：四邊各往外 9px 才是 44px */
+	.sf-mini-btn::after {
+		content: '';
+		position: absolute;
+		inset: calc(-0.5rem - 1px);
+	}
+	@media (hover: hover) {
+		.sf-mini-btn:hover {
+			background-color: var(--card);
+		}
+	}
+	/* 浮在照片上：焦點框和按鈕之間墊一圈 card 色，accent 才不會貼著任意顏色的照片 */
+	.sf-mini-btn:focus-visible {
+		background-color: var(--card);
+		box-shadow: 0 0 0 2px var(--card);
+	}
+
+	/*
+	 * ---- StretchedButton：標題按鈕的 ::after 蓋滿最近的 relative 容器，整格（或整張卡）都可以點 ----
+	 * 按鈕本身的焦點框把寬度歸零（outline-width: 0），焦點框改畫在 ::after 上，包住整格。
+	 * cell：比容器往外 4px、圓角 md；card：貼齊容器、圓角 xl，焦點框內縮 2px（卡片有 overflow-hidden，畫在外面會被裁掉）。
+	 */
+	.sf-stretched {
+		display: block;
+		width: 100%;
+		text-align: left;
+	}
+	.sf-stretched::after {
+		content: '';
+		position: absolute;
+		inset: -0.25rem;
+		border-radius: var(--radius-md);
+	}
+	.sf-stretched-card::after {
+		inset: 0;
+		border-radius: var(--radius-xl);
+	}
+	.sf-stretched:focus-visible {
+		outline-width: 0;
+	}
+	.sf-stretched:focus-visible::after {
+		outline: 2px solid var(--accent);
+	}
+	.sf-stretched-card:focus-visible::after {
+		outline-offset: -2px;
+	}
+
 	/* ---- 表單欄位：Input／Select／Textarea ---- */
 	.sf-field {
 		width: 100%;
@@ -595,6 +714,14 @@
 		padding-block: 0.5rem;
 		line-height: 1.625;
 		resize: vertical;
+	}
+	/* SearchInput：左邊留給放大鏡、右邊留給自己的清除鈕（44px），並藏起瀏覽器內建的清除鈕 */
+	.sf-field.sf-search-input {
+		padding-left: 2.25rem;
+		padding-right: 2.75rem;
+	}
+	.sf-search-input::-webkit-search-cancel-button {
+		appearance: none;
 	}
 
 	/* ---- Dialog：只在打開時播放進場動畫；關閉時立即消失（內容同時卸載） ---- */
@@ -771,6 +898,15 @@
 		position: absolute;
 		inset: -0.375rem -0.25rem;
 	}
+}
+/*
+ * toast 的關閉鈕：套件內建只有 20px。外觀不變，點擊範圍用 ::after 擴大到 44px
+ * （padding box 是 18px：四邊各往外 13px）。會蓋到 toast 左上角約 25px 見方的區域，那裡沒有其他可以點的東西。
+ */
+:root [data-sonner-toaster] [data-sonner-toast] [data-close-button]::after {
+	content: '';
+	position: absolute;
+	inset: -13px;
 }
 
 /* Markdown 筆記內容 */
