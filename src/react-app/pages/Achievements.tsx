@@ -11,11 +11,12 @@ import {
 	ErrorNote,
 	PageHeader,
 	PageLoader,
+	PageStack,
 	ProgressBar,
 	TextLink,
 } from '../components/ui';
 import { useAchievements, useUser } from '../lib/queries';
-import { achievementUnit, formatProgress, groupAchievements, nextMilestone } from '../lib/shell-achievements';
+import { achievementUnit, formatProgress, groupAchievements, nextMilestone, splitColumns } from '../lib/shell-achievements';
 import { AchievementIcon } from '../lib/shell-icons';
 
 /**
@@ -62,7 +63,7 @@ function NextUp({ achievement: a, hasDailyGoal }: { achievement: Achievement; ha
 	const action = nextAction(a, hasDailyGoal);
 	const needsGoal = a.id.startsWith('goal-streak-') && !hasDailyGoal;
 	return (
-		<Card className="mb-6">
+		<Card>
 			<CardHeader title="下一個目標" />
 			<div className="flex flex-col gap-4 px-4 pt-2 pb-4 sm:flex-row sm:items-center sm:gap-5 sm:px-5 sm:pb-5">
 				<div className="flex min-w-0 flex-1 items-center gap-4">
@@ -133,11 +134,11 @@ function AchievementRow({ achievement: a, hasDailyGoal }: { achievement: Achieve
 /** 成就與里程碑（APP-2）：由現有資料即時計算，只有本人看得到，沒有排行榜 */
 export function AchievementsPage() {
 	const user = useUser();
-	const { data, isPending, error } = useAchievements();
+	const { data, isPending, error, refetch, isRefetching } = useAchievements();
 	const hasDailyGoal = user.dailyGoalMinutes != null;
 
 	if (isPending) return <PageLoader />;
-	if (error || !data) return <ErrorNote error={error} />;
+	if (error || !data) return <ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />;
 	if (data.length === 0)
 		return (
 			<div>
@@ -159,7 +160,8 @@ export function AchievementsPage() {
 
 	const unlocked = data.filter((a) => a.unlocked).length;
 	const next = nextMilestone(data);
-	const groups = groupAchievements(data);
+	// 兩欄各自往下堆疊（卡片不必等高）；估計高度＝列數＋標題約 1.5 列
+	const columns = splitColumns(groupAchievements(data), (g) => g.items.length + 1.5).filter((c) => c.length > 0);
 
 	return (
 		<div>
@@ -173,22 +175,28 @@ export function AchievementsPage() {
 				}
 			/>
 
-			{next && <NextUp achievement={next} hasDailyGoal={hasDailyGoal} />}
+			<PageStack>
+				{next && <NextUp achievement={next} hasDailyGoal={hasDailyGoal} />}
 
-			<div className="grid items-start gap-6 lg:grid-cols-2">
-				{groups.map((g) => (
-					<Card key={g.key}>
-						<CardHeader title={g.label} meta={`${g.items.filter((a) => a.unlocked).length}／${g.items.length} 已解鎖`} />
-						<ul className="divide-y divide-line">
-							{g.items.map((a) => (
-								<AchievementRow key={a.id} achievement={a} hasDailyGoal={hasDailyGoal} />
+				<div className="grid items-start gap-section lg:grid-cols-2">
+					{columns.map((column) => (
+						<PageStack key={column[0].key} className="min-w-0">
+							{column.map((g) => (
+								<Card key={g.key}>
+									<CardHeader title={g.label} meta={`${g.items.filter((a) => a.unlocked).length}／${g.items.length} 已解鎖`} />
+									<ul className="divide-y divide-line">
+										{g.items.map((a) => (
+											<AchievementRow key={a.id} achievement={a} hasDailyGoal={hasDailyGoal} />
+										))}
+									</ul>
+								</Card>
 							))}
-						</ul>
-					</Card>
-				))}
-			</div>
+						</PageStack>
+					))}
+				</div>
 
-			<p className="mt-6 text-meta text-ink-3">成就依你目前的紀錄即時計算，只有你看得到；刪除學習紀錄、任務或錯題後，徽章可能會收回。</p>
+				<p className="text-meta text-ink-3">成就依你目前的紀錄即時計算，只有你看得到；刪除學習紀錄、任務或錯題後，徽章可能會收回。</p>
+			</PageStack>
 		</div>
 	);
 }
