@@ -197,7 +197,7 @@ export function LoginPage() {
 							id={id}
 							{...aria}
 							type="email"
-							autoComplete="email"
+							autoComplete="username"
 							inputMode="email"
 							spellCheck={false}
 							value={form.email}
@@ -280,7 +280,7 @@ export function RegisterPage() {
 							id={id}
 							{...aria}
 							type="email"
-							autoComplete="email"
+							autoComplete="username"
 							inputMode="email"
 							spellCheck={false}
 							value={form.email}
