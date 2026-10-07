@@ -29,7 +29,7 @@ export type TimerState = {
 	longBreakEvery: number;
 	/** 專注結束後自動開始休息；關閉時停在「準備休息」等使用者按開始 */
 	autoStartBreak: boolean;
-	/** 休息結束後自動開始下一輪專注；延遲超過 1 分鐘時不會自動開始 */
+	/** 休息結束後自動開始下一輪專注；延遲超過 LATE_MS 時不會自動開始 */
 	autoStartFocus: boolean;
 	/** 目前（或剛結束）的休息種類；不在休息時為 'short' */
 	breakKind: BreakKind;
@@ -56,6 +56,8 @@ export type NumericOption = keyof typeof LIMITS;
 
 /** 休息結束後超過這麼久才偵測到（電腦睡眠、分頁關閉），就不自動開始下一輪 */
 export const LATE_MS = MINUTE_MS;
+/** LATE_MS 換成分鐘（說明文字用，改常數時文字跟著改） */
+export const LATE_MINUTES = LATE_MS / MINUTE_MS;
 /** 不到 1 分鐘的計時不記錄 */
 export const MIN_RECORD_MS = MINUTE_MS;
 /** 結束時間最多可以比現在晚這麼多（和後端 studySessionSchema 的「不能記錄未來的時間」一致，容許時鐘誤差） */
@@ -362,6 +364,6 @@ export function describeEvents(events: TimerEvent[], s: TimerState): { title: st
 			body: last.autoStarted ? '休息時間也結束了，已開始下一輪專注' : '休息時間也結束了，準備好就開始下一輪',
 		};
 	if (last.autoStarted) return { title: '休息結束', body: `開始下一輪專注 ${s.focusMin} 分鐘` };
-	if (last.late && s.autoStartFocus) return { title: '休息結束', body: '離開超過 1 分鐘，這次沒有自動開始下一輪' };
+	if (last.late && s.autoStartFocus) return { title: '休息結束', body: `離開超過 ${LATE_MINUTES} 分鐘，這次沒有自動開始下一輪` };
 	return { title: '休息結束', body: '準備好就開始下一個番茄鐘' };
 }

@@ -29,6 +29,7 @@ import { adoptLegacyTimerData, readQueue as readStoredQueue, timerKey, writeQueu
 export {
 	breakMinutes,
 	elapsedMs,
+	LATE_MINUTES,
 	LATE_MS,
 	LIMITS,
 	MIN_RECORD_MS,

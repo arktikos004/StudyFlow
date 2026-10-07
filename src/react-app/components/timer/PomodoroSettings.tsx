@@ -1,6 +1,6 @@
 import { SlidersHorizontal } from 'lucide-react';
 import { useId, useState } from 'react';
-import { LIMITS, optionError, timer, type NumericOption, type TimerState } from '../../lib/timer';
+import { LATE_MINUTES, LIMITS, optionError, timer, type NumericOption, type TimerState } from '../../lib/timer';
 import { Button, cn, Field, Input, Segmented, Switch } from '../ui';
 
 /** 常用的分鐘數；也可以直接輸入 LIMITS 範圍內的任何整數 */
@@ -107,7 +107,7 @@ export function PomodoroSettings({ s, className }: { s: TimerState; className?: 
 						checked={s.autoStartFocus}
 						onChange={(autoStartFocus) => timer.setOptions({ autoStartFocus })}
 						label="休息結束後自動開始下一輪專注"
-						description="離開超過 1 分鐘（例如電腦睡眠）時不會自動開始，也不會補記不在時的番茄"
+						description={`離開超過 ${LATE_MINUTES} 分鐘（例如電腦睡眠）時不會自動開始，也不會補記不在時的番茄`}
 					/>
 				</div>
 			</div>
