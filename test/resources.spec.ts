@@ -1,15 +1,9 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { addDays, today } from '../src/shared/dates';
-import { PNG_1X1, registeredClient, type Client } from './helpers';
+import { PNG_1X1, registeredClient, makeSubject } from './helpers';
 
 const TZ = 'Asia/Taipei';
-
-async function makeSubject(c: Client, name = '資料結構') {
-	const res = await c.post('/api/subjects', { name, color: '#2a78d6' });
-	expect(res.status).toBe(201);
-	return res.data.subject;
-}
 
 describe('科目', () => {
 	it('新增、改名、刪除；同名會被拒絕', async () => {

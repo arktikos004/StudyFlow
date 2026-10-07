@@ -1,5 +1,6 @@
 import { SELF } from 'cloudflare:test';
-import { startOfLocalDay, today } from '../src/shared/dates';
+import type { EventItem, NoteItem, Subject, TaskItem } from '../src/shared/api-types';
+import { addDays, startOfLocalDay, today } from '../src/shared/dates';
 
 export const BASE = 'http://example.com';
 
@@ -89,6 +90,26 @@ export async function logSession(c: NoonClient, date: string, startHour: number,
 	if (res.status !== 201) throw new Error(`log session failed: ${res.status} ${JSON.stringify(res.data)}`);
 	return res.data.session;
 }
+
+/** 送出新增並確認成功（201），回傳回應裡的那一筆；失敗時連同伺服器的錯誤一起丟出，不會只看到「讀不到 id」 */
+async function create<T>(c: Client, path: string, body: Record<string, unknown>, key: string): Promise<T> {
+	const res = await c.post(path, body);
+	if (res.status !== 201) throw new Error(`POST ${path} failed: ${res.status} ${JSON.stringify(res.data)}`);
+	return res.data[key];
+}
+
+export const makeSubject = (c: Client, name = '資料結構', extra: Record<string, unknown> = {}) =>
+	create<Subject>(c, '/api/subjects', { name, color: '#2a78d6', ...extra }, 'subject');
+
+export const makeTask = (c: Client, body: Record<string, unknown> = {}) =>
+	create<TaskItem>(c, '/api/tasks', { title: '期末報告', ...body }, 'task');
+
+export const makeNote = (c: Client, title: string, body: Record<string, unknown> = {}) =>
+	create<NoteItem>(c, '/api/notes', { kind: 'note', title, ...body }, 'note');
+
+/** 預設是一週後（台北時間）的考試 */
+export const makeEvent = (c: Client, body: Record<string, unknown> = {}) =>
+	create<EventItem>(c, '/api/events', { kind: 'exam', title: '期中考', date: addDays(today('Asia/Taipei'), 7), ...body }, 'event');
 
 /** 下載的檔案內容；保留開頭的 BOM（Response.text() 會把它去掉） */
 export function decodeText(data: ArrayBuffer) {

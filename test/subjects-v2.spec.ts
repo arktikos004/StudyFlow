@@ -2,13 +2,7 @@ import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { addDays } from '../src/shared/dates';
 import { SUBJECT_ICONS } from '../src/shared/schemas';
-import { logSession, noonClient, registeredClient, type Client } from './helpers';
-
-async function makeSubject(c: Client, name: string, extra: Record<string, unknown> = {}) {
-	const res = await c.post('/api/subjects', { name, color: '#2a78d6', ...extra });
-	expect(res.status, JSON.stringify(res.data)).toBe(201);
-	return res.data.subject;
-}
+import { logSession, noonClient, registeredClient, type Client, makeSubject } from './helpers';
 
 const names = async (c: Client) => (await c.get('/api/subjects')).data.subjects.map((s: { name: string }) => s.name);
 

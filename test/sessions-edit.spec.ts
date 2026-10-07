@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addDays } from '../src/shared/dates';
-import { logSession, noonClient, registeredClient, type Client } from './helpers';
+import { logSession, noonClient, registeredClient, type Client, makeSubject } from './helpers';
 
 /** 一小時前結束、長度 30 分鐘的紀錄 */
 async function makeSession(c: Client, body: Record<string, unknown> = {}) {
@@ -10,14 +10,10 @@ async function makeSession(c: Client, body: Record<string, unknown> = {}) {
 	return res.data.session;
 }
 
-async function makeSubject(c: Client, name = '數學') {
-	return (await c.post('/api/subjects', { name, color: '#2a78d6' })).data.subject;
-}
-
 describe('編輯學習紀錄（TMR-2）', () => {
 	it('可以改科目、任務、模式與備註；沒改時間時秒數不變', async () => {
 		const c = await registeredClient();
-		const subject = await makeSubject(c);
+		const subject = await makeSubject(c, '數學');
 		const task = (await c.post('/api/tasks', { title: '寫習題', subjectId: subject.id })).data.task;
 		const s = await makeSession(c, { durationSec: 25 * 60, note: '原本的備註' });
 
@@ -111,7 +107,7 @@ describe('編輯學習紀錄（TMR-2）', () => {
 
 	it('編輯後，任務投入時間、總覽與統計都跟著更新', async () => {
 		const c = await noonClient();
-		const math = await makeSubject(c);
+		const math = await makeSubject(c, '數學');
 		const taskA = (await c.post('/api/tasks', { title: '任務 A' })).data.task;
 		const taskB = (await c.post('/api/tasks', { title: '任務 B' })).data.task;
 		const s = await logSession(c, c.today, 9, 30, { subjectId: math.id, taskId: taskA.id });
@@ -137,7 +133,7 @@ describe('學習紀錄編輯的跨使用者隔離', () => {
 	it('別人的紀錄回 404；引用別人的科目或任務回 400', async () => {
 		const alice = await registeredClient('Alice');
 		const bob = await registeredClient('Bob');
-		const aliceSubject = await makeSubject(alice);
+		const aliceSubject = await makeSubject(alice, '數學');
 		const aliceTask = (await alice.post('/api/tasks', { title: 'Alice 的任務' })).data.task;
 		const aliceSession = await makeSession(alice);
 		const bobSession = await makeSession(bob);

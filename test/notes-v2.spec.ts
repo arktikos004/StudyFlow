@@ -1,12 +1,6 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
-import { PNG_1X1, registeredClient, type Client } from './helpers';
-
-async function makeNote(c: Client, title: string, body: Record<string, unknown> = {}) {
-	const res = await c.post('/api/notes', { kind: 'note', title, ...body });
-	expect(res.status, JSON.stringify(res.data)).toBe(201);
-	return res.data.note;
-}
+import { PNG_1X1, registeredClient, type Client, makeNote } from './helpers';
 
 async function upload(c: Client, noteId: string) {
 	const form = new FormData();

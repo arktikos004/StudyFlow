@@ -1,15 +1,9 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
-import { registeredClient, type Client } from './helpers';
+import { registeredClient, type Client, makeTask } from './helpers';
 
 type Item = { id: string; title: string; done: boolean };
 const item = (i: number, title = `第 ${i} 項`): Item => ({ id: `item-${i}`, title, done: false });
-
-async function makeTask(c: Client, body: Record<string, unknown> = {}) {
-	const res = await c.post('/api/tasks', { title: '期末報告', ...body });
-	expect(res.status, JSON.stringify(res.data)).toBe(201);
-	return res.data.task;
-}
 
 /** 在「現在」之前 endMinAgo 分鐘結束、長度 minutes 分鐘的學習紀錄 */
 async function logFor(c: Client, taskId: string | null, minutes: number, endMinAgo = 1, extra: Record<string, unknown> = {}) {

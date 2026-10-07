@@ -1,13 +1,7 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { addDays, weekStart } from '../src/shared/dates';
-import { createClient, logSession, noonClient, registeredClient, type Client } from './helpers';
-
-async function makeSubject(c: Client, name: string, extra: Record<string, unknown> = {}) {
-	const res = await c.post('/api/subjects', { name, color: '#2a78d6', ...extra });
-	expect(res.status, JSON.stringify(res.data)).toBe(201);
-	return res.data.subject;
-}
+import { createClient, logSession, noonClient, registeredClient, makeSubject } from './helpers';
 
 describe('每日／每週讀書目標（GOAL-1）', () => {
 	it('預設沒有目標；可以設定、只改其中一個、清除', async () => {
