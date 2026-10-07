@@ -1,6 +1,6 @@
 import type { NoteItem } from '../../shared/api-types';
 import { diffDays, localDate } from '../../shared/dates';
-import { formatDate } from './format';
+import { formatDateForToday } from './format';
 
 // 筆記頁（s2/notes）的格式化純函式。日期一律依使用者時區（user.timezone）。
 
@@ -68,5 +68,5 @@ export function dayLabel(epochMs: number, timeZone: string, today: string): stri
 	const days = diffDays(date, today);
 	if (days === 0) return '今天';
 	if (days === 1) return '昨天';
-	return formatDate(date, date.slice(0, 4) !== today.slice(0, 4));
+	return formatDateForToday(date, today);
 }

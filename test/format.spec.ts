@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatRange, firstGrapheme } from '../src/react-app/lib/format';
+import { firstGrapheme, formatDateForToday, formatRange } from '../src/react-app/lib/format';
 
 describe('firstGrapheme', () => {
 	afterEach(() => vi.unstubAllGlobals());
@@ -37,5 +37,13 @@ describe('formatRange', () => {
 		expect(formatRange('9/7（一）', '10/6（二）')).toBe('9/7（一）至 10/6（二）');
 		expect(formatRange('10/5', '10/11')).toBe('10/5 至 10/11');
 		expect(formatRange('2025/12/29（一）', '2026/1/4（日）')).not.toMatch(/[–—~-]/);
+	});
+});
+
+describe('formatDateForToday', () => {
+	it('今年的日期不加年份，其他年份（往前或往後）加上年份', () => {
+		expect(formatDateForToday('2026-10-07', '2026-01-01')).toBe('10/7（三）');
+		expect(formatDateForToday('2025-12-31', '2026-01-01')).toBe('2025/12/31（三）');
+		expect(formatDateForToday('2027-01-04', '2026-12-31')).toBe('2027/1/4（一）');
 	});
 });

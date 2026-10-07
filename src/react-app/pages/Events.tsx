@@ -3,18 +3,18 @@ import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import type { EventItem } from '../../shared/api-types';
 import { localDate } from '../../shared/dates';
+import { EVENT_KIND_LABEL } from '../../shared/labels';
+import { CountdownTile } from '../components/countdown';
 import { PrepProgress } from '../components/dashboard/exams';
 import { useSubjectMark } from '../components/dashboard/hooks';
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SubjectSelect, SubjectTag } from '../components/subjects';
-import { CountdownTile } from '../components/countdown';
 import { Badge, Button, Card, cn, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack, TextLink } from '../components/ui';
-import { formatDate } from '../lib/format';
-import { EVENT_KIND_LABEL } from '../../shared/labels';
-import { eventsSummary } from '../lib/events-format';
-import { useEvents, useSubjectMap, useSubjects, useUser } from '../lib/queries';
-import { useDeepLink, useOpenDeepLink } from '../lib/deep-link';
 import { useMinuteClock } from '../lib/clock';
+import { useDeepLink, useOpenDeepLink } from '../lib/deep-link';
+import { eventsSummary } from '../lib/events-format';
+import { formatDateForToday } from '../lib/format';
+import { useEvents, useSubjectMap, useSubjects, useUser } from '../lib/queries';
 
 function EventCard({
 	event,
@@ -33,7 +33,6 @@ function EventCard({
 	const subjects = useSubjectMap();
 	const past = event.date < today;
 	const subject = event.subjectId ? subjects.get(event.subjectId) : undefined;
-	const sameYear = event.date.slice(0, 4) === today.slice(0, 4);
 
 	return (
 		<Card as="article" variant={past ? 'plain' : 'default'} className="flex h-full flex-col p-4 sm:p-5">
@@ -64,7 +63,7 @@ function EventCard({
 						<span className="inline-flex items-center gap-1">
 							<CalendarDays className="size-3.5 shrink-0 text-ink-3" aria-hidden />
 							<time dateTime={event.time ? `${event.date}T${event.time}` : event.date} className="font-num tabular-nums">
-								{formatDate(event.date, !sameYear)}
+								{formatDateForToday(event.date, today)}
 								{event.time && ` ${event.time}`}
 							</time>
 						</span>

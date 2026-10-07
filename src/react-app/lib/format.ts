@@ -38,6 +38,11 @@ export function formatDate(date: string, withYear = false): string {
 	return `${withYear ? `${y}/` : ''}${m}/${d}（${WEEKDAYS[dow]}）`;
 }
 
+/** 9/29（一）；和 today 不同年時加上年份（2025/9/29（一）） */
+export function formatDateForToday(date: string, today: string): string {
+	return formatDate(date, date.slice(0, 4) !== today.slice(0, 4));
+}
+
 export function formatMonthDay(date: string): string {
 	const { m, d } = parts(date);
 	return `${m}/${d}`;

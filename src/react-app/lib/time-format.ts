@@ -1,5 +1,5 @@
 import { addDays, localDateTime } from '../../shared/dates';
-import { formatDate, formatMonthDay } from './format';
+import { formatDateForToday, formatMonthDay } from './format';
 
 // 依使用者時區（user.timezone）顯示時間。lib/format.ts 的 formatTime 用的是裝置時區，計時與月曆一律改用這裡。
 
@@ -26,7 +26,7 @@ export function relativeDateLabel(date: string, today: string): string {
 	if (date === today) return '今天';
 	if (date === addDays(today, -1)) return '昨天';
 	if (date === addDays(today, 1)) return '明天';
-	return formatDate(date, date.slice(0, 4) !== today.slice(0, 4));
+	return formatDateForToday(date, today);
 }
 
 /** 報讀用的完整日期：9月29日 星期二 */

@@ -20,9 +20,9 @@ import { EventDialog, TaskDialog } from '../components/forms';
 import { SessionDialog } from '../components/SessionDialog';
 import { SubjectTag } from '../components/subjects';
 import { Button, Card, ErrorNote, PageHeader, PageStack, Segmented } from '../components/ui';
-import { formatDate, formatMinutes, formatMonthDay, formatRange } from '../lib/format';
 import { useMinuteClock } from '../lib/clock';
 import { isDateParam, useDeepLink, useOpenDeepLink } from '../lib/deep-link';
+import { formatDateForToday, formatMinutes, formatMonthDay, formatRange } from '../lib/format';
 import { useMediaQuery } from '../lib/media-query';
 import { useEvents, useStudySessions, useSubjectMap, useTasks, useUser } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
@@ -184,7 +184,7 @@ export function CalendarPage() {
 		view === 'month'
 			? `${y} 年 ${Number(m)} 月`
 			: single
-				? formatDate(selected, selected.slice(0, 4) !== today.slice(0, 4))
+				? formatDateForToday(selected, today)
 				: `${week[0].slice(0, 4)} 年 ${formatRange(formatMonthDay(week[0]), formatMonthDay(week[6]))}`;
 	const step =
 		view === 'month'

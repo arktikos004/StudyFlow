@@ -1,8 +1,8 @@
 import { CalendarPlus, ListPlus, Pencil, Plus } from 'lucide-react';
 import { useId } from 'react';
 import type { EventItem, StudySession, Task } from '../../../shared/api-types';
-import { formatDate, formatMinutes } from '../../lib/format';
 import { EVENT_KIND_LABEL, STUDY_MODE_LABEL } from '../../../shared/labels';
+import { formatDateForToday, formatMinutes } from '../../lib/format';
 import { formatClockRange } from '../../lib/time-format';
 import { SubjectTag } from '../subjects';
 import { TaskCheckbox } from '../TaskItem';
@@ -58,7 +58,7 @@ export function DayPanel({
 				<CardHeader
 					title={
 						<span id={titleId} className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-							<span className="whitespace-nowrap">{formatDate(date, date.slice(0, 4) !== today.slice(0, 4))}</span>
+							<span className="whitespace-nowrap">{formatDateForToday(date, today)}</span>
 							{date === today && <Badge tone="accent">今天</Badge>}
 						</span>
 					}

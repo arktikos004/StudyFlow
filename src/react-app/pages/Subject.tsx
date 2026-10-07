@@ -23,9 +23,10 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import type { EventItem, SubjectOverview, TaskItem } from '../../shared/api-types';
 import { today as todayOf } from '../../shared/dates';
+import { EVENT_KIND_LABEL } from '../../shared/labels';
+import { CountdownTile } from '../components/countdown';
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SubjectDialog } from '../components/settings/SubjectDialog';
-import { CountdownTile } from '../components/countdown';
 import { SubjectIconTile } from '../components/subjects';
 import { TaskCheckbox } from '../components/TaskItem';
 import {
@@ -48,12 +49,11 @@ import {
 	TextLink,
 } from '../components/ui';
 import { ApiError } from '../lib/api';
-import { formatDate, formatMinutes, splitMinutes } from '../lib/format';
-import { EVENT_KIND_LABEL } from '../../shared/labels';
+import { formatDate, formatDateForToday, formatMinutes, splitMinutes } from '../lib/format';
 import { dropKept, keepSaved, mergeKept, pruneKept, type KeptTask } from '../lib/kept-tasks';
-import { useTaskResults } from '../lib/task-queries';
 import { useSubjectOverview, useSubjects, useUser } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
+import { useTaskResults } from '../lib/task-queries';
 import { timer, useTimerState } from '../lib/timer';
 
 // 單科總覽（SUB-3）：/subjects/:id，資料用一次 API（useSubjectOverview）取得。
@@ -139,7 +139,7 @@ function KindBadge({ kind }: { kind: EventItem['kind'] }) {
 }
 
 function EventMeta({ event, today }: { event: EventItem; today: string }) {
-	const date = formatDate(event.date, event.date.slice(0, 4) !== today.slice(0, 4));
+	const date = formatDateForToday(event.date, today);
 	return (
 		<p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-meta text-ink-2">
 			<span className="font-num tabular-nums">{event.time ? `${date} ${event.time}` : date}</span>
@@ -213,7 +213,7 @@ function NextEvent({
 }
 
 function EventRow({ event, today, timeZone, onOpen }: { event: EventItem; today: string; timeZone: string; onOpen: () => void }) {
-	const date = formatDate(event.date, event.date.slice(0, 4) !== today.slice(0, 4));
+	const date = formatDateForToday(event.date, today);
 	const meta = [
 		EVENT_KIND_LABEL[event.kind],
 		event.time ? `${date} ${event.time}` : date,
