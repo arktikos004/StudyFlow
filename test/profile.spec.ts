@@ -388,9 +388,9 @@ describe('個人檔案摘要（PRO-1）', () => {
 		await c.patch(`/api/notes/${plain.id}`, { mastered: true });
 
 		const s = await summary(c);
-		// 30 + 25:40 + 45 + 20 + 7 × 10 分 = 11440 秒 = 190.67 分 → 191
+		// 30 + 25:40 + 45 + 20 + 7 × 10 分 = 11440 秒 = 190.67 分 → 無條件捨去 190
 		expect(s).toEqual({
-			totalMinutes: 191,
+			totalMinutes: 190,
 			totalSessions: 11,
 			currentStreak: 3,
 			longestStreak: 7,
@@ -426,6 +426,37 @@ describe('個人檔案摘要（PRO-1）', () => {
 		const after = await summary(c);
 		expect(after.mistakesMastered).toBe(9);
 		expect(after.achievements.badges.map((b) => b.id)).toEqual(['first-session', 'streak-7']);
+	});
+
+	it('累積分鐘數無條件捨去：換算成時數後和成就頁一致（3599 秒是 59 分、0.9 小時）', async () => {
+		const c = await registeredClient();
+		/** 前端顯示累積時數的算法 */
+		const hours = (s: ProfileSummary) => Math.floor(s.totalMinutes / 6) / 10;
+		const achievementHours = async () => {
+			const list: Achievement[] = (await c.get('/api/achievements')).data.achievements;
+			return list.find((a) => a.id === 'hours-10')!.progress;
+		};
+
+		const end = Date.now() - 10 * 60_000;
+		const first = await c.post('/api/study-sessions', { mode: 'stopwatch', startedAt: end - 3_600_000, endedAt: end, durationSec: 3599 });
+		expect(first.status, JSON.stringify(first.data)).toBe(201);
+		let s = await summary(c);
+		expect(s.totalMinutes).toBe(59);
+		expect(hours(s)).toBe(0.9);
+		expect(await achievementHours()).toBe(0.9);
+
+		// 再多 1 秒剛好滿 1 小時：兩邊同時進位
+		const second = await c.post('/api/study-sessions', {
+			mode: 'stopwatch',
+			startedAt: end + 60_000,
+			endedAt: end + 61_000,
+			durationSec: 1,
+		});
+		expect(second.status, JSON.stringify(second.data)).toBe(201);
+		s = await summary(c);
+		expect(s.totalMinutes).toBe(60);
+		expect(hours(s)).toBe(1);
+		expect(await achievementHours()).toBe(1);
 	});
 
 	it('連續天數依使用者時區的當地日期計算', async () => {

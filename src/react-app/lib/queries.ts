@@ -363,7 +363,7 @@ export const useUploadAvatar = () =>
 		const form = new FormData();
 		form.append('file', file, 'avatar');
 		return api.put<{ user: PublicUser }>('/auth/avatar', form);
-	}, '已更新頭像');
+	}, '已更新照片');
 
 /** 移除頭像：mutate()；之後 avatarUpdatedAt 是 null，畫面改用暱稱首字 */
-export const useDeleteAvatar = () => useAvatarMutation<void>(() => api.del<{ user: PublicUser }>('/auth/avatar'), '已移除頭像');
+export const useDeleteAvatar = () => useAvatarMutation<void>(() => api.del<{ user: PublicUser }>('/auth/avatar'), '已移除照片');
