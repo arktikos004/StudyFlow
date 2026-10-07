@@ -48,7 +48,11 @@ export function useMe() {
 				throw e;
 			}
 		},
+		// 這台裝置上的變更都會直接寫進快取，平常不必重新取得；
+		// 但別的裝置可能換了照片或暱稱（登入也可能過期）：切回分頁、重新連上網路時一律重新取得
 		staleTime: Infinity,
+		refetchOnWindowFocus: 'always',
+		refetchOnReconnect: 'always',
 	});
 }
 
