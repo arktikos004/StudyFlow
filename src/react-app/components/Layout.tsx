@@ -14,12 +14,12 @@ import {
 } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router';
 import { toast } from 'sonner';
-import { api, avatarUrl } from '../lib/api';
-import { ME_KEY, useAchievements, useSummary, useUser } from '../lib/queries';
 import { diffUnlocked, parseSeen, seenKey } from '../lib/achievement-display';
 import { achievementIcon } from '../lib/achievement-icons';
-import { badgeLabel, navBadges, type NavBadge } from '../lib/nav-badges';
+import { avatarUrl } from '../lib/api';
 import { isApplePlatform, isPaletteShortcut } from '../lib/command-palette';
+import { badgeLabel, navBadges, type NavBadge } from '../lib/nav-badges';
+import { ME_KEY, requestLogout, useAchievements, useSummary, useUser } from '../lib/queries';
 import { useTimerEngine } from '../lib/timer';
 import { Logo } from './Logo';
 import { MOBILE_MAIN, NAV, NAV_GROUPS, type NavItem } from './nav';
@@ -101,11 +101,13 @@ function useOnline() {
 	);
 }
 
+/** 登出成功才清掉本機的資料、回到登入頁；失敗時 requestLogout 已經提示原因，留在原頁 */
 function useLogout() {
 	const qc = useQueryClient();
 	const navigate = useNavigate();
 	return async () => {
-		await api.post('/auth/logout').catch(() => {});
+		if (!(await requestLogout())) return;
+		// 三件事在同一輪同步做完：使用者資料清掉的那次 render 已經在登入頁，版面不會拿到空的使用者
 		qc.clear();
 		qc.setQueryData(ME_KEY, null);
 		navigate('/login', { replace: true });

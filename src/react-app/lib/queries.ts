@@ -382,6 +382,21 @@ function useAuthMutation<TInput>(path: '/auth/login' | '/auth/register') {
 	});
 }
 export const useLogin = () => useAuthMutation<LoginInput>('/auth/login');
+
+/**
+ * 送出登出：伺服器確認後才算登出，回傳 true。離線或伺服器錯誤時 cookie 仍然有效，不能假裝已經登出
+ * （共用電腦上下一個人打開就會回到這個帳號），所以提示原因並回傳 false，由呼叫端留在原頁。
+ * 不用 useMutation：登出後整個版面就要卸載，mutation 狀態更新會讓版面在使用者資料清掉後多 render 一次。
+ */
+export async function requestLogout(): Promise<boolean> {
+	try {
+		await api.post('/auth/logout');
+		return true;
+	} catch (e) {
+		toast.error('登出沒有完成', { description: e instanceof Error ? e.message : '請稍後再試' });
+		return false;
+	}
+}
 export const useRegister = () => useAuthMutation<RegisterInput>('/auth/register');
 
 /** 變更密碼：成功時提示（後端會登出其他裝置） */
