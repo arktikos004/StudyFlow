@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import type { ChecklistItem, TaskItem } from '../../shared/api-types';
 import { api } from './api';
-import { TASK_KEYS } from './queries';
+import { invalidateKeys, QK, TASK_KEYS } from './query-keys';
 import { applyTaskPatch, revertTaskPatch } from './task-patch';
 import { DEFAULT_SORT, parseSort, type TaskSort, type TaskStatus } from './task-sort';
 
@@ -34,32 +34,32 @@ export function useTaskPatch() {
 		mutationKey: PATCH_KEY,
 		mutationFn: ({ id, status, checklist }: TaskPatch) => api.patch<{ task: TaskItem }>(`/tasks/${id}`, { status, checklist }),
 		onMutate: async ({ id, status, checklist }) => {
-			await qc.cancelQueries({ queryKey: ['tasks'] });
+			await qc.cancelQueries({ queryKey: QK.tasks });
 			// 送出前的那一筆（各個 ['tasks', …] 快取裡是同一筆資料，取第一個找到的）
 			const original = qc
-				.getQueriesData<TaskItem[]>({ queryKey: ['tasks'] })
+				.getQueriesData<TaskItem[]>({ queryKey: QK.tasks })
 				.flatMap(([, data]) => data ?? [])
 				.find((t) => t.id === id);
 			const now = Date.now();
-			qc.setQueriesData<TaskItem[]>({ queryKey: ['tasks'] }, (old) => old && applyTaskPatch(old, id, { status, checklist }, now));
+			qc.setQueriesData<TaskItem[]>({ queryKey: QK.tasks }, (old) => old && applyTaskPatch(old, id, { status, checklist }, now));
 			return { original };
 		},
 		onError: (e, vars, ctx) => {
 			const original = ctx?.original;
 			if (original)
 				qc.setQueriesData<TaskItem[]>(
-					{ queryKey: ['tasks'] },
+					{ queryKey: QK.tasks },
 					(old) => old && revertTaskPatch(old, original, { status: vars.status, checklist: vars.checklist }),
 				);
 			toast.error(vars.errorTitle, { description: e instanceof Error ? e.message : '請稍後再試' });
 		},
 		onSuccess: ({ task }) => {
 			if (othersPending()) return;
-			qc.setQueriesData<TaskItem[]>({ queryKey: ['tasks'] }, (old) => old?.map((t) => (t.id === task.id ? task : t)));
+			qc.setQueriesData<TaskItem[]>({ queryKey: QK.tasks }, (old) => old?.map((t) => (t.id === task.id ? task : t)));
 		},
 		onSettled: () => {
 			if (othersPending()) return;
-			TASK_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
+			invalidateKeys(qc, TASK_KEYS);
 		},
 	});
 }

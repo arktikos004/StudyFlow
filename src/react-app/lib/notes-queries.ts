@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { NoteItem } from '../../shared/api-types';
 import { api } from './api';
+import { QK } from './query-keys';
 
 // 筆記的資料 hook（其餘在 queries.ts）。
 
@@ -16,7 +17,7 @@ export function usePinNote() {
 		onSuccess: async ({ note }) => {
 			qc.setQueryData(['note', note.id], note);
 			toast.success(note.pinned ? '已釘選，會排在最前面' : '已取消釘選');
-			await qc.invalidateQueries({ queryKey: ['notes'] });
+			await qc.invalidateQueries({ queryKey: QK.notes });
 		},
 		onError: (e) => toast.error(e instanceof Error ? `更改釘選沒有成功：${e.message}` : '更改釘選沒有成功，請再試一次'),
 	});

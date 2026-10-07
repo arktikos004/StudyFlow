@@ -6,7 +6,8 @@ import { addDays, localDate } from '../../shared/dates';
 import { api, qs } from './api';
 import { formatMinutes } from './format';
 import { startNoiseSync } from './noise';
-import { ME_KEY, SESSION_KEYS, type SessionInput } from './queries';
+import type { SessionInput } from './queries';
+import { invalidateKeys, ME_KEY, SESSION_KEYS } from './query-keys';
 import {
 	advance,
 	clampOptions,
@@ -316,7 +317,7 @@ export function useTimerEngine(userId: string) {
 		const handlers: FlushHandlers = {
 			onSaved: (r, unlinked) => {
 				// 和手動新增、編輯紀錄同一組：紀錄列表、任務投入時間、總覽、統計、頁首摘要、成就、單科總覽
-				SESSION_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
+				invalidateKeys(qc, SESSION_KEYS);
 				toast.success(
 					`已記錄 ${formatMinutes((r.durationSec ?? 0) / 60)}的學習時間`,
 					unlinked ? { description: '原本的科目或任務已經刪除，這筆改成未分類' } : undefined,

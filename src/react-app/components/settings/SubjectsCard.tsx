@@ -6,6 +6,7 @@ import type { Subject } from '../../../shared/api-types';
 import { useDeepLink } from '../../lib/deep-link';
 import { formatMinutes } from '../../lib/format';
 import { useReorderSubjects, useSubjects } from '../../lib/queries';
+import { QK } from '../../lib/query-keys';
 import { SubjectTag } from '../subjects';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorNote, Spinner } from '../ui';
 import { SubjectDialog } from './SubjectDialog';
@@ -123,7 +124,7 @@ export function SubjectsCard() {
 
 	const move = (id: string, dir: Direction) => {
 		// 讀快取裡最新的順序：連按時，上一次的樂觀更新已經套用
-		const list = qc.getQueryData<Subject[]>(['subjects']) ?? subjects;
+		const list = qc.getQueryData<Subject[]>(QK.subjects) ?? subjects;
 		const from = list.findIndex((s) => s.id === id);
 		const to = from + (dir === 'up' ? -1 : 1);
 		if (from < 0 || to < 0 || to >= list.length) return;

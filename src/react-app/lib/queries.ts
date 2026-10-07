@@ -35,11 +35,23 @@ import type {
 	updateProfileSchema,
 } from '../../shared/schemas';
 import { api, ApiError, isAbortError, qs, type RequestOptions } from './api';
+import {
+	EVENT_DELETE_KEYS,
+	EVENT_KEYS,
+	invalidateKeys,
+	ME_KEY,
+	NOTE_KEYS,
+	NOTE_PHOTO_KEYS,
+	QK,
+	SESSION_KEYS,
+	SUBJECT_DELETE_KEYS,
+	SUBJECT_KEYS,
+	TASK_KEYS,
+} from './query-keys';
 
 // ---- 查詢 ----
 
 /** 目前登入的使用者；null = 沒有登入 */
-export const ME_KEY = ['me'] as const;
 
 export function useMe() {
 	return useQuery({
@@ -68,7 +80,7 @@ export function useUser(): PublicUser {
 
 export function useSubjects() {
 	return useQuery({
-		queryKey: ['subjects'],
+		queryKey: QK.subjects,
 		queryFn: async () => (await api.get<{ subjects: Subject[] }>('/subjects')).subjects,
 		staleTime: 60_000,
 	});
@@ -84,7 +96,7 @@ export function useSubjectMap() {
 /** 單科總覽；不是本人的科目會得到 ApiError（status 404） */
 export function useSubjectOverview(id: string | undefined) {
 	return useQuery({
-		queryKey: ['subject-overview', id],
+		queryKey: [...QK.subjectOverview, id],
 		queryFn: () => api.get<SubjectOverview>(`/subjects/${encodeURIComponent(id ?? '')}/overview`),
 		enabled: !!id,
 	});
@@ -100,7 +112,7 @@ type ListQueryOptions = {
 
 export function useEvents(params: { from?: string; to?: string } = {}, { keepPrevious = false, enabled = true }: ListQueryOptions = {}) {
 	return useQuery({
-		queryKey: ['events', params],
+		queryKey: [...QK.events, params],
 		queryFn: async () => (await api.get<{ events: EventItem[] }>(`/events${qs(params)}`)).events,
 		placeholderData: keepPrevious ? keepPreviousData : undefined,
 		enabled,
@@ -113,7 +125,7 @@ export function useTasks(
 	{ enabled = true }: ListQueryOptions = {},
 ) {
 	return useQuery({
-		queryKey: ['tasks', params],
+		queryKey: [...QK.tasks, params],
 		queryFn: async () => (await api.get<{ tasks: TaskItem[] }>(`/tasks${qs(params)}`)).tasks,
 		enabled,
 	});
@@ -130,7 +142,7 @@ export type NoteFilters = {
 /** 筆記列表；換篩選條件時保留上一次的結果。enabled 為 false 時不發請求（例如筆記頁在複習檢視時不需要列表） */
 export function useNotes(params: NoteFilters = {}, { enabled = true }: { enabled?: boolean } = {}) {
 	return useQuery({
-		queryKey: ['notes', params],
+		queryKey: [...QK.notes, params],
 		queryFn: async () => (await api.get<{ notes: NoteItem[] }>(`/notes${qs(params)}`)).notes,
 		placeholderData: keepPreviousData,
 		enabled,
@@ -139,7 +151,7 @@ export function useNotes(params: NoteFilters = {}, { enabled = true }: { enabled
 
 export function useNote(id: string | undefined) {
 	return useQuery({
-		queryKey: ['note', id],
+		queryKey: [...QK.note, id],
 		queryFn: async () => (await api.get<{ note: NoteItem }>(`/notes/${id}`)).note,
 		enabled: !!id,
 	});
@@ -147,7 +159,7 @@ export function useNote(id: string | undefined) {
 
 export function useStudySessions(params: { from?: string; to?: string } = {}, { keepPrevious = false }: ListQueryOptions = {}) {
 	return useQuery({
-		queryKey: ['sessions', params],
+		queryKey: [...QK.sessions, params],
 		queryFn: async () => (await api.get<{ sessions: StudySession[] }>(`/study-sessions${qs(params)}`)).sessions,
 		placeholderData: keepPrevious ? keepPreviousData : undefined,
 	});
@@ -155,19 +167,19 @@ export function useStudySessions(params: { from?: string; to?: string } = {}, { 
 
 export function useStats(days: 7 | 30 | 90) {
 	return useQuery({
-		queryKey: ['stats', days],
+		queryKey: [...QK.stats, days],
 		queryFn: () => api.get<StatsResponse>(`/stats?days=${days}`),
 		placeholderData: (prev) => prev,
 	});
 }
 
 export function useDashboard() {
-	return useQuery({ queryKey: ['dashboard'], queryFn: () => api.get<DashboardResponse>('/dashboard') });
+	return useQuery({ queryKey: QK.dashboard, queryFn: () => api.get<DashboardResponse>('/dashboard') });
 }
 
 /** 頁首摘要：今天到期、逾期、待複習數與下一場考試 */
 export function useSummary() {
-	return useQuery({ queryKey: ['summary'], queryFn: () => api.get<SummaryResponse>('/summary'), staleTime: 30_000 });
+	return useQuery({ queryKey: QK.summary, queryFn: () => api.get<SummaryResponse>('/summary'), staleTime: 30_000 });
 }
 
 /**
@@ -177,7 +189,7 @@ export function useSummary() {
 export function useSearch(q: string) {
 	const term = q.trim();
 	return useQuery({
-		queryKey: ['search', term],
+		queryKey: [...QK.search, term],
 		queryFn: () => api.get<SearchResponse>(`/search${qs({ q: term })}`),
 		enabled: term.length > 0,
 		placeholderData: (prev) => (term ? prev : undefined),
@@ -190,7 +202,7 @@ export function useSearch(q: string) {
 /** 成就清單（固定順序）；學習紀錄、任務、錯題有變動時會重新取得，可用來偵測新解鎖 */
 export function useAchievements() {
 	return useQuery({
-		queryKey: ['achievements'],
+		queryKey: QK.achievements,
 		queryFn: async () => (await api.get<AchievementsResponse>('/achievements')).achievements,
 		staleTime: 60_000,
 	});
@@ -202,7 +214,7 @@ export function useAchievements() {
  */
 export function useProfileSummary() {
 	return useQuery({
-		queryKey: ['profile-summary'],
+		queryKey: QK.profileSummary,
 		queryFn: () => api.get<ProfileSummary>('/profile/summary'),
 		staleTime: 60_000,
 	});
@@ -218,23 +230,17 @@ function toastError(e: unknown) {
 /**
  * 包裝 useMutation：成功後重新整理相關資料、顯示提示；失敗時顯示後端回傳的錯誤訊息。
  */
-function useApiMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, invalidate: QueryKey[], successMessage?: string) {
+function useApiMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, invalidate: readonly QueryKey[], successMessage?: string) {
 	const qc = useQueryClient();
 	return useMutation({
 		mutationFn: fn,
 		onSuccess: () => {
-			invalidate.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
+			invalidateKeys(qc, invalidate);
 			if (successMessage) toast.success(successMessage);
 		},
 		onError: toastError,
 	});
 }
-
-// 任務、考試、學習紀錄的變動都會影響總覽、統計、頁首摘要與單科總覽
-const OVERVIEW: QueryKey[] = [['dashboard'], ['stats'], ['summary'], ['subject-overview']];
-
-// 科目的名稱、顏色、圖示、目標、順序會出現在總覽（各科目標）、統計圖表與單科總覽
-const SUBJECT_KEYS: QueryKey[] = [['subjects'], ['dashboard'], ['stats'], ['subject-overview']];
 
 export type SubjectInput = z.input<typeof subjectSchema>;
 export type SubjectUpdateInput = z.input<typeof subjectUpdateSchema> & { id: string };
@@ -242,60 +248,48 @@ export const useCreateSubject = () =>
 	useApiMutation((v: SubjectInput) => api.post<{ subject: Subject }>('/subjects', v), SUBJECT_KEYS, '已新增科目');
 export const useUpdateSubject = () =>
 	useApiMutation(({ id, ...v }: SubjectUpdateInput) => api.patch<{ subject: Subject }>(`/subjects/${id}`, v), SUBJECT_KEYS);
-export const useDeleteSubject = () =>
-	useApiMutation(
-		(id: string) => api.del(`/subjects/${id}`),
-		[['subjects'], ['events'], ['tasks'], ['notes'], ['sessions'], ...OVERVIEW],
-		'已刪除科目',
-	);
+export const useDeleteSubject = () => useApiMutation((id: string) => api.del(`/subjects/${id}`), SUBJECT_DELETE_KEYS, '已刪除科目');
 
 /**
  * 調整科目順序：傳入本人「全部」科目的 id（新順序）。
- * 樂觀更新：按下就先換掉 ['subjects'] 快取的順序，失敗時還原並顯示錯誤。
+ * 樂觀更新：按下就先換掉科目清單快取（QK.subjects）的順序，失敗時還原並顯示錯誤。
  */
 export const useReorderSubjects = () => {
 	const qc = useQueryClient();
 	return useMutation({
 		mutationFn: (ids: string[]) => api.put<{ subjects: Subject[] }>('/subjects/order', { ids }),
 		onMutate: async (ids) => {
-			await qc.cancelQueries({ queryKey: ['subjects'] });
-			const prev = qc.getQueryData<Subject[]>(['subjects']);
+			await qc.cancelQueries({ queryKey: QK.subjects });
+			const prev = qc.getQueryData<Subject[]>(QK.subjects);
 			if (prev) {
 				const byId = new Map(prev.map((s) => [s.id, s]));
 				const next = ids.flatMap((id, sortOrder) => {
 					const s = byId.get(id);
 					return s ? [{ ...s, sortOrder }] : [];
 				});
-				qc.setQueryData<Subject[]>(['subjects'], next);
+				qc.setQueryData<Subject[]>(QK.subjects, next);
 			}
 			return { prev };
 		},
 		onError: (e, _ids, ctx) => {
-			if (ctx?.prev) qc.setQueryData(['subjects'], ctx.prev);
+			if (ctx?.prev) qc.setQueryData(QK.subjects, ctx.prev);
 			toastError(e);
 		},
-		onSettled: () => SUBJECT_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey })),
+		onSettled: () => invalidateKeys(qc, SUBJECT_KEYS),
 	});
 };
 
 export type EventInput = z.input<typeof eventSchema>;
 export type EventUpdateInput = z.input<typeof eventUpdateSchema> & { id: string };
-export const useCreateEvent = () =>
-	useApiMutation((v: EventInput) => api.post<{ event: EventItem }>('/events', v), [['events'], ...OVERVIEW], '已新增');
+export const useCreateEvent = () => useApiMutation((v: EventInput) => api.post<{ event: EventItem }>('/events', v), EVENT_KEYS, '已新增');
 export const useUpdateEvent = () =>
-	useApiMutation(
-		({ id, ...v }: EventUpdateInput) => api.patch<{ event: EventItem }>(`/events/${id}`, v),
-		[['events'], ...OVERVIEW],
-		'已更新',
-	);
-export const useDeleteEvent = () =>
-	useApiMutation((id: string) => api.del(`/events/${id}`), [['events'], ['tasks'], ...OVERVIEW], '已刪除');
+	useApiMutation(({ id, ...v }: EventUpdateInput) => api.patch<{ event: EventItem }>(`/events/${id}`, v), EVENT_KEYS, '已更新');
+export const useDeleteEvent = () => useApiMutation((id: string) => api.del(`/events/${id}`), EVENT_DELETE_KEYS, '已刪除');
 
 /** checklist 可省略（預設空清單）；子項目的 id 由前端產生，例如 crypto.randomUUID() */
 export type TaskInput = z.input<typeof taskSchema>;
 export type TaskUpdateInput = z.input<typeof taskUpdateSchema> & { id: string };
 // 任務會影響考試的準備進度（events）、「完成 50 個任務」成就與個人檔案的完成任務數
-export const TASK_KEYS: QueryKey[] = [['tasks'], ['events'], ['achievements'], ['profile-summary'], ...OVERVIEW];
 export const useCreateTask = () => useApiMutation((v: TaskInput) => api.post<{ task: TaskItem }>('/tasks', v), TASK_KEYS, '已新增任務');
 export const useUpdateTask = () =>
 	useApiMutation(({ id, ...v }: TaskUpdateInput) => api.patch<{ task: TaskItem }>(`/tasks/${id}`, v), TASK_KEYS);
@@ -305,20 +299,6 @@ export const useDeleteTask = () => useApiMutation((id: string) => api.del(`/task
 export type { NoteInput, SessionInput };
 /** 只送要改的欄位；沒給 durationSec 但改了起訖時間時，後端會依起訖時間重新計算 */
 export type SessionUpdateInput = z.input<typeof studySessionUpdateSchema> & { id: string };
-/**
- * 學習紀錄的新增、修改、刪除會影響：紀錄列表、任務投入時間、總覽、統計、頁首摘要、成就、個人檔案、單科總覽。
- * 計時器自己送出紀錄時（lib/timer.ts）也要 invalidate 這一組。
- */
-export const SESSION_KEYS: QueryKey[] = [
-	['sessions'],
-	['tasks'],
-	['dashboard'],
-	['stats'],
-	['summary'],
-	['achievements'],
-	['profile-summary'],
-	['subject-overview'],
-];
 export const useCreateSession = () =>
 	useApiMutation((v: SessionInput) => api.post<{ session: StudySession }>('/study-sessions', v), SESSION_KEYS, '已記錄學習時間');
 export const useUpdateSession = () =>
@@ -331,17 +311,6 @@ export const useDeleteSession = () => useApiMutation((id: string) => api.del(`/s
 
 /** 只送要改的欄位；{ id, pinned } 只改釘選，不會更新「最後更新」時間 */
 export type NoteUpdateInput = z.input<typeof noteUpdateSchema> & { id: string };
-// 筆記與錯題會影響待複習數、錯題統計、單科總覽、「掌握錯題」成就與個人檔案的掌握錯題數
-const NOTE_KEYS: QueryKey[] = [
-	['notes'],
-	['note'],
-	['dashboard'],
-	['stats'],
-	['summary'],
-	['achievements'],
-	['profile-summary'],
-	['subject-overview'],
-];
 export const useCreateNote = () => useApiMutation((v: NoteInput) => api.post<{ note: NoteItem }>('/notes', v), NOTE_KEYS);
 export const useUpdateNote = () =>
 	useApiMutation(({ id, ...v }: NoteUpdateInput) => api.patch<{ note: NoteItem }>(`/notes/${id}`, v), NOTE_KEYS);
@@ -356,8 +325,8 @@ export const useUploadAttachment = () =>
 		const form = new FormData();
 		form.append('file', file, 'photo.jpg');
 		return api.post<{ attachment: PublicAttachment }>(`/notes/${noteId}/attachments`, form);
-	}, NOTE_KEYS);
-export const useDeleteAttachment = () => useApiMutation((id: string) => api.del(`/attachments/${id}`), NOTE_KEYS, '已刪除照片');
+	}, NOTE_PHOTO_KEYS);
+export const useDeleteAttachment = () => useApiMutation((id: string) => api.del(`/attachments/${id}`), NOTE_PHOTO_KEYS, '已刪除照片');
 
 /**
  * 使用者資料的修改（個人資料、頭像）失敗或被中止時：請求可能已經在伺服器上完成（例如處理完才斷線、按了取消），

@@ -10,7 +10,7 @@ import { AppError, PageError } from './components/RouteError';
 import { ThemedToaster } from './components/ThemedToaster';
 import { PageLoader } from './components/ui';
 import { ApiError } from './lib/api';
-import { ME_KEY } from './lib/queries';
+import { ME_KEY } from './lib/query-keys';
 import { initTheme } from './lib/theme';
 import { NotFound } from './pages/NotFound';
 // 數字字型 Archivo（自架，CSP 為 font-src 'self'）：standard = 字重 + 字寬兩個軸
