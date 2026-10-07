@@ -15,7 +15,7 @@ import {
 import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router';
 import { toast } from 'sonner';
 import { api, avatarUrl } from '../lib/api';
-import { useAchievements, useSummary, useUser } from '../lib/queries';
+import { ME_KEY, useAchievements, useSummary, useUser } from '../lib/queries';
 import { diffUnlocked, parseSeen, seenKey } from '../lib/shell-achievements';
 import { achievementIcon } from '../lib/shell-icons';
 import { badgeLabel, navBadges, type NavBadge } from '../lib/shell-nav';
@@ -107,7 +107,7 @@ function useLogout() {
 	return async () => {
 		await api.post('/auth/logout').catch(() => {});
 		qc.clear();
-		qc.setQueryData(['me'], null);
+		qc.setQueryData(ME_KEY, null);
 		navigate('/login', { replace: true });
 	};
 }

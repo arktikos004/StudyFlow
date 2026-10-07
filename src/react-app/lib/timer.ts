@@ -6,7 +6,7 @@ import { addDays, localDate } from '../../shared/dates';
 import { api, qs } from './api';
 import { formatMinutes } from './format';
 import { startNoiseSync } from './noise';
-import { SESSION_KEYS, type SessionInput } from './queries';
+import { ME_KEY, SESSION_KEYS, type SessionInput } from './queries';
 import {
 	advance,
 	clampOptions,
@@ -285,7 +285,7 @@ export function useNow(active: boolean) {
 	return now;
 }
 
-const userTimeZone = (qc: QueryClient) => qc.getQueryData<PublicUser | null>(['me'])?.timezone;
+const userTimeZone = (qc: QueryClient) => qc.getQueryData<PublicUser | null>(ME_KEY)?.timezone;
 
 /** 全站只掛一次（在 Layout）：負責到點切換、通知與上傳紀錄 */
 export function useTimerEngine() {

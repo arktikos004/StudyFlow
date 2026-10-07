@@ -10,6 +10,7 @@ import { LogoMark } from '../components/Logo';
 import { SubjectChip } from '../components/subjects';
 import { Button, cn, Field, Input } from '../components/ui';
 import { api } from '../lib/api';
+import { ME_KEY } from '../lib/queries';
 import { useIsDark } from '../lib/theme';
 
 /** 品牌欄的筆記頁預覽（裝飾）：三列筆記，科目用推薦色的螢光筆 chip 標出 */
@@ -128,7 +129,7 @@ function useAuthSubmit(path: '/auth/login' | '/auth/register') {
 		setError(undefined);
 		try {
 			const { user } = await api.post<{ user: PublicUser }>(path, body);
-			qc.setQueryData(['me'], user);
+			qc.setQueryData(ME_KEY, user);
 			navigate(safeNext(params.get('next')), { replace: true });
 		} catch (e) {
 			setError(e instanceof Error ? e.message : '發生錯誤');
