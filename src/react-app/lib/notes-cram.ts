@@ -4,6 +4,8 @@ import type { NoteItem } from '../../shared/api-types';
 // 衝刺的作答只記在前端（這一輪），不呼叫 /notes/:id/review，所以不影響間隔複習的排程。
 
 export type ReviewResult = 'remembered' | 'forgot';
+/** 這一輪每題的結果：筆記 id → 結果（沒作答的不在裡面） */
+export type ReviewResults = Record<string, ReviewResult>;
 export type CramOptions = { tag: string | null; includeMastered: boolean };
 type CramNote = Pick<NoteItem, 'kind' | 'mastered' | 'tags'>;
 
@@ -36,13 +38,13 @@ export function cramQueue<T extends Pick<NoteItem, 'createdAt' | 'id'>>(pool: re
 }
 
 /** 記住、還不熟各幾題 */
-export function tally(results: Readonly<Record<string, ReviewResult>>): Record<ReviewResult, number> {
+export function tally(results: Readonly<ReviewResults>): Record<ReviewResult, number> {
 	const out = { remembered: 0, forgot: 0 };
 	for (const r of Object.values(results)) out[r]++;
 	return out;
 }
 
 /** 再練一次：本輪「還不熟」的題目，維持本輪的順序 */
-export function retryQueue<T extends Pick<NoteItem, 'id'>>(queue: readonly T[], results: Readonly<Record<string, ReviewResult>>): T[] {
+export function retryQueue<T extends Pick<NoteItem, 'id'>>(queue: readonly T[], results: Readonly<ReviewResults>): T[] {
 	return queue.filter((n) => results[n.id] === 'forgot');
 }
