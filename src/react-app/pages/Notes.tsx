@@ -241,15 +241,13 @@ export function NotesPage() {
 	const [opened, setOpened] = useState<{ id: string; note?: NoteItem } | null>(null);
 	const [editor, setEditor] = useState<{ note?: NoteItem; kind?: Kind } | null>(null);
 
-	// 深連結：?open=<id> 開啟筆記、?new=mistake|note 新增；處理後由 useDeepLink 用 replace 清掉
-	const link = useDeepLink(['open', 'new']);
-	const [seenLink, setSeenLink] = useState(0);
-	// ?new= 等科目載入後再開：編輯視窗的預設科目（網址的 subject）在打開的那一刻決定，冷載入時科目清單還沒到
-	if (link.seq !== seenLink && !(link.values.new && subjectParam && subjects.isPending)) {
-		setSeenLink(link.seq);
-		if (link.values.open) setOpened({ id: link.values.open });
-		if (link.values.new) setEditor({ kind: link.values.new === 'note' ? 'note' : 'mistake' });
-	}
+	// 深連結：?open=<id> 開啟筆記、?new=mistake|note 新增
+	useDeepLink(['open', 'new'], ({ open, new: kind }) => {
+		// ?new= 等科目載入後再開：編輯視窗的預設科目（網址的 subject）在打開的那一刻決定，冷載入時科目清單還沒到
+		if (kind && subjectParam && subjects.isPending) return false;
+		if (open) setOpened({ id: open });
+		if (kind) setEditor({ kind: kind === 'note' ? 'note' : 'mistake' });
+	});
 
 	const { data: openNote, error: openError } = useNote(opened?.id);
 	// 深連結的筆記打不開（被刪除、不是本人的、離線）：說明原因；對話框因為沒有內容不會打開

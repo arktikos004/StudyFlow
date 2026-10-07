@@ -1,8 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Archive, ArrowDown, ArrowUp, BookOpen, Pencil, Plus } from 'lucide-react';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import type { Subject } from '../../../shared/api-types';
+import { useDeepLink } from '../../lib/deep-link';
 import { formatMinutes } from '../../lib/format';
 import { useReorderSubjects, useSubjects } from '../../lib/queries';
 import { SubjectTag } from '../subjects';
@@ -88,32 +89,17 @@ export function SubjectsCard() {
 	const { data, isPending, error, refetch, isRefetching } = useSubjects();
 	const subjects = data ?? NO_SUBJECTS;
 	const reorder = useReorderSubjects();
-	const [params, setParams] = useSearchParams();
 	// id 為 null 代表新增；編輯時存 id，科目列表載入後才打開
 	const [dialog, setDialog] = useState<{ id: string | null } | null>(null);
 	const [announcement, setAnnouncement] = useState('');
 	const buttons = useRef(new Map<string, HTMLButtonElement>());
 	const pendingFocus = useRef<{ id: string; dir: Direction } | null>(null);
 
-	// 深連結：網址參數變了就打開對應的對話框（渲染中調整 state，不用 effect），再清掉參數
-	const link = params.get('new') === '1' ? 'new' : params.get('open');
-	const [seenLink, setSeenLink] = useState<string | null>(null);
-	if (link !== seenLink) {
-		setSeenLink(link);
-		if (link) setDialog({ id: link === 'new' ? null : link });
-	}
-	useEffect(() => {
-		if (!link) return;
-		setParams(
-			(prev) => {
-				const next = new URLSearchParams(prev);
-				next.delete('new');
-				next.delete('open');
-				return next;
-			},
-			{ replace: true },
-		);
-	}, [link, setParams]);
+	// 深連結：?new=1 新增科目、?open=<id> 編輯該科目（科目列表載入後才打開）
+	useDeepLink(['new', 'open'], ({ new: isNew, open }) => {
+		if (isNew === '1') setDialog({ id: null });
+		else if (open) setDialog({ id: open });
+	});
 
 	const editing = dialog?.id ? subjects.find((s) => s.id === dialog.id) : undefined;
 	const dialogOpen = !!dialog && (dialog.id === null || !!editing);

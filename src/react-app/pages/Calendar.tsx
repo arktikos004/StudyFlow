@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, ListPlus, Plus } from 'lucide-react';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import type { EventItem, StudySession, Task } from '../../shared/api-types';
 import { addDays, today as todayOf } from '../../shared/dates';
 import { DayPanel } from '../components/calendar/DayPanel';
@@ -21,14 +22,13 @@ import { SubjectTag } from '../components/subjects';
 import { Button, Card, ErrorNote, PageHeader, PageStack, Segmented } from '../components/ui';
 import { formatDate, formatMinutes, formatMonthDay, formatRange } from '../lib/format';
 import { useMinuteClock } from '../lib/clock';
-import { useDeepLink } from '../lib/deep-link';
+import { isDateParam, useDeepLink, useOpenDeepLink } from '../lib/deep-link';
 import { useMediaQuery } from '../lib/media-query';
 import { useEvents, useStudySessions, useSubjectMap, useTasks, useUser } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
 
 type View = 'month' | 'week';
 const VIEW_KEY = 'studyflow:calendar-view';
-const isDate = (v: string | undefined): v is string => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
 function readView(): View {
 	try {
@@ -38,18 +38,8 @@ function readView(): View {
 	}
 }
 
-/** ?open=<id>：在全部考試與任務裡找（找到就回報，找不到回報 null） */
-function OpenTarget({ id, onResolve }: { id: string; onResolve: (hit: { event?: EventItem; task?: Task } | null) => void }) {
-	const { data: events } = useEvents();
-	const { data: tasks } = useTasks();
-	useEffect(() => {
-		if (!events || !tasks) return;
-		const event = events.find((e) => e.id === id);
-		const task = tasks.find((t) => t.id === id);
-		onResolve(event ? { event } : task ? { task } : null);
-	}, [events, tasks, id, onResolve]);
-	return null;
-}
+/** 深連結 ?open=<id> 找到的：考試或任務 */
+type OpenHit = { id: string; event?: EventItem; task?: Task };
 
 export function CalendarPage() {
 	const user = useUser();
@@ -86,29 +76,30 @@ export function CalendarPage() {
 	};
 
 	// 深連結：?new=1 新增考試、?open=<id> 開啟考試或任務、?date=YYYY-MM-DD 選取日期、?view=week|month
-	const link = useDeepLink(['new', 'open', 'date', 'view']);
-	const [seenLink, setSeenLink] = useState(0);
-	if (link.seq !== seenLink) {
-		setSeenLink(link.seq);
-		const { date, view: v, open } = link.values;
-		if (v === 'week' || v === 'month') setViewState(v);
-		if (isDate(date)) selectDate(date);
-		if (link.values.new === '1') setEventDialog({ date: isDate(date) ? date : selected });
+	useDeepLink(['new', 'open', 'date', 'view'], ({ new: isNew, open, date, view: linkedView }) => {
+		if (linkedView === 'week' || linkedView === 'month') setViewState(linkedView);
+		if (isDateParam(date)) selectDate(date);
+		if (isNew === '1') setEventDialog({ date: isDateParam(date) ? date : selected });
 		if (open) setOpenId(open);
-	}
-	const onResolve = useMemo(
-		() => (hit: { event?: EventItem; task?: Task } | null) => {
-			setOpenId(null);
-			const date = hit?.event?.date ?? hit?.task?.dueDate;
-			if (date) {
-				setSelected(date);
-				setMonth(date.slice(0, 7));
-			}
-			if (hit?.event) setEventDialog({ event: hit.event });
-			else if (hit?.task) setTaskDialog({ task: hit.task });
+	});
+	// ?open= 的項目可能在任何一天：有深連結時才取全部的考試與任務來找
+	const allEvents = useEvents({}, { enabled: !!openId });
+	const allTasks = useTasks({}, { enabled: !!openId });
+	useOpenDeepLink<OpenHit>(openId, {
+		items:
+			allEvents.data && allTasks.data
+				? [...allEvents.data.map((event) => ({ id: event.id, event })), ...allTasks.data.map((task) => ({ id: task.id, task }))]
+				: undefined,
+		isFetching: allEvents.isFetching || allTasks.isFetching,
+		onFound: ({ event, task }) => {
+			const date = event?.date ?? task?.dueDate;
+			if (date) selectDate(date);
+			if (event) setEventDialog({ event });
+			else if (task) setTaskDialog({ task });
 		},
-		[],
-	);
+		onMissing: () => toast.error('找不到這場考試或這個任務，可能已經刪除了'),
+		onSettled: () => setOpenId(null),
+	});
 
 	// 目前畫面的日期範圍
 	const single = view === 'week' && !wide;
@@ -352,7 +343,6 @@ export function CalendarPage() {
 				</div>
 			</PageStack>
 
-			{openId && <OpenTarget id={openId} onResolve={onResolve} />}
 			<EventDialog open={!!eventDialog} event={eventDialog?.event} defaultDate={eventDialog?.date} onClose={() => setEventDialog(null)} />
 			<TaskDialog
 				open={!!taskDialog}

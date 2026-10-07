@@ -16,7 +16,7 @@ import {
 	Volume2,
 	VolumeX,
 } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import type { StudySession } from '../../shared/api-types';
 import { addDays, today as todayOf } from '../../shared/dates';
@@ -59,7 +59,7 @@ import {
 	type TimerState,
 } from '../lib/timer';
 import { formatClockRange, relativeDateLabel } from '../lib/time-format';
-import { useDeepLink } from '../lib/deep-link';
+import { isDateParam, useDeepLink, useOpenDeepLink } from '../lib/deep-link';
 
 /** 常用的分鐘數；也可以直接輸入 LIMITS 範圍內的任何整數 */
 const PRESETS: Partial<Record<NumericOption, number[]>> = {
@@ -419,32 +419,20 @@ export function TimerPage() {
 	const digitsLabel = useId();
 
 	// 深連結：?new=1 開啟補登、?date=YYYY-MM-DD 切換紀錄日期、?open=<id> 開啟那天的某筆紀錄
-	const link = useDeepLink(['new', 'open', 'date']);
-	const [seenLink, setSeenLink] = useState(0);
-	const [pendingOpen, setPendingOpen] = useState<string | null>(null);
-	if (link.seq !== seenLink) {
-		setSeenLink(link.seq);
-		const d = link.values.date;
-		if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today) setLogDate(d);
-		if (link.values.new === '1') setDialog({});
-		if (link.values.open) setPendingOpen(link.values.open);
-	}
+	const [openId, setOpenId] = useState<string | null>(null);
+	useDeepLink(['new', 'open', 'date'], ({ new: isNew, open, date }) => {
+		if (isDateParam(date) && date <= today) setLogDate(date);
+		if (isNew === '1') setDialog({});
+		if (open) setOpenId(open);
+	});
 	const { data: logSessions, isFetching: logFetching } = useStudySessions({ from: logDate, to: logDate });
-	const [missingOpen, setMissingOpen] = useState(0);
-	if (pendingOpen && logSessions) {
-		const found = logSessions.find((x) => x.id === pendingOpen);
-		if (found) {
-			setPendingOpen(null);
-			setDialog({ session: found });
-		} else if (!logFetching) {
-			// 快取裡的舊資料找不到時，等這次查詢回來再判斷；最後還是找不到才告知
-			setPendingOpen(null);
-			setMissingOpen((n) => n + 1);
-		}
-	}
-	useEffect(() => {
-		if (missingOpen) toast.error('找不到這筆紀錄', { description: '可能已經刪除，或不在這一天的紀錄裡' });
-	}, [missingOpen]);
+	useOpenDeepLink(openId, {
+		items: logSessions,
+		isFetching: logFetching,
+		onFound: (session) => setDialog({ session }),
+		onMissing: () => toast.error('找不到這筆紀錄', { description: '可能已經刪除，或不在這一天的紀錄裡' }),
+		onSettled: () => setOpenId(null),
+	});
 
 	// 專注完成的那一刻（唯一刻意設計的動畫）：完成數改變時重播一次
 	const completionKey = `${s.cyclesDate}|${s.cycles}`;

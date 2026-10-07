@@ -85,25 +85,32 @@ export function useSubjectOverview(id: string | undefined) {
 	});
 }
 
-/** 日期區間的查詢（考試、學習紀錄）共用的選項 */
-type RangeQueryOptions = {
+/** 列表查詢共用的選項 */
+type ListQueryOptions = {
 	/** 換範圍時，新資料載入前先顯示上一個範圍的資料（月曆切換月份或週次時，畫面不會閃成空白） */
 	keepPrevious?: boolean;
+	/** false 時不發請求（例如有深連結時才需要全部的資料） */
+	enabled?: boolean;
 };
 
-export function useEvents(params: { from?: string; to?: string } = {}, { keepPrevious = false }: RangeQueryOptions = {}) {
+export function useEvents(params: { from?: string; to?: string } = {}, { keepPrevious = false, enabled = true }: ListQueryOptions = {}) {
 	return useQuery({
 		queryKey: ['events', params],
 		queryFn: async () => (await api.get<{ events: EventItem[] }>(`/events${qs(params)}`)).events,
 		placeholderData: keepPrevious ? keepPreviousData : undefined,
+		enabled,
 	});
 }
 
 /** 每筆都帶 spentMinutes（實際投入時間）與 checklist */
-export function useTasks(params: { status?: string; subjectId?: string; eventId?: string } = {}) {
+export function useTasks(
+	params: { status?: string; subjectId?: string; eventId?: string } = {},
+	{ enabled = true }: ListQueryOptions = {},
+) {
 	return useQuery({
 		queryKey: ['tasks', params],
 		queryFn: async () => (await api.get<{ tasks: TaskItem[] }>(`/tasks${qs(params)}`)).tasks,
+		enabled,
 	});
 }
 
@@ -133,7 +140,7 @@ export function useNote(id: string | undefined) {
 	});
 }
 
-export function useStudySessions(params: { from?: string; to?: string } = {}, { keepPrevious = false }: RangeQueryOptions = {}) {
+export function useStudySessions(params: { from?: string; to?: string } = {}, { keepPrevious = false }: ListQueryOptions = {}) {
 	return useQuery({
 		queryKey: ['sessions', params],
 		queryFn: async () => (await api.get<{ sessions: StudySession[] }>(`/study-sessions${qs(params)}`)).sessions,

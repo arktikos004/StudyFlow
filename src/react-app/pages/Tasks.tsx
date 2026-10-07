@@ -1,5 +1,5 @@
 import { ListChecks, Plus, SearchX } from 'lucide-react';
-import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useDeferredValue, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import type { Task, TaskItem } from '../../shared/api-types';
 import { today as todayOf } from '../../shared/dates';
@@ -13,7 +13,7 @@ import { useEvents, useSubjects, useTasks, useUser } from '../lib/queries';
 import { justCompleted, toggleChecklistItem } from '../lib/task-checklist';
 import { useTaskListParams, useTaskPatch, useTaskView } from '../lib/task-queries';
 import { boardColumns, filterTasks, groupTasks, taskSummary, type TaskStatus } from '../lib/task-sort';
-import { useDeepLink } from '../lib/deep-link';
+import { useDeepLink, useOpenDeepLink } from '../lib/deep-link';
 
 /** 頁首的即時摘要：未完成、已逾期、今天到期（數字用等寬數字） */
 function Summary({ open, overdue, dueToday }: { open: number; overdue: number; dueToday: number }) {
@@ -44,34 +44,23 @@ export function TasksPage() {
 	const patch = useTaskPatch();
 	const [confirm, confirmDialog] = useConfirm();
 
-	// 深連結：?new=1 開啟新增、?open=<id> 開啟該任務的編輯對話框（處理後由 useDeepLink 用 replace 清掉參數）
-	const link = useDeepLink(['new', 'open']);
-	const [seenLink, setSeenLink] = useState(0);
-	const [pendingOpen, setPendingOpen] = useState<string | null>(null);
-	if (link.seq !== seenLink) {
-		setSeenLink(link.seq);
-		if (link.values.new === '1') setDialog({});
-		if (link.values.open) {
+	// 深連結：?new=1 開啟新增、?open=<id> 開啟該任務的編輯對話框
+	const [openId, setOpenId] = useState<string | null>(null);
+	useDeepLink(['new', 'open'], ({ new: isNew, open }) => {
+		if (isNew === '1') setDialog({});
+		if (open) {
 			// 不限科目地找這個任務，找到後清單也看得到它
-			setPendingOpen(link.values.open);
+			setOpenId(open);
 			setSubjectId(null);
 		}
-	}
-	const [missingOpen, setMissingOpen] = useState(0);
-	if (pendingOpen && !subjectId && tasks) {
-		const found = tasks.find((t) => t.id === pendingOpen);
-		if (found) {
-			setPendingOpen(null);
-			setDialog({ task: found });
-		} else if (!isFetching) {
-			// 快取裡的舊資料找不到時，等這次查詢回來再判斷；最後還是找不到才告知
-			setPendingOpen(null);
-			setMissingOpen((n) => n + 1);
-		}
-	}
-	useEffect(() => {
-		if (missingOpen) toast.error('找不到這個任務', { description: '可能已經刪除了，請從清單重新選擇' });
-	}, [missingOpen]);
+	});
+	useOpenDeepLink(openId, {
+		items: subjectId ? undefined : tasks,
+		isFetching,
+		onFound: (task) => setDialog({ task }),
+		onMissing: () => toast.error('找不到這個任務', { description: '可能已經刪除了，請從清單重新選擇' }),
+		onSettled: () => setOpenId(null),
+	});
 
 	const moveTask = (task: TaskItem, to: TaskStatus, onSettled?: (failed: boolean) => void) =>
 		patch.mutate(

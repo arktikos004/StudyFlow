@@ -1,5 +1,5 @@
 import { Brain, CalendarClock, CalendarDays, ChevronDown, GraduationCap, ListPlus, MapPin, Pencil, Plus } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import type { EventItem } from '../../shared/api-types';
 import { localDate } from '../../shared/dates';
@@ -13,7 +13,7 @@ import { formatDate } from '../lib/format';
 import { EVENT_KIND_LABEL } from '../../shared/labels';
 import { eventsSummary } from '../lib/events-format';
 import { useEvents, useSubjectMap, useSubjects, useUser } from '../lib/queries';
-import { useDeepLink } from '../lib/deep-link';
+import { useDeepLink, useOpenDeepLink } from '../lib/deep-link';
 import { useMinuteClock } from '../lib/clock';
 
 function EventCard({
@@ -118,7 +118,7 @@ export function EventsPage() {
 	// 每 30 秒更新「今天」：頁面開著跨過午夜時，倒數也會跟著換日（依使用者時區）
 	const clock = useMinuteClock();
 	const today = localDate(clock, user.timezone);
-	const { data: events, isPending, error, refetch, isRefetching } = useEvents();
+	const { data: events, isPending, isFetching, error, refetch, isRefetching } = useEvents();
 	const { data: subjects = [] } = useSubjects();
 	const [subjectId, setSubjectId] = useState<string | null>(null);
 	const [dialog, setDialog] = useState<DialogState>(null);
@@ -126,27 +126,22 @@ export function EventsPage() {
 	const [showPast, setShowPast] = useState(false);
 	const pastId = useId();
 
-	// 深連結：?new=1 新增考試、?open=<id> 開啟該考試；處理後由 useDeepLink 用 replace 清掉
-	const link = useDeepLink(['new', 'open']);
-	const [seenLink, setSeenLink] = useState(0);
-	const [pendingOpen, setPendingOpen] = useState<string | null>(null);
-	const [missing, setMissing] = useState(0);
-	if (link.seq !== seenLink) {
-		setSeenLink(link.seq);
-		if (link.values.new === '1') setDialog({ subjectId });
-		if (link.values.open) setPendingOpen(link.values.open);
-	}
-	if (pendingOpen && events) {
-		const hit = events.find((e) => e.id === pendingOpen);
-		setPendingOpen(null);
-		if (hit) {
-			setDialog({ event: hit });
-			if (hit.date < today) setShowPast(true);
-		} else setMissing((m) => m + 1);
-	}
-	useEffect(() => {
-		if (missing) toast.error('找不到這場考試，可能已經刪除了');
-	}, [missing]);
+	// 深連結：?new=1 新增考試、?open=<id> 開啟該考試
+	const [openId, setOpenId] = useState<string | null>(null);
+	useDeepLink(['new', 'open'], ({ new: isNew, open }) => {
+		if (isNew === '1') setDialog({ subjectId });
+		if (open) setOpenId(open);
+	});
+	useOpenDeepLink(openId, {
+		items: events,
+		isFetching,
+		onFound: (event) => {
+			setDialog({ event });
+			if (event.date < today) setShowPast(true);
+		},
+		onMissing: () => toast.error('找不到這場考試，可能已經刪除了'),
+		onSettled: () => setOpenId(null),
+	});
 
 	const visible = (events ?? []).filter((e) => !subjectId || e.subjectId === subjectId);
 	const upcoming = visible.filter((e) => e.date >= today);
