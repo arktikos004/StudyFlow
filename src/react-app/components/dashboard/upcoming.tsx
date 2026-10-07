@@ -1,8 +1,9 @@
 import { CalendarDays, Plus } from 'lucide-react';
 import { Link } from 'react-router';
 import type { EventItem } from '../../../shared/api-types';
-import { EVENT_KIND_LABEL, formatDate } from '../../lib/format';
-import { useUser } from '../../lib/queries';
+import { formatDate } from '../../lib/format';
+import { EVENT_KIND_LABEL } from '../../../shared/labels';
+import { useUser } from '../../lib/account-queries';
 import { CountdownTile } from '../countdown';
 import { SubjectTag } from '../subjects';
 import { Button, Card, CardHeader, EmptyState } from '../ui';
@@ -10,7 +11,17 @@ import { PrepProgress } from './exams';
 import { useSubjectMark } from './hooks';
 
 /** 總覽的「即將到來」：考試與截止日、準備任務的完成數與進度條（DASH-1），點一下到考試頁開啟該項目 */
-export function UpcomingCard({ events, today, onNew, hasNextExam }: { events: EventItem[]; today: string; onNew: () => void; hasNextExam: boolean }) {
+export function UpcomingCard({
+	events,
+	today,
+	onNew,
+	hasNextExam,
+}: {
+	events: EventItem[];
+	today: string;
+	onNew: () => void;
+	hasNextExam: boolean;
+}) {
 	const markOf = useSubjectMark();
 	const { timezone } = useUser();
 	return (
@@ -28,7 +39,10 @@ export function UpcomingCard({ events, today, onNew, hasNextExam }: { events: Ev
 				<ul className="space-y-0.5 px-2 pb-2 sm:px-3 sm:pb-3">
 					{events.map((e) => (
 						<li key={e.id}>
-							<Link to={`/events?open=${e.id}`} className="flex items-start gap-3 rounded-lg px-2 py-2 transition-colors duration-120 ease-out hover:bg-subtle">
+							<Link
+								to={`/events?open=${e.id}`}
+								className="flex items-start gap-3 rounded-lg px-2 py-2 transition-colors duration-120 ease-out hover:bg-subtle"
+							>
 								{/* 倒數的規則與文案全站統一（components/countdown.tsx）：今天、明天、N 天後；3 天內的考試紅色＋鬧鐘 */}
 								<CountdownTile kind={e.kind} date={e.date} today={today} timeZone={timezone} size="sm" className="w-[4.75rem]" />
 								<div className="min-w-0 flex-1">

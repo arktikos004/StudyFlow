@@ -1,3 +1,5 @@
+import { DAY_MS, MINUTE_MS } from './time';
+
 // 以 'YYYY-MM-DD' 字串表示的「日曆日期」工具，前後端共用。
 // 日期運算一律在 UTC 正午進行，避免夏令時間或時區造成跨日誤差。
 
@@ -18,7 +20,7 @@ function cached(key: string, create: () => Intl.DateTimeFormat) {
 	return f;
 }
 
-/** 目前快取的 formatter 數量（測試與監控用） */
+/** 目前快取的 formatter 數量（測試用：確認快取有上限） */
 export function formatterCacheSize() {
 	return formatters.size;
 }
@@ -71,6 +73,15 @@ export function localDateTime(epochMs: number, timeZone: string): string {
 	return dateTimeFormat(timeZone).format(epochMs);
 }
 
+/** 'YYYY-MM-DD' 是不是真的有這一天（2026-02-31、2026-13-01 都不是） */
+export function isRealDate(date: string): boolean {
+	const [y, m, d] = date.split('-').map(Number);
+	// 用 setUTCFullYear 而不是 Date.UTC：Date.UTC 會把 0–99 年當成 1900–1999
+	const utc = new Date(0);
+	utc.setUTCFullYear(y, m - 1, d);
+	return utc.getUTCFullYear() === y && utc.getUTCMonth() === m - 1 && utc.getUTCDate() === d;
+}
+
 export function today(timeZone: string): string {
 	return localDate(Date.now(), timeZone);
 }
@@ -91,7 +102,7 @@ export function addDays(date: string, days: number): string {
 }
 
 export function diffDays(from: string, to: string): number {
-	return Math.round((toUtcNoon(to).getTime() - toUtcNoon(from).getTime()) / 86_400_000);
+	return Math.round((toUtcNoon(to).getTime() - toUtcNoon(from).getTime()) / DAY_MS);
 }
 
 /** 該日期所在週的週一 */
@@ -106,8 +117,6 @@ export function dateRange(from: string, to: string): string[] {
 	return out;
 }
 
-const DAY_MS = 86_400_000;
-
 /** 某個瞬間在該時區的牆上時間，換成「當作 UTC 的毫秒」（精確到分鐘） */
 function wallClock(epochMs: number, timeZone: string) {
 	const p = localParts(epochMs, timeZone);
@@ -115,7 +124,7 @@ function wallClock(epochMs: number, timeZone: string) {
 }
 
 /** 某個瞬間該時區的 UTC 偏移（毫秒）＝牆上時間 − UTC */
-const offsetAt = (epochMs: number, timeZone: string) => wallClock(epochMs, timeZone) - Math.floor(epochMs / 60_000) * 60_000;
+const offsetAt = (epochMs: number, timeZone: string) => wallClock(epochMs, timeZone) - Math.floor(epochMs / MINUTE_MS) * MINUTE_MS;
 
 /**
  * 某時區當地的 'YYYY-MM-DD' 加上 'HH:mm' 所對應的 epoch 毫秒。

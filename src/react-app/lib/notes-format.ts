@@ -1,6 +1,6 @@
 import type { NoteItem } from '../../shared/api-types';
 import { diffDays, localDate } from '../../shared/dates';
-import { formatDate } from './format';
+import { formatDateForToday } from './format';
 
 // 筆記頁（s2/notes）的格式化純函式。日期一律依使用者時區（user.timezone）。
 
@@ -10,7 +10,12 @@ export function stripMarkdown(text: string): string {
 		text
 			.split('\n')
 			// 程式碼區塊的 ``` 行、表格分隔線、水平線
-			.filter((line) => !/^\s*(```|~~~)/.test(line) && !/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(line) && !/^\s*([*_-])(\s*\1){2,}\s*$/.test(line))
+			.filter(
+				(line) =>
+					!/^\s*(```|~~~)/.test(line) &&
+					!/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(line) &&
+					!/^\s*([*_-])(\s*\1){2,}\s*$/.test(line),
+			)
 			.map((line) =>
 				line
 					.replace(/^\s{0,3}#{1,6}\s+/, '')
@@ -63,5 +68,26 @@ export function dayLabel(epochMs: number, timeZone: string, today: string): stri
 	const days = diffDays(date, today);
 	if (days === 0) return '今天';
 	if (days === 1) return '昨天';
-	return formatDate(date, date.slice(0, 4) !== today.slice(0, 4));
+	return formatDateForToday(date, today);
+}
+
+/**
+ * 筆記頁頁首的摘要：「共 N 則」（有篩選時「找到 N 則」）與今天有幾題待複習，用「，」連接。
+ * 數量還不知道、帳號完全沒有資料、或沒篩選卻是 0 則時不報數量（由空狀態說明）；兩項都沒有時是空字串。
+ */
+export function notesSummary({
+	count,
+	due,
+	filtered,
+	empty,
+}: {
+	count: number | undefined;
+	due: number | undefined;
+	filtered: boolean;
+	empty: boolean;
+}): string {
+	const parts: string[] = [];
+	if (count !== undefined && !empty && (filtered || count > 0)) parts.push(`${filtered ? '找到' : '共'} ${count} 則`);
+	if (due !== undefined) parts.push(due > 0 ? `今天有 ${due} 題待複習` : '今天沒有待複習的題目');
+	return parts.join('，');
 }

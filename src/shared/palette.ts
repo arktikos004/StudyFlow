@@ -1,8 +1,9 @@
-import { SUBJECT_COLORS } from './schemas';
-
 // 科目色盤（DESIGN.md §3）：推薦 8 色＋更多顏色 10 色相 × 4 色調。
-// 這裡只放資料與名稱查詢；色彩數學在 color.ts。色盤有改動時，必須用 dataviz skill 的
+// 這裡只放資料與名稱查詢；色彩數學在 color/。色盤有改動時，必須用 dataviz skill 的
 // validate_palette.js 重新驗證淺色與深色兩種模式。
+
+/** 推薦的科目顏色：dataviz 驗證過的分類色盤，依固定順序指派，色盲使用者也能分辨相鄰顏色 */
+export const SUBJECT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'] as const;
 
 export type RecommendedHex = (typeof SUBJECT_COLORS)[number];
 
@@ -56,7 +57,7 @@ const NAMES = new Map<string, string>([
 
 /**
  * 色盤顏色的 zh-TW 名稱：推薦色是「藍」，更多顏色是「藍（中）」。
- * 不在色盤裡的自訂顏色回傳 undefined（需要顯示用文字時用 color.ts 的 colorLabel）。
+ * 不在色盤裡的自訂顏色回傳 undefined（需要顯示用文字時用 color 的 colorLabel）。
  */
 export function colorName(hex: string): string | undefined {
 	return NAMES.get(hex.trim().toLowerCase());

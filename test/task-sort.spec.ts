@@ -76,7 +76,7 @@ describe('搜尋（TSK-3）', () => {
 		expect(descriptionSnippet({ title: 'x', description: '第一行\n\n第二行 關鍵' }, ['關鍵'])).toBe('第一行 第二行 關鍵');
 	});
 
-	it('片段以使用者看到的字計算：emoji 不會被切成孤立的 surrogate（review B1）', () => {
+	it('片段以使用者看到的字計算：emoji 不會被切成孤立的 surrogate', () => {
 		const loneSurrogate = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 		const description = `${'📚'.repeat(10)} 期中考`;
 		const s = descriptionSnippet({ title: '標題', description }, ['期中考'], 60, 3);
@@ -91,7 +91,7 @@ describe('搜尋（TSK-3）', () => {
 		expect(descriptionSnippet({ title: '標題', description: `${family.repeat(5)} 期中考` }, ['期中考'], 60, 2)).toBe(`…${family} 期中考`);
 	});
 
-	it('小寫後長度會改變的字元（İ → i̇）不會讓片段錯位（review B1）', () => {
+	it('小寫後長度會改變的字元（İ → i̇）不會讓片段錯位', () => {
 		expect('İ'.toLowerCase()).toHaveLength(2);
 		expect(descriptionSnippet({ title: 'x', description: 'İİİİ 關鍵' }, ['關鍵'], 40, 2)).toBe('…İ 關鍵');
 		// 關鍵字本身含 İ：比對與片段一致

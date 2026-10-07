@@ -1,13 +1,8 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { addDays, weekStart } from '../src/shared/dates';
-import { createClient, logSession, noonClient, registeredClient, type Client } from './helpers';
-
-async function makeSubject(c: Client, name: string, extra: Record<string, unknown> = {}) {
-	const res = await c.post('/api/subjects', { name, color: '#2a78d6', ...extra });
-	expect(res.status, JSON.stringify(res.data)).toBe(201);
-	return res.data.subject;
-}
+import { createClient, logSession, noonClient, registeredClient, makeSubject } from './helpers';
+import { HOUR_MS, MINUTE_MS } from '../src/shared/time';
 
 describe('每日／每週讀書目標（GOAL-1）', () => {
 	it('預設沒有目標；可以設定、只改其中一個、清除', async () => {
@@ -171,7 +166,12 @@ describe('目標的跨使用者隔離', () => {
 		expect((await bob.patch(`/api/subjects/${math.id}`, {})).status).toBe(404);
 		// 引用別人的 id 回 400：不能把自己的讀書時間記到別人的科目上
 		const now = Date.now();
-		const res = await bob.post('/api/study-sessions', { mode: 'manual', startedAt: now - 3_600_000, endedAt: now - 60_000, subjectId: math.id });
+		const res = await bob.post('/api/study-sessions', {
+			mode: 'manual',
+			startedAt: now - HOUR_MS,
+			endedAt: now - MINUTE_MS,
+			subjectId: math.id,
+		});
 		expect(res.status).toBe(400);
 		expect(res.data.error).toBe('找不到指定的科目');
 

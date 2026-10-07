@@ -1,12 +1,17 @@
-import { and, asc, count, eq, gte, isNotNull, lte, ne, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, isNotNull, lte, ne, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { addDays, dateRange, startOfLocalDay, today, weekStart } from '../../shared/dates';
-import { events, notes, subjects, tasks } from '../db/schema';
+import { events, subjects, tasks } from '../db/schema';
 import { eventItemFields } from '../lib/events';
-import { minutesByDate, round1, sessionsBetween, streaks } from '../lib/stats';
+import { countReviewDue } from '../lib/notes';
+import { minutesByDate, recentStudySessions, round1, streaks, weekMinutesBySubject } from '../lib/stats';
+import { countOpenTasks } from '../lib/tasks';
 import { requireAuth } from '../middleware/auth';
 import type { DashboardResponse } from '../../shared/api-types';
 import type { AppEnv } from '../types';
+
+const UPCOMING_EVENTS_LIMIT = 5;
+const FOCUS_TASKS_LIMIT = 8;
 
 export const dashboardRoutes = new Hono<AppEnv>().use(requireAuth).get('/', async (c) => {
 	const db = c.var.db;
@@ -14,30 +19,24 @@ export const dashboardRoutes = new Hono<AppEnv>().use(requireAuth).get('/', asyn
 	const tz = user.timezone;
 	const todayStr = today(tz);
 
-	const [upcomingEvents, focusTasks, [openTasks], [reviewDue], yearSessions, goalSubjects] = await Promise.all([
+	const [upcomingEvents, focusTasks, openTaskCount, reviewDueCount, yearSessions, goalSubjects] = await Promise.all([
 		// 考試準備進度（DASH-1）：帶相關任務的完成數
 		db
 			.select(eventItemFields())
 			.from(events)
 			.where(and(eq(events.userId, user.id), gte(events.date, todayStr)))
 			.orderBy(asc(events.date), asc(events.time))
-			.limit(5),
+			.limit(UPCOMING_EVENTS_LIMIT),
 		// 今天要處理的：已到期/逾期，或正在進行中的任務
 		db
 			.select()
 			.from(tasks)
 			.where(and(eq(tasks.userId, user.id), ne(tasks.status, 'done'), or(lte(tasks.dueDate, todayStr), eq(tasks.status, 'doing'))))
 			.orderBy(sql`${tasks.dueDate} IS NULL`, asc(tasks.dueDate))
-			.limit(8),
-		db
-			.select({ n: count() })
-			.from(tasks)
-			.where(and(eq(tasks.userId, user.id), ne(tasks.status, 'done'))),
-		db
-			.select({ n: count() })
-			.from(notes)
-			.where(and(eq(notes.userId, user.id), eq(notes.mastered, false), lte(notes.nextReviewDate, todayStr))),
-		sessionsBetween(db, user.id, tz, addDays(todayStr, -365), todayStr),
+			.limit(FOCUS_TASKS_LIMIT),
+		countOpenTasks(db, user.id),
+		countReviewDue(db, user.id, todayStr),
+		recentStudySessions(db, user.id, tz, todayStr),
 		// 各科每週目標：封存的科目不列入
 		db
 			.select({ id: subjects.id, goalMinutes: subjects.weeklyGoalMinutes })
@@ -52,20 +51,14 @@ export const dashboardRoutes = new Hono<AppEnv>().use(requireAuth).get('/', asyn
 	const weekMinutes = [...byDate.entries()].filter(([d]) => d >= week).reduce((sum, [, m]) => sum + m, 0);
 
 	// 本週各科分鐘數：直接比較時間戳，不用再逐筆換算當地日期
-	const weekStartTs = startOfLocalDay(week, tz);
-	const weekBySubject = new Map<string, number>();
-	for (const s of yearSessions) {
-		if (s.subjectId && s.startedAt >= weekStartTs) {
-			weekBySubject.set(s.subjectId, (weekBySubject.get(s.subjectId) ?? 0) + s.durationSec / 60);
-		}
-	}
+	const weekBySubject = weekMinutesBySubject(yearSessions, startOfLocalDay(week, tz));
 
 	const body: DashboardResponse = {
 		today: todayStr,
 		upcomingEvents,
 		focusTasks,
-		openTaskCount: openTasks.n,
-		reviewDueCount: reviewDue.n,
+		openTaskCount,
+		reviewDueCount,
 		todayMinutes: round1(byDate.get(todayStr) ?? 0),
 		weekMinutes: round1(weekMinutes),
 		streak: streaks(new Set(byDate.keys()), todayStr).current,

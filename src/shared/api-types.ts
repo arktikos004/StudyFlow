@@ -1,5 +1,6 @@
 // API 回應的資料型別。資料表欄位直接由 Drizzle schema 推導，前後端永遠一致。
-import type { Attachment, ChecklistItem, Note, StudyEvent, StudySession, Subject, Task } from '../worker/db/schema';
+import type { Attachment, Note, StudyEvent, StudySession, Subject, Task } from '../worker/db/schema';
+import type { ChecklistItem } from './schemas';
 
 export type { ChecklistItem, StudySession, Subject, Task };
 
@@ -130,6 +131,9 @@ export type ProfileSummary = {
 	achievements: { unlocked: number; total: number; badges: ProfileBadge[] };
 };
 
+/** StatsResponse.daily[].bySubject 裡「沒有科目」的 key（科目的 key 是它的 id） */
+export const NO_SUBJECT_KEY = 'none';
+
 export type StatsResponse = {
 	range: { from: string; to: string; days: number };
 	totals: {
@@ -142,6 +146,7 @@ export type StatsResponse = {
 		/** 區間內達成每日目標的天數；沒有設定目標時為 0 */
 		goalMetDays: number;
 	};
+	/** bySubject 的 key 是科目 id，沒有科目的是 NO_SUBJECT_KEY */
 	daily: { date: string; minutes: number; bySubject: Record<string, number> }[];
 	bySubject: { subjectId: string | null; minutes: number }[];
 	heatmap: { date: string; minutes: number }[];

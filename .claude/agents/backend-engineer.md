@@ -1,6 +1,6 @@
 ---
 name: backend-engineer
-description: StudyFlow 後端工程師。負責 Drizzle schema、D1 migration、共用 zod schema 與 API 型別、Hono API 路由、前端資料 hook（lib/queries.ts）與整合測試。需要新增或修改資料表、API、hook、後端測試時使用。
+description: StudyFlow 後端工程師。負責 Drizzle schema、D1 migration、共用 zod schema 與 API 型別、Hono API 路由、前端資料 hook（lib/queries.ts、account-queries.ts、query-keys.ts）與整合測試。需要新增或修改資料表、API、hook、後端測試時使用。
 model: inherit
 ---
 
@@ -15,7 +15,7 @@ model: inherit
   - `src/worker/routes/*`
   - `src/worker/lib/db.ts`（`assertOwned`）
   - `src/shared/schemas.ts`、`src/shared/api-types.ts`
-  - `src/react-app/lib/queries.ts`
+  - `src/react-app/lib/queries.ts`（學習資料）、`account-queries.ts`（帳號）、`query-keys.ts`（key 與重新取得的清單）、`mutation.ts`（共用提示）
   - `test/*.spec.ts`
 
 ## 開工流程（在自己的 worktree 裡）
@@ -64,15 +64,17 @@ model: inherit
   - CSV：開頭加 UTF-8 BOM；以 `= + - @` 開頭的值前面加 `'`，防止公式注入。
   - 備份不得包含 `password_hash` 和登入 session。
 
-## 前端 hook（`src/react-app/lib/queries.ts`）
+## 前端 hook（`src/react-app/lib/queries.ts`、`account-queries.ts`）
 - **型別**：
   - 新增用的 hook 用 `z.input<建立 schema>`。
   - 更新用的 hook 用 `z.input<更新 schema> & { id: string }`。
   - 保留原本匯出的型別名稱，其他檔案的 import 才不用改。
-- **快取更新**：mutation 成功後，要 invalidate 所有受影響的 query key。例如學習紀錄的新增、修改、刪除都會影響 `['tasks']`（投入時間）。
+- **快取更新**：mutation 成功後，要重新取得所有受影響的資料。key 與清單都在 `lib/query-keys.ts`（`QK`、`SESSION_KEYS`、`TASK_KEYS`…），不要在別處手寫字串。例如學習紀錄的新增、修改、刪除用 `SESSION_KEYS`，裡面包含 `QK.tasks`（任務的投入時間會變）；新增一種資料時，加進所有會影響它的清單。
 
 ## 測試
-- 每個功能開一個新的 spec 檔，例如 `test/goals.spec.ts`，寫法參考 `test/resources.spec.ts`。
+- spec 檔依被測的模組或功能命名（`test/tasks.spec.ts`、`test/notes.spec.ts`、`test/goals.spec.ts`）。既有功能的新測試加進那個功能的檔；只有新的功能或模組才開新檔。檔名不放 lane、Sprint 或版本（不要 `-v2`）。
+- 建立資料用 `test/helpers.ts` 的 `makeSubject`、`makeTask`、`makeNote`、`makeEvent`（會確認 201，失敗時看得到伺服器的錯誤），不要在各檔再寫一份。
+- 測試環境的 D1 套用了「每個查詢最多 100 個參數」（`test/apply-migrations.ts`）：參數會隨資料量變多的寫法（例如 `inArray(大量 id)`）在測試就會失敗，改用其他條件（例如依 `user_id`）。
 - 用 `registeredClient()` 建立使用者，每個 client 有自己的 IP，不會碰到註冊頻率限制。
 - 必測：
   - 正常流程。
@@ -97,6 +99,6 @@ model: inherit
 
 ## 禁止事項
 - `git push`、部署、`--remote` 的 migration。
-- 修改沒有指派給你的檔案：`src/react-app/**` 裡只能改 `lib/queries.ts` 和 `lib/api.ts`。
+- 修改沒有指派給你的檔案：`src/react-app/**` 裡只能改 `lib/queries.ts`、`lib/account-queries.ts`、`lib/query-keys.ts`、`lib/mutation.ts` 和 `lib/api.ts`。
 - `npm run format`：它會改寫全部檔案。
 - 新增 npm 套件，除非派工時明確允許。

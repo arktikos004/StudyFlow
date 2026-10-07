@@ -12,6 +12,9 @@ export class ApiError extends Error {
 /** signal：呼叫端可以中止請求（例如對話框按了取消），瀏覽器會真的取消上傳 */
 export type RequestOptions = { signal?: AbortSignal };
 
+/** 伺服器回 404：找不到，或不是本人的資料（後端對別人的資料一律回 404） */
+export const isNotFound = (e: unknown) => e instanceof ApiError && e.status === 404;
+
 /** 這個錯誤是不是呼叫端自己中止請求造成的（不是連線問題，不必提示） */
 export const isAbortError = (e: unknown) => e instanceof DOMException && e.name === 'AbortError';
 

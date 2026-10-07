@@ -3,11 +3,23 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ProfileSummary } from '../../../shared/api-types';
 import { badgeRowCapacity, formatCount, masteredNote, sessionsNote, streakNote, studyTotal } from '../../lib/profile-format';
-import { AchievementIcon } from '../../lib/shell-icons';
+import { AchievementIcon } from '../../lib/achievement-icons';
 import { cn, MoreLink, Unit } from '../ui';
 
 /** 一格數字：dt（圖示＋標籤）、dd 數值（font-num 28px／600）、dd 副標。第二格起的左框與第二列的上框都是分隔線 */
-function Cell({ icon: Icon, label, children, note, className }: { icon: LucideIcon; label: ReactNode; children: ReactNode; note: ReactNode; className?: string }) {
+function Cell({
+	icon: Icon,
+	label,
+	children,
+	note,
+	className,
+}: {
+	icon: LucideIcon;
+	label: ReactNode;
+	children: ReactNode;
+	note: ReactNode;
+	className?: string;
+}) {
 	return (
 		<div className={cn('flex min-w-0 flex-col border-t border-l border-line px-4 py-3.5 sm:px-5 sm:py-4', className)}>
 			<dt className="flex min-w-0 items-center gap-1.5 text-sm text-ink-2">
@@ -147,7 +159,15 @@ export function ProfileStats({ summary }: { summary: ProfileSummary | undefined 
 			<Cell
 				icon={Hourglass}
 				label="學習累積"
-				note={!summary ? <NoteSkeleton /> : summary.totalSessions > 0 ? sessionsNote(summary.totalSessions) : <MoreLink to="/timer">開始第一次專注</MoreLink>}
+				note={
+					!summary ? (
+						<NoteSkeleton />
+					) : summary.totalSessions > 0 ? (
+						sessionsNote(summary.totalSessions)
+					) : (
+						<MoreLink to="/timer">開始第一次專注</MoreLink>
+					)
+				}
 			>
 				{total ? (
 					<>

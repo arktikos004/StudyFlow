@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import { csrf } from 'hono/csrf';
+import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 import { secureHeaders } from 'hono/secure-headers';
+import { z } from 'zod';
 import { createDb } from './lib/db';
 import { achievementRoutes } from './routes/achievements';
 import { attachmentRoutes } from './routes/attachments';
@@ -20,16 +22,28 @@ import { summaryRoutes } from './routes/summary';
 import { taskRoutes } from './routes/tasks';
 import type { AppEnv } from './types';
 
+// 驗證錯誤的預設訊息用 zh-TW：schema 沒有自己寫訊息的欄位（例如列舉、ID 格式），原本會回 Zod 的英文訊息
+z.config(z.locales.zhTW());
+
+/** 每個請求一個資料庫連線物件，放在 c.var.db */
+const injectDb = createMiddleware<AppEnv>(async (c, next) => {
+	c.set('db', createDb(c.env.DB));
+	await next();
+});
+
+/** API 的回應預設不快取；自己設了 Cache-Control 的（照片、頭像）不動 */
+const noStoreByDefault = createMiddleware<AppEnv>(async (c, next) => {
+	await next();
+	if (!c.res.headers.has('Cache-Control')) c.header('Cache-Control', 'no-store');
+});
+
 const app = new Hono<AppEnv>();
 
 app.use('/api/*', secureHeaders());
 // 擋掉其他網站用表單偷偷送出的請求（檢查 Origin）；JSON 請求本身就受 CORS 保護
 app.use('/api/*', csrf());
-app.use('/api/*', async (c, next) => {
-	c.set('db', createDb(c.env.DB));
-	await next();
-	if (!c.res.headers.has('Cache-Control')) c.header('Cache-Control', 'no-store');
-});
+app.use('/api/*', injectDb);
+app.use('/api/*', noStoreByDefault);
 
 app
 	.get('/api/health', (c) => c.json({ ok: true }))

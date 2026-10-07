@@ -4,6 +4,7 @@ import type { Achievement, ProfileSummary } from '../src/shared/api-types';
 import { addDays, startOfLocalDay } from '../src/shared/dates';
 import { recentBadges } from '../src/worker/lib/achievements';
 import { logSession, noonClient, type Client, type NoonClient } from './helpers';
+import { HOUR_MS, MINUTE_MS } from '../src/shared/time';
 
 async function achievements(c: Client): Promise<Record<string, Achievement>> {
 	const res = await c.get('/api/achievements');
@@ -19,7 +20,9 @@ async function summary(c: Client): Promise<ProfileSummary> {
 
 /** 資料庫裡的解鎖紀錄（依成就 id 排序） */
 async function unlockRows(userId: string) {
-	const { results } = await env.DB.prepare('SELECT achievement_id AS id, unlocked_at AS at FROM achievement_unlocks WHERE user_id = ? ORDER BY achievement_id')
+	const { results } = await env.DB.prepare(
+		'SELECT achievement_id AS id, unlocked_at AS at FROM achievement_unlocks WHERE user_id = ? ORDER BY achievement_id',
+	)
 		.bind(userId)
 		.all<{ id: string; at: number }>();
 	return results;
@@ -27,9 +30,11 @@ async function unlockRows(userId: string) {
 
 /** 直接寫進 D1 的學習紀錄：不經過 API，就像開始記錄解鎖時間之前就有的資料 */
 async function insertSessionDirectly(c: NoonClient, date: string, minutes: number) {
-	const startedAt = startOfLocalDay(date, c.tz) + 9 * 3_600_000;
-	await env.DB.prepare("INSERT INTO study_sessions (id, user_id, mode, started_at, ended_at, duration_sec, created_at) VALUES (?, ?, 'manual', ?, ?, ?, ?)")
-		.bind(crypto.randomUUID(), c.user.id, startedAt, startedAt + minutes * 60_000, minutes * 60, Date.now())
+	const startedAt = startOfLocalDay(date, c.tz) + 9 * HOUR_MS;
+	await env.DB.prepare(
+		"INSERT INTO study_sessions (id, user_id, mode, started_at, ended_at, duration_sec, created_at) VALUES (?, ?, 'manual', ?, ?, ?, ?)",
+	)
+		.bind(crypto.randomUUID(), c.user.id, startedAt, startedAt + minutes * MINUTE_MS, minutes * 60, Date.now())
 		.run();
 }
 
@@ -74,8 +79,8 @@ describe('成就的解鎖時間（PRO-2）', () => {
 	it('徽章被收回時刪掉紀錄；之後再解鎖得到新的時間', async () => {
 		const c = await noonClient();
 		const base = Date.now();
-		const session = await at(base + 60_000, () => logSession(c, c.today, 8, 30));
-		expect((await achievements(c))['first-session'].unlockedAt).toBe(base + 60_000);
+		const session = await at(base + MINUTE_MS, () => logSession(c, c.today, 8, 30));
+		expect((await achievements(c))['first-session'].unlockedAt).toBe(base + MINUTE_MS);
 
 		expect((await c.del(`/api/study-sessions/${session.id}`)).status).toBe(200);
 		expect((await achievements(c))['first-session']).toMatchObject({ unlocked: false, unlockedAt: null });
@@ -90,7 +95,7 @@ describe('成就的解鎖時間（PRO-2）', () => {
 		for (let i = 0; i < 7; i++) await logSession(c, addDays(c.today, -6 + i), 8, 30);
 		expect((await achievements(c))['goal-streak-7']).toMatchObject({ unlocked: false, unlockedAt: null });
 
-		const now = Date.now() + 60_000;
+		const now = Date.now() + MINUTE_MS;
 		expect((await at(now, () => c.patch('/api/auth/me', { dailyGoalMinutes: 30 }))).status).toBe(200);
 		expect((await achievements(c))['goal-streak-7']).toMatchObject({ unlocked: true, unlockedAt: now });
 
@@ -99,15 +104,35 @@ describe('成就的解鎖時間（PRO-2）', () => {
 		expect((await unlockRows(c.user.id)).map((r) => r.id)).not.toContain('goal-streak-7');
 	});
 
+	it('完成第 50 個任務而解鎖「使命必達」：記在完成的那個請求；改回未完成就收回', async () => {
+		const c = await noonClient();
+		const base = Date.now();
+		const insert = env.DB.prepare("INSERT INTO tasks (id, user_id, title, status, created_at, updated_at) VALUES (?, ?, ?, 'done', ?, ?)");
+		await env.DB.batch(Array.from({ length: 49 }, (_, i) => insert.bind(crypto.randomUUID(), c.user.id, `任務 ${i}`, base, base)));
+		const last = (await c.post('/api/tasks', { title: '第 50 個' })).data.task;
+		expect((await achievements(c))['tasks-50']).toMatchObject({ unlocked: false, unlockedAt: null });
+
+		await at(base + MINUTE_MS, () => c.patch(`/api/tasks/${last.id}`, { status: 'done' }));
+		expect((await achievements(c))['tasks-50']).toMatchObject({ unlocked: true, unlockedAt: base + MINUTE_MS });
+		// 任務的寫入只比對任務的成就：沒有學習紀錄，其他成就不受影響
+		expect((await unlockRows(c.user.id)).map((r) => r.id)).toEqual(['tasks-50']);
+
+		await c.patch(`/api/tasks/${last.id}`, { status: 'todo' });
+		expect((await achievements(c))['tasks-50']).toMatchObject({ unlocked: false, unlockedAt: null });
+		expect(await unlockRows(c.user.id)).toEqual([]);
+	});
+
 	it('個人檔案的徽章：最近解鎖的在前，時間不明的排在最後', async () => {
 		const c = await noonClient();
 		// 開始記錄之前就有的資料：解鎖「踏出第一步」，沒有時間
 		await insertSessionDirectly(c, addDays(c.today, -3), 10);
 		const base = Date.now();
 		// 10 小時的補登：解鎖「起步 10 小時」
-		await at(base + 60_000, () => logSession(c, addDays(c.today, -1), 8, 600));
+		await at(base + MINUTE_MS, () => logSession(c, addDays(c.today, -1), 8, 600));
 		// 掌握第 10 題錯題（9 題直接寫入資料庫）：解鎖「錯題剋星」
-		const insert = env.DB.prepare("INSERT INTO notes (id, user_id, kind, title, mastered, created_at, updated_at) VALUES (?, ?, 'mistake', ?, 1, ?, ?)");
+		const insert = env.DB.prepare(
+			"INSERT INTO notes (id, user_id, kind, title, mastered, created_at, updated_at) VALUES (?, ?, 'mistake', ?, 1, ?, ?)",
+		);
 		await env.DB.batch(Array.from({ length: 9 }, (_, i) => insert.bind(crypto.randomUUID(), c.user.id, `錯題 ${i}`, base, base)));
 		const tenth = (await c.post('/api/notes', { kind: 'mistake', title: '第十題' })).data.note;
 		await at(base + 120_000, () => c.patch(`/api/notes/${tenth.id}`, { mastered: true }));
@@ -115,7 +140,7 @@ describe('成就的解鎖時間（PRO-2）', () => {
 		const s = await summary(c);
 		expect(s.achievements.badges).toEqual([
 			{ id: 'mastered-10', title: '錯題剋星', icon: 'brain', unlockedAt: base + 120_000 },
-			{ id: 'hours-10', title: '起步 10 小時', icon: 'clock', unlockedAt: base + 60_000 },
+			{ id: 'hours-10', title: '起步 10 小時', icon: 'clock', unlockedAt: base + MINUTE_MS },
 			{ id: 'first-session', title: '踏出第一步', icon: 'sparkles', unlockedAt: null },
 		]);
 		expect(s.achievements.unlocked).toBe(3);
@@ -171,7 +196,9 @@ describe('解鎖紀錄的隔離與失敗的寫入', () => {
 		await logSession(alice, alice.today, 9, 30);
 		const [row] = await unlockRows(alice.user.id);
 
-		expect((await alice.get('/api/export/backup.json')).data.achievementUnlocks).toEqual([{ achievementId: 'first-session', unlockedAt: row.at }]);
+		expect((await alice.get('/api/export/backup.json')).data.achievementUnlocks).toEqual([
+			{ achievementId: 'first-session', unlockedAt: row.at },
+		]);
 		expect((await bob.get('/api/export/backup.json')).data.achievementUnlocks).toEqual([]);
 	});
 });

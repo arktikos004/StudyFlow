@@ -21,9 +21,10 @@ import {
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { SEARCH_QUERY_MAX } from '../../shared/schemas';
-import { EVENT_KIND_LABEL, formatDate } from '../lib/format';
+import { formatDate } from '../lib/format';
+import { EVENT_KIND_LABEL } from '../../shared/labels';
 import { useSearch } from '../lib/queries';
-import { matchesQuery, PAGE_KEYWORDS, QUICK_ACTIONS, resultHref, stepIndex, type QuickActionId } from '../lib/shell-palette';
+import { matchesQuery, PAGE_KEYWORDS, QUICK_ACTIONS, resultHref, stepIndex, type QuickActionId } from '../lib/command-palette';
 import { useTimerState } from '../lib/timer';
 import { NAV } from './nav';
 import { SubjectDot, SubjectTag } from './subjects';

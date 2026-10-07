@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { EVENT_KINDS, NOTE_KINDS, STUDY_MODES, TASK_PRIORITIES, TASK_STATUSES, type ChecklistItem } from '../../shared/schemas';
 
 // 慣例：
 // - 「瞬間」（登入、學習時段起訖）一律存 UTC epoch 毫秒（integer）
@@ -18,9 +19,6 @@ const updatedAt = () =>
 		.notNull()
 		.$defaultFn(() => Date.now());
 
-/** 任務的子項目清單，整份存成 JSON 陣列 */
-export type ChecklistItem = { id: string; title: string; done: boolean };
-
 export const users = sqliteTable('users', {
 	id: id(),
 	email: text('email').notNull().unique(),
@@ -37,7 +35,8 @@ export const users = sqliteTable('users', {
 	avatarUpdatedAt: integer('avatar_updated_at'),
 });
 
-export const sessions = sqliteTable(
+/** 登入狀態。資料表叫 sessions；程式裡叫 authSessions，和學習紀錄（studySessions）區分 */
+export const authSessions = sqliteTable(
 	'sessions',
 	{
 		// session token 的 SHA-256；資料庫外洩也無法直接拿來登入
@@ -85,7 +84,7 @@ export const events = sqliteTable(
 			.notNull()
 			.references(() => users.id, { onDelete: 'cascade' }),
 		subjectId: text('subject_id').references(() => subjects.id, { onDelete: 'set null' }),
-		kind: text('kind', { enum: ['exam', 'deadline'] }).notNull(),
+		kind: text('kind', { enum: EVENT_KINDS }).notNull(),
 		title: text('title').notNull(),
 		date: text('date').notNull(),
 		time: text('time'),
@@ -109,12 +108,8 @@ export const tasks = sqliteTable(
 		title: text('title').notNull(),
 		description: text('description'),
 		dueDate: text('due_date'),
-		priority: text('priority', { enum: ['low', 'medium', 'high'] })
-			.notNull()
-			.default('medium'),
-		status: text('status', { enum: ['todo', 'doing', 'done'] })
-			.notNull()
-			.default('todo'),
+		priority: text('priority', { enum: TASK_PRIORITIES }).notNull().default('medium'),
+		status: text('status', { enum: TASK_STATUSES }).notNull().default('todo'),
 		estimatedMinutes: integer('estimated_minutes'),
 		checklist: text('checklist', { mode: 'json' })
 			.$type<ChecklistItem[]>()
@@ -141,7 +136,7 @@ export const studySessions = sqliteTable(
 			.references(() => users.id, { onDelete: 'cascade' }),
 		subjectId: text('subject_id').references(() => subjects.id, { onDelete: 'set null' }),
 		taskId: text('task_id').references(() => tasks.id, { onDelete: 'set null' }),
-		mode: text('mode', { enum: ['pomodoro', 'stopwatch', 'manual'] }).notNull(),
+		mode: text('mode', { enum: STUDY_MODES }).notNull(),
 		startedAt: integer('started_at').notNull(),
 		endedAt: integer('ended_at').notNull(),
 		durationSec: integer('duration_sec').notNull(),
@@ -163,7 +158,7 @@ export const notes = sqliteTable(
 			.notNull()
 			.references(() => users.id, { onDelete: 'cascade' }),
 		subjectId: text('subject_id').references(() => subjects.id, { onDelete: 'set null' }),
-		kind: text('kind', { enum: ['note', 'mistake'] }).notNull(),
+		kind: text('kind', { enum: NOTE_KINDS }).notNull(),
 		title: text('title').notNull(),
 		content: text('content'),
 		question: text('question'),

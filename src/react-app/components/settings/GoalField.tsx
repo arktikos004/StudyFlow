@@ -1,6 +1,6 @@
 import type { Ref } from 'react';
 import { formatMinutes } from '../../lib/format';
-import { parseGoalInput } from '../../lib/subjects-format';
+import { parseGoalInput } from '../../lib/goals';
 import { Field, Input } from '../ui';
 
 /**

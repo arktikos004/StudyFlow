@@ -1,6 +1,6 @@
 import { BookOpen, Brain, CalendarDays, ChevronRight, Clock, Flame, Play, Plus, Timer } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import type { EventItem, Task } from '../../shared/api-types';
 import { StatStrip, type StatItem } from '../components/charts';
 import { NextExamCard } from '../components/dashboard/exams';
@@ -13,7 +13,8 @@ import { EventDialog, TaskDialog, type TaskDefaults } from '../components/forms'
 import { Button, ButtonLink, Card, Duration, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack, Unit } from '../components/ui';
 import { daysIntoWeek, greetingFor } from '../lib/dashboard-format';
 import { formatDate, formatMinutes } from '../lib/format';
-import { useDashboard, useSubjects, useUser } from '../lib/queries';
+import { useDashboard, useSubjects } from '../lib/queries';
+import { useUser } from '../lib/account-queries';
 import { useTimerState } from '../lib/timer';
 
 /** 任務對話框：編輯既有任務，或帶預設值新增（例如某場考試的準備任務） */
@@ -21,7 +22,6 @@ type TaskDialogState = { task?: Task; defaults?: TaskDefaults } | null;
 
 export function DashboardPage() {
 	const user = useUser();
-	const navigate = useNavigate();
 	const { data, isPending, error, refetch, isRefetching } = useDashboard();
 	// 等科目也到齊再畫，科目 chip 與顏色不會晚一步才出現
 	const subjects = useSubjects();
@@ -70,6 +70,7 @@ export function DashboardPage() {
 
 	const addPrepTask = (e: EventItem) => setTaskDialog({ defaults: { eventId: e.id, subjectId: e.subjectId } });
 
+	const TimerIcon = timerActive ? Timer : Play;
 	return (
 		<div>
 			{/* 焦點：日期、問候語、開始專注 */}
@@ -83,15 +84,10 @@ export function DashboardPage() {
 							<Plus className="size-5" aria-hidden />
 							新增任務
 						</Button>
-						<Button
-							size="lg"
-							variant={noSubjects ? 'secondary' : 'primary'}
-							className="flex-1 sm:flex-none"
-							onClick={() => navigate('/timer')}
-						>
-							{timerActive ? <Timer className="size-5" aria-hidden /> : <Play className="size-5" aria-hidden />}
+						<ButtonLink to="/timer" size="lg" variant={noSubjects ? 'secondary' : 'primary'} className="flex-1 sm:flex-none">
+							<TimerIcon className="size-5" aria-hidden />
 							{timerActive ? '回到計時' : '開始專注'}
-						</Button>
+						</ButtonLink>
 					</>
 				}
 			/>

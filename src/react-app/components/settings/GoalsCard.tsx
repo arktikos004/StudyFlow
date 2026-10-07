@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLocation, useNavigationType } from 'react-router';
 import { GOAL_LIMITS, updateProfileSchema } from '../../../shared/schemas';
-import { useSubjects, useUpdateProfile, useUser } from '../../lib/queries';
-import { goalToInput, parseGoalInput, sumSubjectGoals } from '../../lib/subjects-format';
+import { useSubjects } from '../../lib/queries';
+import { useUpdateProfile, useUser } from '../../lib/account-queries';
+import { fieldErrors, useFieldErrors } from '../../lib/form-errors';
+import { goalToInput, parseGoalInput, sumSubjectGoals } from '../../lib/goals';
 import { Button, Card, CardHeader } from '../ui';
 import { GoalField } from './GoalField';
 import { GoalSumWarning } from './GoalSumWarning';
 
 const goalsSchema = updateProfileSchema.pick({ dailyGoalMinutes: true, weeklyGoalMinutes: true });
-type GoalKey = 'dailyGoalMinutes' | 'weeklyGoalMinutes';
-type Errors = Partial<Record<GoalKey, string>>;
+const GOAL_FIELDS = ['dailyGoalMinutes', 'weeklyGoalMinutes'] as const;
+type GoalKey = (typeof GOAL_FIELDS)[number];
 
 /** 設定頁的錨點：總覽、統計頁的「設定目標」連到 /settings#goals */
 const ANCHOR = 'goals';
@@ -40,11 +42,9 @@ export function GoalsCard() {
 		});
 		return () => cancelAnimationFrame(frame);
 	}, [linked, key, subjectsPending]);
-	const dailyRef = useRef<HTMLInputElement>(null);
-	const weeklyRef = useRef<HTMLInputElement>(null);
 	const [daily, setDaily] = useState(goalToInput(user.dailyGoalMinutes));
 	const [weekly, setWeekly] = useState(goalToInput(user.weeklyGoalMinutes));
-	const [errors, setErrors] = useState<Errors>({});
+	const fields = useFieldErrors(GOAL_FIELDS);
 
 	const values = { dailyGoalMinutes: parseGoalInput(daily), weeklyGoalMinutes: parseGoalInput(weekly) };
 	const changed = values.dailyGoalMinutes !== user.dailyGoalMinutes || values.weeklyGoalMinutes !== user.weeklyGoalMinutes;
@@ -52,23 +52,14 @@ export function GoalsCard() {
 
 	const edit = (key: GoalKey, set: (v: string) => void) => (v: string) => {
 		set(v);
-		setErrors((prev) => ({ ...prev, [key]: undefined }));
+		fields.clear(key);
 	};
 
 	const onSubmit = (e: FormEvent) => {
 		e.preventDefault();
 		const parsed = goalsSchema.safeParse(values);
-		if (!parsed.success) {
-			const next: Errors = {};
-			for (const issue of parsed.error.issues) {
-				const key = issue.path[0];
-				if (key === 'dailyGoalMinutes' || key === 'weeklyGoalMinutes') next[key] ??= issue.message;
-			}
-			setErrors(next);
-			(next.dailyGoalMinutes ? dailyRef : weeklyRef).current?.focus();
-			return;
-		}
-		setErrors({});
+		if (!parsed.success) return fields.show(fieldErrors(parsed.error.issues, GOAL_FIELDS));
+		fields.show({});
 		update.mutate(
 			{ dailyGoalMinutes: parsed.data.dailyGoalMinutes ?? null, weeklyGoalMinutes: parsed.data.weeklyGoalMinutes ?? null },
 			{
@@ -99,17 +90,17 @@ export function GoalsCard() {
 							label="每日目標"
 							value={daily}
 							onChange={edit('dailyGoalMinutes', setDaily)}
-							error={errors.dailyGoalMinutes}
+							error={fields.errors.dailyGoalMinutes}
 							limits={GOAL_LIMITS.daily}
-							inputRef={dailyRef}
+							inputRef={fields.bind('dailyGoalMinutes')}
 						/>
 						<GoalField
 							label="每週目標"
 							value={weekly}
 							onChange={edit('weeklyGoalMinutes', setWeekly)}
-							error={errors.weeklyGoalMinutes}
+							error={fields.errors.weeklyGoalMinutes}
 							limits={GOAL_LIMITS.weekly}
-							inputRef={weeklyRef}
+							inputRef={fields.bind('weeklyGoalMinutes')}
 						/>
 					</div>
 					<GoalSumWarning total={sumSubjectGoals(subjects)} weekly={weeklyMinutes} />

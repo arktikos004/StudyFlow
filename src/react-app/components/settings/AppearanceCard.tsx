@@ -65,7 +65,12 @@ function AccentPreview({ accent }: { accent: AccentId }) {
 	return (
 		<div role="img" aria-label={`預覽：「${name}」在淺色與深色模式的按鈕、連結、進度條與標籤`} className="grid grid-cols-2 gap-2">
 			{(['light', 'dark'] as const).map((mode) => (
-				<div key={mode} data-theme={mode} data-accent={accent} className="min-w-0 space-y-2.5 rounded-lg border border-line bg-page p-3 text-ink">
+				<div
+					key={mode}
+					data-theme={mode}
+					data-accent={accent}
+					className="min-w-0 space-y-2.5 rounded-lg border border-line bg-page p-3 text-ink"
+				>
 					<p className="flex items-center gap-1 text-xs text-ink-2">
 						{mode === 'dark' ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
 						{mode === 'dark' ? '深色' : '淺色'}
@@ -80,7 +85,9 @@ function AccentPreview({ accent }: { accent: AccentId }) {
 					<div className="h-1.5 overflow-hidden rounded-full bg-accent-soft">
 						<div className="h-full w-3/5 rounded-full bg-accent" />
 					</div>
-					<span className="inline-flex h-5 items-center rounded-sm bg-accent-soft px-1.5 text-xs font-semibold text-accent-ink">進行中</span>
+					<span className="inline-flex h-5 items-center rounded-sm bg-accent-soft px-1.5 text-xs font-semibold text-accent-ink">
+						進行中
+					</span>
 				</div>
 			))}
 		</div>

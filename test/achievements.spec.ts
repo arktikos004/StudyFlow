@@ -2,6 +2,7 @@ import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { addDays } from '../src/shared/dates';
 import { createClient, logSession, noonClient, registeredClient, type Client } from './helpers';
+import { HOUR_MS, MINUTE_MS } from '../src/shared/time';
 
 type Achievement = { id: string; title: string; description: string; icon: string; unlocked: boolean; progress: number; target: number };
 
@@ -44,9 +45,9 @@ describe('成就（APP-2）', () => {
 		const c = await registeredClient();
 		const now = Date.now();
 		// 10 小時的手動補登 + 2 個 25 分鐘的番茄 = 10 小時 50 分
-		await c.post('/api/study-sessions', { mode: 'manual', startedAt: now - 11 * 3_600_000, endedAt: now - 3_600_000 });
-		for (const end of [now - 30 * 60_000, now - 60_000]) {
-			await c.post('/api/study-sessions', { mode: 'pomodoro', startedAt: end - 25 * 60_000, endedAt: end });
+		await c.post('/api/study-sessions', { mode: 'manual', startedAt: now - 11 * HOUR_MS, endedAt: now - HOUR_MS });
+		for (const end of [now - 30 * MINUTE_MS, now - MINUTE_MS]) {
+			await c.post('/api/study-sessions', { mode: 'pomodoro', startedAt: end - 25 * MINUTE_MS, endedAt: end });
 		}
 		const a = await achievements(c);
 		expect(a['first-session']).toMatchObject({ unlocked: true, progress: 1, target: 1 });
@@ -68,8 +69,8 @@ describe('成就（APP-2）', () => {
 			['manual', 25 * 60], // 不是番茄鐘：不算
 		];
 		for (const [i, [mode, durationSec]] of cases.entries()) {
-			const endedAt = now - (i + 1) * 30 * 60_000;
-			const res = await c.post('/api/study-sessions', { mode, startedAt: endedAt - 26 * 60_000, endedAt, durationSec });
+			const endedAt = now - (i + 1) * 30 * MINUTE_MS;
+			const res = await c.post('/api/study-sessions', { mode, startedAt: endedAt - 26 * MINUTE_MS, endedAt, durationSec });
 			expect(res.status, JSON.stringify(res.data)).toBe(201);
 		}
 		const a = await achievements(c);
@@ -82,8 +83,8 @@ describe('成就（APP-2）', () => {
 
 	it('差一點達標時不會顯示成已達成（小時數無條件捨去）', async () => {
 		const c = await registeredClient();
-		const end = Date.now() - 60_000;
-		await c.post('/api/study-sessions', { mode: 'stopwatch', startedAt: end - 599 * 60_000, endedAt: end });
+		const end = Date.now() - MINUTE_MS;
+		await c.post('/api/study-sessions', { mode: 'stopwatch', startedAt: end - 599 * MINUTE_MS, endedAt: end });
 		expect((await achievements(c))['hours-10']).toMatchObject({ unlocked: false, progress: 9.9 });
 	});
 
@@ -143,7 +144,7 @@ describe('成就的跨使用者隔離', () => {
 		const alice = await registeredClient('Alice');
 		const bob = await registeredClient('Bob');
 		const now = Date.now();
-		await alice.post('/api/study-sessions', { mode: 'pomodoro', startedAt: now - 11 * 3_600_000, endedAt: now - 3_600_000 });
+		await alice.post('/api/study-sessions', { mode: 'pomodoro', startedAt: now - 11 * HOUR_MS, endedAt: now - HOUR_MS });
 		const mistake = (await alice.post('/api/notes', { kind: 'mistake', title: 'Alice 的錯題' })).data.note;
 		const task = (await alice.post('/api/tasks', { title: 'Alice 的任務' })).data.task;
 
@@ -152,8 +153,8 @@ describe('成就的跨使用者隔離', () => {
 		expect((await bob.patch(`/api/tasks/${task.id}`, { status: 'done' })).status).toBe(404);
 		const hijack = await bob.post('/api/study-sessions', {
 			mode: 'pomodoro',
-			startedAt: now - 30 * 60_000,
-			endedAt: now - 5 * 60_000,
+			startedAt: now - 30 * MINUTE_MS,
+			endedAt: now - 5 * MINUTE_MS,
 			taskId: task.id,
 		});
 		expect(hijack.status).toBe(400);

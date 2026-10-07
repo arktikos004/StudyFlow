@@ -8,8 +8,8 @@ import {
 	splitByDay,
 	weekDays,
 } from '../src/react-app/components/calendar/layout';
+import { MINUTE_MS as MIN } from '../src/shared/time';
 
-const MIN = 60_000;
 /** 台北時間（UTC+8，沒有夏令時間） */
 const tpe = (date: string, hhmm: string) => {
 	const [y, m, d] = date.split('-').map(Number);

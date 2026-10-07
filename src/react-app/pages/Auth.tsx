@@ -1,16 +1,14 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { CircleAlert, Eye, EyeOff } from 'lucide-react';
-import { forwardRef, useRef, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
-import type { PublicUser } from '../../shared/api-types';
+import { forwardRef, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import { subjectTone } from '../../shared/color';
 import { RECOMMENDED } from '../../shared/palette';
 import { loginSchema, registerSchema } from '../../shared/schemas';
 import { LogoMark } from '../components/Logo';
 import { SubjectChip } from '../components/subjects';
 import { Button, cn, Field, Input } from '../components/ui';
-import { api } from '../lib/api';
-import { ME_KEY } from '../lib/queries';
+import { fieldErrors, useFieldErrors } from '../lib/form-errors';
+import { useLogin, useRegister } from '../lib/account-queries';
 import { useIsDark } from '../lib/theme';
 
 /** 品牌欄的筆記頁預覽（裝飾）：三列筆記，科目用推薦色的螢光筆 chip 標出 */
@@ -102,44 +100,6 @@ const PasswordInput = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<HTML
 	);
 });
 
-/** 只允許站內路徑，避免 ?next= 被拿來導到外部網站 */
-function safeNext(next: string | null) {
-	return next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
-}
-
-/** zod 的錯誤 → 每個欄位第一則訊息 */
-function fieldErrors<K extends string>(issues: readonly { path: readonly PropertyKey[]; message: string }[]): Partial<Record<K, string>> {
-	const out: Partial<Record<K, string>> = {};
-	for (const issue of issues) {
-		const key = issue.path[0] as K | undefined;
-		if (key && !out[key]) out[key] = issue.message;
-	}
-	return out;
-}
-
-function useAuthSubmit(path: '/auth/login' | '/auth/register') {
-	const qc = useQueryClient();
-	const navigate = useNavigate();
-	const [params] = useSearchParams();
-	const [error, setError] = useState<string>();
-	const [loading, setLoading] = useState(false);
-
-	const submit = async (body: unknown) => {
-		setLoading(true);
-		setError(undefined);
-		try {
-			const { user } = await api.post<{ user: PublicUser }>(path, body);
-			qc.setQueryData(ME_KEY, user);
-			navigate(safeNext(params.get('next')), { replace: true });
-		} catch (e) {
-			setError(e instanceof Error ? e.message : '發生錯誤');
-		} finally {
-			setLoading(false);
-		}
-	};
-	return { submit, error, setError, loading };
-}
-
 /** 表單層級的錯誤（例如帳號密碼錯誤）：圖示加文字 */
 function FormError({ children }: { children: ReactNode }) {
 	return (
@@ -150,29 +110,14 @@ function FormError({ children }: { children: ReactNode }) {
 	);
 }
 
-/**
- * 欄位錯誤的共用狀態：送出時一次標出所有錯誤並把焦點移到第一個錯的欄位；修改欄位時清掉該欄的錯誤。
- * order 是畫面上的欄位順序。
- */
-function useFieldErrors<K extends string>(order: readonly K[]) {
-	const [errors, setErrors] = useState<Partial<Record<K, string>>>({});
-	const refs = useRef<Partial<Record<K, HTMLInputElement | null>>>({});
-	const bind = (k: K) => (el: HTMLInputElement | null) => {
-		refs.current[k] = el;
-	};
-	const show = (next: Partial<Record<K, string>>) => {
-		setErrors(next);
-		const first = order.find((k) => next[k]);
-		if (first) refs.current[first]?.focus();
-	};
-	const clear = (k: K) => setErrors((e) => (e[k] ? { ...e, [k]: undefined } : e));
-	return { errors, bind, show, clear };
-}
+const LOGIN_FIELDS = ['email', 'password'] as const;
+const REGISTER_FIELDS = ['displayName', 'email', 'password', 'confirm'] as const;
 
 export function LoginPage() {
 	const [form, setForm] = useState({ email: '', password: '' });
-	const { submit, error, setError, loading } = useAuthSubmit('/auth/login');
-	const fields = useFieldErrors(['email', 'password'] as const);
+	// 成功後由 GuestOnly 導回原本要去的頁面
+	const login = useLogin();
+	const fields = useFieldErrors(LOGIN_FIELDS);
 	const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
 		setForm((f) => ({ ...f, [k]: e.target.value }));
 		fields.clear(k);
@@ -180,11 +125,11 @@ export function LoginPage() {
 
 	const onSubmit = (e: FormEvent) => {
 		e.preventDefault();
-		setError(undefined);
+		login.reset();
 		const parsed = loginSchema.safeParse(form);
-		if (!parsed.success) return fields.show(fieldErrors(parsed.error.issues));
+		if (!parsed.success) return fields.show(fieldErrors(parsed.error.issues, LOGIN_FIELDS));
 		fields.show({});
-		submit(parsed.data);
+		login.mutate(parsed.data);
 	};
 
 	return (
@@ -221,8 +166,8 @@ export function LoginPage() {
 						/>
 					)}
 				</Field>
-				{error && <FormError>{error}</FormError>}
-				<Button type="submit" variant="primary" size="lg" className="w-full" loading={loading}>
+				{login.error && <FormError>{login.error.message}</FormError>}
+				<Button type="submit" variant="primary" size="lg" className="w-full" loading={login.isPending}>
 					登入
 				</Button>
 			</form>
@@ -238,8 +183,9 @@ export function LoginPage() {
 
 export function RegisterPage() {
 	const [form, setForm] = useState({ displayName: '', email: '', password: '', confirm: '' });
-	const { submit, error, setError, loading } = useAuthSubmit('/auth/register');
-	const fields = useFieldErrors(['displayName', 'email', 'password', 'confirm'] as const);
+	// 成功後由 GuestOnly 導回原本要去的頁面
+	const register = useRegister();
+	const fields = useFieldErrors(REGISTER_FIELDS);
 	const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
 		setForm((f) => ({ ...f, [k]: e.target.value }));
 		fields.clear(k);
@@ -247,13 +193,13 @@ export function RegisterPage() {
 
 	const onSubmit = (e: FormEvent) => {
 		e.preventDefault();
-		setError(undefined);
+		register.reset();
 		const parsed = registerSchema.safeParse(form);
-		const errs = parsed.success ? {} : fieldErrors<keyof typeof form>(parsed.error.issues);
+		const errs = parsed.success ? {} : fieldErrors(parsed.error.issues, REGISTER_FIELDS);
 		if (!errs.confirm && form.confirm !== form.password) errs.confirm = '兩次輸入的密碼不一致';
 		fields.show(errs);
 		if (!parsed.success || errs.confirm) return;
-		submit(parsed.data);
+		register.mutate(parsed.data);
 	};
 
 	return (
@@ -315,8 +261,8 @@ export function RegisterPage() {
 						/>
 					)}
 				</Field>
-				{error && <FormError>{error}</FormError>}
-				<Button type="submit" variant="primary" size="lg" className="w-full" loading={loading}>
+				{register.error && <FormError>{register.error.message}</FormError>}
+				<Button type="submit" variant="primary" size="lg" className="w-full" loading={register.isPending}>
 					註冊並開始使用
 				</Button>
 			</form>

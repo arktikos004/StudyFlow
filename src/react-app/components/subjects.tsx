@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import type { Subject } from '../../shared/api-types';
 import type { SubjectTone } from '../../shared/color';
-import { firstGrapheme } from '../lib/polish-format';
+import { firstGrapheme } from '../lib/format';
 import { useSubjectMap, useSubjects } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
 import { subjectIcon } from '../lib/subject-icons';
@@ -58,7 +58,7 @@ export function SubjectChip({
  * 科目圖示方塊的外觀（純顯示）：科目 mark 底、onMark 圖示；沒有圖示時顯示名稱的第一個字。
  * 裝飾用、aria-hidden（所以不加 title），名稱要由旁邊的文字提供；不可放進按鈕或連結當唯一內容。
  * - 第一個字是文字，對比門檻比圖示高：用 19px 粗體（WCAG 的大字，門檻 3:1）。onMark 會在白色與深色文字之間
- *   選對比較高的那個，48 個色盤色在淺色、深色下最低 4.24／4.39，任意自訂色也都在 3:1 以上（test/polish-subject-tile.spec.ts）。
+ *   選對比較高的那個，48 個色盤色在淺色、深色下最低 4.24／4.39，任意自訂色也都在 3:1 以上（test/subject-tile-contrast.spec.ts）。
  * - 第一個字以字素切（firstGrapheme），emoji、組合字不會被切半。
  * SubjectTag 的 icon 版與「手上已經有科目資料」的地方（單科總覽的標題，資料來自同一次 API）共用；
  * tone 由呼叫端用 useSubjectTone 算好。大小用 className 調整（預設 40px）。
@@ -78,7 +78,10 @@ export function SubjectIconTile({
 	return (
 		<span
 			aria-hidden
-			className={cn('grid size-10 shrink-0 place-items-center rounded-lg text-[1.1875rem] leading-none font-bold [&_svg]:size-5', className)}
+			className={cn(
+				'grid size-10 shrink-0 place-items-center rounded-lg text-[1.1875rem] leading-none font-bold [&_svg]:size-5',
+				className,
+			)}
 			style={{ background: tone.mark, color: tone.onMark }}
 		>
 			{subjectIcon(icon) ? <TagIcon icon={icon} /> : firstGrapheme(name)}

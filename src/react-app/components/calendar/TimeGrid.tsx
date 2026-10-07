@@ -1,8 +1,9 @@
 import { useLayoutEffect, useRef } from 'react';
 import type { EventItem, StudySession, Task } from '../../../shared/api-types';
 import type { SubjectTone } from '../../../shared/color';
-import { EVENT_KIND_LABEL, formatMinutes, weekdayLabel } from '../../lib/format';
-import { formatClockRange, formatStudyMinutes, spokenDate } from '../../lib/timer-format';
+import { formatMinutes, weekdayLabel } from '../../lib/format';
+import { EVENT_KIND_LABEL } from '../../../shared/labels';
+import { formatClockRange, formatStudyMinutes, spokenDate } from '../../lib/time-format';
 import { cn } from '../ui';
 import { EventChip, TaskChip } from './chips';
 import { EVENT_ICON } from './icons';

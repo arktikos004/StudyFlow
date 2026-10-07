@@ -1,7 +1,7 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react';
 import type { EventItem, Task } from '../../../shared/api-types';
 import type { SubjectTone } from '../../../shared/color';
-import { formatStudyMinutes, spokenDate } from '../../lib/timer-format';
+import { formatStudyMinutes, spokenDate } from '../../lib/time-format';
 import { cn } from '../ui';
 import { EventChip, TaskChip } from './chips';
 import { monthGrid, moveDate } from './layout';

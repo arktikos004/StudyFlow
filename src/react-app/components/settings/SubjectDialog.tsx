@@ -1,12 +1,14 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import type { Subject } from '../../../shared/api-types';
 import { GOAL_LIMITS, subjectSchema, type SubjectIcon } from '../../../shared/schemas';
 import { ApiError } from '../../lib/api';
-import { useCreateSubject, useDeleteSubject, useUpdateSubject, useUser, type SubjectInput } from '../../lib/queries';
+import { useCreateSubject, useDeleteSubject, useUpdateSubject, type SubjectInput } from '../../lib/queries';
+import { useUser } from '../../lib/account-queries';
 import { nextSubjectColor, useSubjectTone } from '../../lib/subject-color';
 import { isSubjectIcon, subjectIcon } from '../../lib/subject-icons';
-import { goalToInput, parseGoalInput, sumSubjectGoals } from '../../lib/subjects-format';
+import { fieldErrors, useFieldErrors } from '../../lib/form-errors';
+import { goalToInput, parseGoalInput, sumSubjectGoals } from '../../lib/goals';
 import { ColorPicker } from '../ColorPicker';
 import { DialogFooter } from '../forms/shared';
 import { Dialog, Field, Input, Switch, useConfirm } from '../ui';
@@ -14,18 +16,7 @@ import { GoalField } from './GoalField';
 import { GoalSumWarning } from './GoalSumWarning';
 import { IconPicker } from './IconPicker';
 
-type FormErrors = { name?: string; weeklyGoalMinutes?: string };
-
-/** 驗證錯誤依欄位分開，每個欄位只顯示第一則 */
-function fieldErrors(issues: readonly { path: readonly PropertyKey[]; message: string }[]): FormErrors {
-	const out: FormErrors = {};
-	for (const issue of issues) {
-		const key = issue.path[0];
-		if (key === 'name') out.name ??= issue.message;
-		if (key === 'weeklyGoalMinutes') out.weeklyGoalMinutes ??= issue.message;
-	}
-	return out;
-}
+const SUBJECT_FIELDS = ['name', 'weeklyGoalMinutes'] as const;
 
 function SubjectForm({
 	formId,
@@ -41,8 +32,6 @@ function SubjectForm({
 }) {
 	const user = useUser();
 	const toneOf = useSubjectTone();
-	const nameRef = useRef<HTMLInputElement>(null);
-	const goalRef = useRef<HTMLInputElement>(null);
 	const iconLabelId = useId();
 	const colorLabelId = useId();
 	const [name, setName] = useState(subject?.name ?? '');
@@ -53,7 +42,7 @@ function SubjectForm({
 	const [archived, setArchived] = useState(subject?.archived ?? false);
 	// 每週目標（GOAL-2）：留空代表不設定
 	const [goal, setGoal] = useState(goalToInput(subject?.weeklyGoalMinutes));
-	const [errors, setErrors] = useState<FormErrors>({});
+	const fields = useFieldErrors(SUBJECT_FIELDS);
 
 	const goalValue = parseGoalInput(goal);
 	const goalMinutes = typeof goalValue === 'number' && Number.isInteger(goalValue) && goalValue > 0 ? goalValue : null;
@@ -63,36 +52,27 @@ function SubjectForm({
 	const onSubmit = async (e: FormEvent) => {
 		e.preventDefault();
 		const parsed = subjectSchema.safeParse({ name, color, icon, weeklyGoalMinutes: goalValue });
-		if (!parsed.success) {
-			const next = fieldErrors(parsed.error.issues);
-			setErrors(next);
-			if (next.name) nameRef.current?.focus();
-			else if (next.weeklyGoalMinutes) goalRef.current?.focus();
-			return;
-		}
-		setErrors({});
+		if (!parsed.success) return fields.show(fieldErrors(parsed.error.issues, SUBJECT_FIELDS));
+		fields.show({});
 		try {
 			await onSave(parsed.data, subject ? archived : undefined);
 		} catch (err) {
-			if (err instanceof ApiError && err.status === 409) {
-				setErrors({ name: err.message });
-				nameRef.current?.focus();
-			}
+			if (err instanceof ApiError && err.status === 409) fields.show({ name: err.message });
 		}
 	};
 
 	return (
 		<form id={formId} onSubmit={onSubmit} className="space-y-5" noValidate>
-			<Field label="名稱" error={errors.name}>
+			<Field label="名稱" error={fields.errors.name}>
 				{(id, aria) => (
 					<Input
-						ref={nameRef}
+						ref={fields.bind('name')}
 						id={id}
 						{...aria}
 						value={name}
 						onChange={(e) => {
 							setName(e.target.value);
-							setErrors((prev) => ({ ...prev, name: undefined }));
+							fields.clear('name');
 						}}
 						maxLength={30}
 						placeholder="例如：計算機網路"
@@ -125,11 +105,11 @@ function SubjectForm({
 					value={goal}
 					onChange={(v) => {
 						setGoal(v);
-						setErrors((prev) => ({ ...prev, weeklyGoalMinutes: undefined }));
+						fields.clear('weeklyGoalMinutes');
 					}}
-					error={errors.weeklyGoalMinutes}
+					error={fields.errors.weeklyGoalMinutes}
 					limits={GOAL_LIMITS.subjectWeekly}
-					inputRef={goalRef}
+					inputRef={fields.bind('weeklyGoalMinutes')}
 				/>
 				<GoalSumWarning total={goalTotal} weekly={user.weeklyGoalMinutes} />
 			</div>

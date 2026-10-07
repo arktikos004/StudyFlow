@@ -2,8 +2,9 @@ import { useState, type FormEvent } from 'react';
 import type { EventItem } from '../../../shared/api-types';
 import { today } from '../../../shared/dates';
 import { eventSchema } from '../../../shared/schemas';
-import { EVENT_KIND_LABEL } from '../../lib/format';
-import { useCreateEvent, useDeleteEvent, useUpdateEvent, useUser, type EventInput } from '../../lib/queries';
+import { EVENT_KIND_LABEL } from '../../../shared/labels';
+import { useCreateEvent, useDeleteEvent, useUpdateEvent, type EventInput } from '../../lib/queries';
+import { useUser } from '../../lib/account-queries';
 import { SubjectSelect } from '../subjects';
 import { Dialog, Field, Input, Select, Textarea, useConfirm } from '../ui';
 import { DialogFooter, FormError } from './shared';
@@ -41,6 +42,7 @@ function EventForm({
 		const input = { ...form, time: blankToNull(form.time), location: blankToNull(form.location), notes: blankToNull(form.notes) };
 		const parsed = eventSchema.safeParse(input);
 		if (!parsed.success) return setError(parsed.error.issues[0].message);
+		setError(undefined);
 		onSave(input);
 	};
 
@@ -138,8 +140,12 @@ export function EventDialog({
 		if (!event) return;
 		const ok = await confirm({ title: `刪除「${event.title}」？`, message: '相關任務會保留，只是不再連結到這場考試。' });
 		if (!ok) return;
-		await remove.mutateAsync(event.id).catch(() => {});
-		onClose();
+		try {
+			await remove.mutateAsync(event.id);
+			onClose();
+		} catch {
+			// toast 已顯示錯誤；對話框留著，可以再試一次
+		}
 	};
 
 	return (

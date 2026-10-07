@@ -1,8 +1,9 @@
 import { CalendarPlus, ListPlus, Pencil, Plus } from 'lucide-react';
 import { useId } from 'react';
 import type { EventItem, StudySession, Task } from '../../../shared/api-types';
-import { EVENT_KIND_LABEL, formatDate, formatMinutes, MODE_LABEL } from '../../lib/format';
-import { formatClockRange, relativeDateLabel } from '../../lib/timer-format';
+import { EVENT_KIND_LABEL, STUDY_MODE_LABEL } from '../../../shared/labels';
+import { formatDateForToday, formatMinutes } from '../../lib/format';
+import { formatClockRange } from '../../lib/time-format';
 import { SubjectTag } from '../subjects';
 import { TaskCheckbox } from '../TaskItem';
 import { Badge, Button, Card, CardHeader, cn, EmptyState } from '../ui';
@@ -50,7 +51,6 @@ export function DayPanel({
 	const titleId = useId();
 	const sessionsId = useId();
 	const total = sessions.reduce((sum, s) => sum + s.durationSec, 0) / 60;
-	const label = relativeDateLabel(date, today);
 
 	return (
 		<section aria-labelledby={titleId} className={className}>
@@ -58,8 +58,8 @@ export function DayPanel({
 				<CardHeader
 					title={
 						<span id={titleId} className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-							<span className="whitespace-nowrap">{formatDate(date, date.slice(0, 4) !== today.slice(0, 4))}</span>
-							{label === '今天' && <Badge tone="accent">今天</Badge>}
+							<span className="whitespace-nowrap">{formatDateForToday(date, today)}</span>
+							{date === today && <Badge tone="accent">今天</Badge>}
 						</span>
 					}
 					action={
@@ -149,14 +149,14 @@ export function DayPanel({
 										<button
 											type="button"
 											onClick={() => onSession(s)}
-											aria-label={`編輯學習紀錄：${range}，${MODE_LABEL[s.mode]}，${minutes}`}
+											aria-label={`編輯學習紀錄：${range}，${STUDY_MODE_LABEL[s.mode]}，${minutes}`}
 											className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left transition-colors duration-120 ease-out hover:bg-subtle sm:px-5"
 										>
 											<span className="min-w-0 flex-1">
 												<span className="block font-num text-sm font-semibold tabular-nums">{range}</span>
 												<span className="mt-0.5 flex items-center gap-2">
 													{s.subjectId ? <SubjectTag subjectId={s.subjectId} /> : <span className="text-meta text-ink-3">未分類</span>}
-													<span className="text-meta text-ink-3">{MODE_LABEL[s.mode]}</span>
+													<span className="text-meta text-ink-3">{STUDY_MODE_LABEL[s.mode]}</span>
 												</span>
 											</span>
 											<span className="shrink-0 font-num text-sm text-ink-2 tabular-nums">{minutes}</span>

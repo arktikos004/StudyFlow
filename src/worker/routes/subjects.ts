@@ -1,14 +1,15 @@
-import { and, asc, count, desc, eq, gte, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, ne, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { addDays, startOfLocalDay, today, weekStart } from '../../shared/dates';
 import { subjectOrderSchema, subjectSchema, subjectUpdateSchema } from '../../shared/schemas';
-import { events, notes, studySessions, subjects, tasks } from '../db/schema';
-import { hasValues, notFound, type DB } from '../lib/db';
+import { events, studySessions, subjects, tasks } from '../db/schema';
+import { hasValues, notFound, ownedBy, type DB } from '../lib/db';
 import { eventItemFields } from '../lib/events';
+import { mistakeCounts } from '../lib/notes';
 import { round1 } from '../lib/stats';
-import { taskItemFields } from '../lib/tasks';
-import { validate } from '../lib/validator';
+import { taskItemFields, taskListOrder } from '../lib/tasks';
+import { validate } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
 import type { SubjectOverview } from '../../shared/api-types';
 import type { AppEnv } from '../types';
@@ -76,11 +77,11 @@ export const subjectRoutes = new Hono<AppEnv>()
 		const last30From = startOfLocalDay(addDays(todayStr, -29), tz);
 
 		// 每個查詢都限定本人，所以可以一起送出，最後再確認科目存在
-		const [subject, upcomingEvents, openTasks, [minutes], [mistakes]] = await Promise.all([
+		const [subject, upcomingEvents, openTasks, [minutes], mistakes] = await Promise.all([
 			db
 				.select()
 				.from(subjects)
-				.where(and(eq(subjects.id, id), eq(subjects.userId, user.id)))
+				.where(ownedBy(subjects, id, user.id))
 				.get(),
 			db
 				.select(eventItemFields())
@@ -91,12 +92,7 @@ export const subjectRoutes = new Hono<AppEnv>()
 				.select(taskItemFields())
 				.from(tasks)
 				.where(and(eq(tasks.userId, user.id), eq(tasks.subjectId, id), ne(tasks.status, 'done')))
-				.orderBy(
-					sql`${tasks.dueDate} IS NULL`,
-					asc(tasks.dueDate),
-					sql`CASE ${tasks.priority} WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END`,
-					desc(tasks.createdAt),
-				),
+				.orderBy(...taskListOrder()),
 			// 近 30 天的已包含本週（週一最早是 6 天前）
 			db
 				.select({
@@ -105,16 +101,9 @@ export const subjectRoutes = new Hono<AppEnv>()
 				})
 				.from(studySessions)
 				.where(and(eq(studySessions.userId, user.id), eq(studySessions.subjectId, id), gte(studySessions.startedAt, last30From))),
-			db
-				.select({
-					total: count(),
-					mastered: sql<number>`coalesce(sum(CASE WHEN ${notes.mastered} THEN 1 ELSE 0 END), 0)`,
-					due: sql<number>`coalesce(sum(CASE WHEN NOT ${notes.mastered} AND ${notes.nextReviewDate} <= ${todayStr} THEN 1 ELSE 0 END), 0)`,
-				})
-				.from(notes)
-				.where(and(eq(notes.userId, user.id), eq(notes.kind, 'mistake'), eq(notes.subjectId, id))),
+			mistakeCounts(db, user.id, todayStr, id),
 		]);
-		if (!subject) notFound('科目');
+		if (!subject) notFound(subjects);
 
 		const body: SubjectOverview = {
 			subject,
@@ -129,20 +118,20 @@ export const subjectRoutes = new Hono<AppEnv>()
 		const input = c.req.valid('json');
 		const id = c.req.param('id');
 		if (input.name) await assertNameFree(c.var.db, c.var.user.id, input.name, id);
-		const own = and(eq(subjects.id, id), eq(subjects.userId, c.var.user.id));
+		const own = ownedBy(subjects, id, c.var.user.id);
 		const row = hasValues(input)
 			? await c.var.db.update(subjects).set(input).where(own).returning().get()
 			: await c.var.db.select().from(subjects).where(own).get();
-		if (!row) notFound('科目');
+		if (!row) notFound(subjects);
 		return c.json({ subject: row });
 	})
 	.delete('/:id', async (c) => {
 		// 相關的考試、任務、筆記會保留，只是科目欄位變成空白（ON DELETE SET NULL）
 		const row = await c.var.db
 			.delete(subjects)
-			.where(and(eq(subjects.id, c.req.param('id')), eq(subjects.userId, c.var.user.id)))
+			.where(ownedBy(subjects, c.req.param('id'), c.var.user.id))
 			.returning({ id: subjects.id })
 			.get();
-		if (!row) notFound('科目');
+		if (!row) notFound(subjects);
 		return c.json({ ok: true });
 	});

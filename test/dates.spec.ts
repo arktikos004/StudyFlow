@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatterCacheSize, localDate, localDateTime, startOfLocalDay, zonedTime } from '../src/shared/dates';
+import { HOUR_MS, MINUTE_MS } from '../src/shared/time';
 
 /** 同一個時區名稱的各種大小寫寫法：asia/taipei、Asia/taipei、aSia/taipei… */
 function caseVariants(name: string, limit: number) {
@@ -48,7 +49,7 @@ describe('localDateTime', () => {
 		};
 		// 一整年、每 7 小時 13 分取一個時間點，涵蓋午夜、夏令時間與非整點偏移的時區
 		for (const tz of ['Asia/Taipei', 'America/New_York', 'Europe/Berlin', 'Asia/Kolkata', 'Pacific/Chatham', 'UTC']) {
-			for (let ms = Date.UTC(2026, 0, 1); ms < Date.UTC(2027, 0, 1); ms += 7 * 3_600_000 + 13 * 60_000) {
+			for (let ms = Date.UTC(2026, 0, 1); ms < Date.UTC(2027, 0, 1); ms += 7 * HOUR_MS + 13 * MINUTE_MS) {
 				expect(localDateTime(ms, tz)).toBe(reference(ms, tz));
 			}
 		}

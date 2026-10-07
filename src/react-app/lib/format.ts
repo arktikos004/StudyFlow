@@ -38,6 +38,14 @@ export function formatDate(date: string, withYear = false): string {
 	return `${withYear ? `${y}/` : ''}${m}/${d}（${WEEKDAYS[dow]}）`;
 }
 
+/** part 占 total 的百分比，四捨五入到整數；total 是 0 時是 0 */
+export const percent = (part: number, total: number) => (total ? Math.round((part / total) * 100) : 0);
+
+/** 9/29（一）；和 today 不同年時加上年份（2025/9/29（一）） */
+export function formatDateForToday(date: string, today: string): string {
+	return formatDate(date, date.slice(0, 4) !== today.slice(0, 4));
+}
+
 export function formatMonthDay(date: string): string {
 	const { m, d } = parts(date);
 	return `${m}/${d}`;
@@ -60,13 +68,31 @@ export function relativeDay(date: string, today: string): { label: string; days:
 	return { label: `已過 ${-days} 天`, days };
 }
 
-export function dDay(date: string, today: string): string {
-	const days = diffDays(today, date);
-	if (days === 0) return 'D-Day';
-	return days > 0 ? `D-${days}` : `D+${-days}`;
+/**
+ * 文字的第一個字素：emoji（含膚色、ZWJ 組合、國旗）與組合字不會被切半（頭像、科目方塊的首字）。
+ * 不支援 Intl.Segmenter 的環境退回以碼位切（Array.from），至少不會把代理對切開。
+ * 前後空白先去掉；空字串回傳 ''。
+ */
+export function firstGrapheme(text: string): string {
+	const s = text.trim();
+	if (!s) return '';
+	if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+		const first = new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s)[Symbol.iterator]().next();
+		if (!first.done) return first.value.segment;
+	}
+	return Array.from(s)[0] ?? '';
 }
 
-export const PRIORITY_LABEL = { high: '高', medium: '中', low: '低' } as const;
-export const STATUS_LABEL = { todo: '待辦', doing: '進行中', done: '已完成' } as const;
-export const EVENT_KIND_LABEL = { exam: '考試', deadline: '截止日' } as const;
-export const MODE_LABEL = { pomodoro: '番茄鐘', stopwatch: '碼錶', manual: '手動補登' } as const;
+/**
+ * 日期範圍（跨頁慣例）：「9/7（一）至 10/6（二）」「10/5 至 10/11」，用「至」，不用破折號。
+ * a、b 是已經格式化好的日期；「至」後面接數字時空一格，前面是全形括號就不空。
+ */
+export function formatRange(a: string, b: string): string {
+	return `${a}${/[）)]$/.test(a) ? '' : ' '}至 ${b}`;
+}
+
+/** 分鐘數拆成小時與分鐘（四捨五入到整分），給「2 小時 30 分」這種數字與單位分開排版的地方 */
+export function splitMinutes(min: number): { hours: number; minutes: number } {
+	const m = Math.max(0, Math.round(min));
+	return { hours: Math.floor(m / 60), minutes: m % 60 };
+}

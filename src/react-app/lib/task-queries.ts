@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import type { ChecklistItem, TaskItem } from '../../shared/api-types';
 import { api } from './api';
-import { TASK_KEYS } from './queries';
+import { invalidateKeys, QK, TASK_KEYS } from './query-keys';
 import { applyTaskPatch, revertTaskPatch } from './task-patch';
 import { DEFAULT_SORT, parseSort, type TaskSort, type TaskStatus } from './task-sort';
 
@@ -34,32 +34,32 @@ export function useTaskPatch() {
 		mutationKey: PATCH_KEY,
 		mutationFn: ({ id, status, checklist }: TaskPatch) => api.patch<{ task: TaskItem }>(`/tasks/${id}`, { status, checklist }),
 		onMutate: async ({ id, status, checklist }) => {
-			await qc.cancelQueries({ queryKey: ['tasks'] });
+			await qc.cancelQueries({ queryKey: QK.tasks });
 			// 送出前的那一筆（各個 ['tasks', …] 快取裡是同一筆資料，取第一個找到的）
 			const original = qc
-				.getQueriesData<TaskItem[]>({ queryKey: ['tasks'] })
+				.getQueriesData<TaskItem[]>({ queryKey: QK.tasks })
 				.flatMap(([, data]) => data ?? [])
 				.find((t) => t.id === id);
 			const now = Date.now();
-			qc.setQueriesData<TaskItem[]>({ queryKey: ['tasks'] }, (old) => old && applyTaskPatch(old, id, { status, checklist }, now));
+			qc.setQueriesData<TaskItem[]>({ queryKey: QK.tasks }, (old) => old && applyTaskPatch(old, id, { status, checklist }, now));
 			return { original };
 		},
 		onError: (e, vars, ctx) => {
 			const original = ctx?.original;
 			if (original)
 				qc.setQueriesData<TaskItem[]>(
-					{ queryKey: ['tasks'] },
+					{ queryKey: QK.tasks },
 					(old) => old && revertTaskPatch(old, original, { status: vars.status, checklist: vars.checklist }),
 				);
 			toast.error(vars.errorTitle, { description: e instanceof Error ? e.message : '請稍後再試' });
 		},
 		onSuccess: ({ task }) => {
 			if (othersPending()) return;
-			qc.setQueriesData<TaskItem[]>({ queryKey: ['tasks'] }, (old) => old?.map((t) => (t.id === task.id ? task : t)));
+			qc.setQueriesData<TaskItem[]>({ queryKey: QK.tasks }, (old) => old?.map((t) => (t.id === task.id ? task : t)));
 		},
 		onSettled: () => {
 			if (othersPending()) return;
-			TASK_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
+			invalidateKeys(qc, TASK_KEYS);
 		},
 	});
 }
@@ -143,4 +143,42 @@ export function useTaskView(): [TaskView, (view: TaskView) => void] {
 		}
 	};
 	return [view, set];
+}
+
+/** 刪除成功的回應（DELETE 一律回 `{ ok: true }`） */
+function isDeleted(data: unknown): boolean {
+	return !!data && typeof data === 'object' && 'ok' in data && data.ok === true;
+}
+
+/** 回應是不是 `{ task }`（POST／PATCH /tasks 的回應） */
+function savedTask(data: unknown): TaskItem | null {
+	if (!data || typeof data !== 'object' || !('task' in data)) return null;
+	const { task } = data;
+	return task && typeof task === 'object' && 'id' in task && 'status' in task && 'updatedAt' in task ? (task as TaskItem) : null;
+}
+
+/**
+ * 這個元件掛載期間，任何地方（TaskCheckbox、TaskDialog…）送出的修改成功時通知：
+ * - onSaved：任務新增或修改成功，帶伺服器回傳的那一筆（最新的狀態、updatedAt）。
+ * - onRemoved：某一筆刪除成功，帶它的 id。刪除請求只帶 id、分不出資料種類（任務、考試、筆記…都會通知），
+ *   id 不會重複，呼叫端用 id 比對自己手上的資料就好。
+ * 失敗的請求不會通知。TaskCheckbox 只收 task、不回報結果，所以從 TanStack Query 的 mutation cache 觀察。
+ */
+export function useTaskResults({ onSaved, onRemoved }: { onSaved: (task: TaskItem) => void; onRemoved: (id: string) => void }) {
+	const qc = useQueryClient();
+	const onSuccess = useEffectEvent((data: unknown, variables: unknown) => {
+		const task = savedTask(data);
+		if (task) onSaved(task);
+		// 刪除的 mutation（lib/queries.ts 的 useDeleteTask 等）變數就是 id 字串，回應是 { ok: true }。
+		// 這裡分不出刪的是任務、考試還是筆記：假設是所有資料的 id 都是 UUID、不會互相撞號，
+		// 呼叫端只拿它和自己手上的任務 id 比對（dropKept 找不到就原樣回傳），所以刪除其他資料不會有影響。
+		else if (typeof variables === 'string' && isDeleted(data)) onRemoved(variables);
+	});
+	useEffect(
+		() =>
+			qc.getMutationCache().subscribe((event) => {
+				if (event.type === 'updated' && event.action.type === 'success') onSuccess(event.action.data, event.mutation.state.variables);
+			}),
+		[qc],
+	);
 }

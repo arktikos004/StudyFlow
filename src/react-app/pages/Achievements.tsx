@@ -15,9 +15,10 @@ import {
 	ProgressBar,
 	TextLink,
 } from '../components/ui';
-import { useAchievements, useUser } from '../lib/queries';
-import { achievementUnit, formatProgress, groupAchievements, nextMilestone, splitColumns, unlockedDate } from '../lib/shell-achievements';
-import { AchievementIcon } from '../lib/shell-icons';
+import { useAchievements } from '../lib/queries';
+import { useUser } from '../lib/account-queries';
+import { achievementUnit, formatProgress, groupAchievements, nextMilestone, splitColumns, unlockedDate } from '../lib/achievement-display';
+import { AchievementIcon } from '../lib/achievement-icons';
 
 /**
  * 徽章：已解鎖的用藍筆塗滿（accent 底、on-accent 圖示，外圈一圈 accent-soft 像蓋章）；

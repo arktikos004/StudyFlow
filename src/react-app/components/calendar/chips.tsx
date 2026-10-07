@@ -1,7 +1,7 @@
 import { CircleCheck } from 'lucide-react';
 import type { EventItem, Task } from '../../../shared/api-types';
 import type { SubjectTone } from '../../../shared/color';
-import { EVENT_KIND_LABEL } from '../../lib/format';
+import { EVENT_KIND_LABEL } from '../../../shared/labels';
 import { cn } from '../ui';
 import { EVENT_ICON } from './icons';
 

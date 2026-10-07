@@ -1,18 +1,21 @@
 import { Brain, CalendarClock, CalendarDays, ChevronDown, GraduationCap, ListPlus, MapPin, Pencil, Plus } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import type { EventItem } from '../../shared/api-types';
 import { localDate } from '../../shared/dates';
+import { EVENT_KIND_LABEL } from '../../shared/labels';
+import { CountdownTile } from '../components/countdown';
 import { PrepProgress } from '../components/dashboard/exams';
 import { useSubjectMark } from '../components/dashboard/hooks';
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SubjectSelect, SubjectTag } from '../components/subjects';
-import { CountdownTile } from '../components/countdown';
 import { Badge, Button, Card, cn, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack, TextLink } from '../components/ui';
-import { EVENT_KIND_LABEL, formatDate } from '../lib/format';
-import { eventsSummary } from '../lib/notes-exams';
-import { useEvents, useSubjectMap, useSubjects, useUser } from '../lib/queries';
-import { useDeepLink, useMinuteClock } from '../lib/timer-queries';
+import { useMinuteClock } from '../lib/clock';
+import { useDeepLink, useOpenDeepLink } from '../lib/deep-link';
+import { eventsSummary } from '../lib/events-format';
+import { formatDateForToday } from '../lib/format';
+import { useEvents, useSubjectMap, useSubjects } from '../lib/queries';
+import { useUser } from '../lib/account-queries';
 
 function EventCard({
 	event,
@@ -31,7 +34,6 @@ function EventCard({
 	const subjects = useSubjectMap();
 	const past = event.date < today;
 	const subject = event.subjectId ? subjects.get(event.subjectId) : undefined;
-	const sameYear = event.date.slice(0, 4) === today.slice(0, 4);
 
 	return (
 		<Card as="article" variant={past ? 'plain' : 'default'} className="flex h-full flex-col p-4 sm:p-5">
@@ -62,7 +64,7 @@ function EventCard({
 						<span className="inline-flex items-center gap-1">
 							<CalendarDays className="size-3.5 shrink-0 text-ink-3" aria-hidden />
 							<time dateTime={event.time ? `${event.date}T${event.time}` : event.date} className="font-num tabular-nums">
-								{formatDate(event.date, !sameYear)}
+								{formatDateForToday(event.date, today)}
 								{event.time && ` ${event.time}`}
 							</time>
 						</span>
@@ -116,7 +118,7 @@ export function EventsPage() {
 	// 每 30 秒更新「今天」：頁面開著跨過午夜時，倒數也會跟著換日（依使用者時區）
 	const clock = useMinuteClock();
 	const today = localDate(clock, user.timezone);
-	const { data: events, isPending, error, refetch, isRefetching } = useEvents();
+	const { data: events, isPending, isFetching, error, refetch, isRefetching } = useEvents();
 	const { data: subjects = [] } = useSubjects();
 	const [subjectId, setSubjectId] = useState<string | null>(null);
 	const [dialog, setDialog] = useState<DialogState>(null);
@@ -124,27 +126,22 @@ export function EventsPage() {
 	const [showPast, setShowPast] = useState(false);
 	const pastId = useId();
 
-	// 深連結：?new=1 新增考試、?open=<id> 開啟該考試；處理後由 useDeepLink 用 replace 清掉
-	const link = useDeepLink(['new', 'open']);
-	const [seenLink, setSeenLink] = useState(0);
-	const [pendingOpen, setPendingOpen] = useState<string | null>(null);
-	const [missing, setMissing] = useState(0);
-	if (link.seq !== seenLink) {
-		setSeenLink(link.seq);
-		if (link.values.new === '1') setDialog({ subjectId });
-		if (link.values.open) setPendingOpen(link.values.open);
-	}
-	if (pendingOpen && events) {
-		const hit = events.find((e) => e.id === pendingOpen);
-		setPendingOpen(null);
-		if (hit) {
-			setDialog({ event: hit });
-			if (hit.date < today) setShowPast(true);
-		} else setMissing((m) => m + 1);
-	}
-	useEffect(() => {
-		if (missing) toast.error('找不到這場考試，可能已經刪除了');
-	}, [missing]);
+	// 深連結：?new=1 新增考試、?open=<id> 開啟該考試
+	const [openId, setOpenId] = useState<string | null>(null);
+	useDeepLink(['new', 'open'], ({ new: isNew, open }) => {
+		if (isNew === '1') setDialog({ subjectId });
+		if (open) setOpenId(open);
+	});
+	useOpenDeepLink(openId, {
+		items: events,
+		isFetching,
+		onFound: (event) => {
+			setDialog({ event });
+			if (event.date < today) setShowPast(true);
+		},
+		onMissing: () => toast.error('找不到這場考試，可能已經刪除了'),
+		onSettled: () => setOpenId(null),
+	});
 
 	const visible = (events ?? []).filter((e) => !subjectId || e.subjectId === subjectId);
 	const upcoming = visible.filter((e) => e.date >= today);

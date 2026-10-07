@@ -1,10 +1,17 @@
 import { z } from 'zod';
+import { isRealDate } from './dates';
+import { DAY_MS, MINUTE_MS } from './time';
 
 // 前後端共用的輸入驗證：後端用來擋錯誤資料，前端用來顯示同樣的錯誤訊息
 
-export const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式錯誤');
-export const timeString = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '時間格式錯誤');
+export const dateString = z
+	.string()
+	.regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式錯誤')
+	.refine(isRealDate, '沒有這一天，請確認日期');
+const timeString = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '時間格式錯誤');
 const id = z.uuid('ID 格式錯誤');
+/** 列表的日期區間（?from=&to=），兩邊都可以省略 */
+export const dateRangeQuerySchema = z.object({ from: dateString.optional(), to: dateString.optional() });
 const optionalText = (max: number) => z.string().trim().max(max, `最多 ${max} 個字`).nullish();
 
 const email = z
@@ -12,11 +19,14 @@ const email = z
 	.max(254)
 	.transform((v) => v.trim().toLowerCase());
 const newPassword = z.string().min(8, '密碼至少 8 個字元').max(128, '密碼最多 128 個字元');
+/** 暱稱的長度上限（輸入框的 maxLength 也用這個） */
+export const DISPLAY_NAME_MAX = 30;
+const displayName = z.string().trim().min(1, '請輸入暱稱').max(DISPLAY_NAME_MAX, `暱稱最多 ${DISPLAY_NAME_MAX} 個字`);
 
 export const registerSchema = z.object({
 	email,
 	password: newPassword,
-	displayName: z.string().trim().min(1, '請輸入暱稱').max(30, '暱稱最多 30 個字'),
+	displayName,
 });
 
 export const loginSchema = z.object({
@@ -34,11 +44,16 @@ export const GOAL_LIMITS = {
 /** 目標分鐘數：整數、在範圍內；null 代表清除目標 */
 const goalMinutes = (label: string, { min, max }: { min: number; max: number }) => {
 	const range = `${label}需介於 ${min}–${max} 分鐘`;
-	return z.number({ error: `${label}請輸入數字` }).int(`${label}必須是整數`).min(min, range).max(max, range).nullish();
+	return z
+		.number({ error: `${label}請輸入數字` })
+		.int(`${label}必須是整數`)
+		.min(min, range)
+		.max(max, range)
+		.nullish();
 };
 
 export const updateProfileSchema = z.object({
-	displayName: z.string().trim().min(1, '請輸入暱稱').max(30, '暱稱最多 30 個字').optional(),
+	displayName: displayName.optional(),
 	timezone: z
 		.string()
 		.refine((tz) => {
@@ -60,9 +75,6 @@ export const changePasswordSchema = z.object({
 	currentPassword: z.string().min(1, '請輸入目前密碼').max(128),
 	newPassword,
 });
-
-// 科目顏色：dataviz 驗證過的分類色盤，依固定順序指派，色盲使用者也能分辨相鄰顏色
-export const SUBJECT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'] as const;
 
 // 科目圖示的白名單：前端把每個 key 對應到一個 lucide 圖示
 export const SUBJECT_ICONS = [
@@ -138,6 +150,7 @@ export const checklistItemSchema = z.object({
 		.max(CHECKLIST_ITEM_MAX, `子項目最多 ${CHECKLIST_ITEM_MAX} 個字`),
 	done: z.boolean({ error: '子項目格式錯誤' }),
 });
+export type ChecklistItem = z.infer<typeof checklistItemSchema>;
 const checklist = z
 	.array(checklistItemSchema, { error: '子項目格式錯誤' })
 	.max(CHECKLIST_MAX_ITEMS, `子項目最多 ${CHECKLIST_MAX_ITEMS} 項`)
@@ -154,6 +167,8 @@ export const taskSchema = z.object({
 	eventId: id.nullish(),
 	checklist: checklist.default([]),
 });
+// 修改用的 schema 逐欄列出，不用 taskSchema.partial()：Zod 4 的 partial() 仍然會套用 .default()，
+// 只送 title 的 PATCH 會把 priority、status、checklist 悄悄洗回預設值。
 export const taskUpdateSchema = z.object({
 	title: taskSchema.shape.title.optional(),
 	description: taskSchema.shape.description,
@@ -166,10 +181,12 @@ export const taskUpdateSchema = z.object({
 	checklist: checklist.optional(),
 });
 
-const MAX_SESSION_MS = 24 * 60 * 60 * 1000;
+const MAX_SESSION_MS = DAY_MS;
+/** 裝置的時鐘可能比伺服器快一點：結束時間最多可以比現在晚這麼多 */
+const CLOCK_SKEW_TOLERANCE_MS = 5 * MINUTE_MS;
 export const STUDY_MODES = ['pomodoro', 'stopwatch', 'manual'] as const;
 /** 學習紀錄的欄位（不含跨欄位檢查）；Zod 4 不能對加了 refine 的 schema 呼叫 .partial()，所以分開 */
-export const studySessionBase = z.object({
+const studySessionBase = z.object({
 	mode: z.enum(STUDY_MODES),
 	startedAt: z.number().int().positive(),
 	endedAt: z.number().int().positive(),
@@ -189,22 +206,27 @@ const withSessionChecks = (schema: typeof studySessionBase) =>
 			message: '學習秒數不可超過起訖時間',
 			path: ['durationSec'],
 		})
-		.refine((s) => s.endedAt <= Date.now() + 5 * 60 * 1000, { message: '不能記錄未來的時間', path: ['endedAt'] });
+		.refine((s) => s.endedAt <= Date.now() + CLOCK_SKEW_TOLERANCE_MS, { message: '不能記錄未來的時間', path: ['endedAt'] });
 
 export const studySessionSchema = withSessionChecks(studySessionBase);
+/** 新增學習紀錄送出的內容（計時器的待上傳佇列也存這個形狀） */
+export type SessionInput = z.input<typeof studySessionSchema>;
 /** PATCH 只驗證個別欄位；跨欄位規則由後端和原紀錄合併後，用 studySessionSchema 檢查 */
 export const studySessionUpdateSchema = studySessionBase.partial();
 
 export const NOTE_KINDS = ['note', 'mistake'] as const;
+/** 筆記標題最多幾個字、最多幾個標籤（編輯視窗的 maxLength 與提示也用這兩個） */
+export const NOTE_TITLE_MAX = 200;
+export const NOTE_TAGS_MAX = 10;
 const noteFields = {
 	kind: z.enum(NOTE_KINDS),
-	title: z.string().trim().min(1, '請輸入標題').max(200, '標題最多 200 個字'),
+	title: z.string().trim().min(1, '請輸入標題').max(NOTE_TITLE_MAX, `標題最多 ${NOTE_TITLE_MAX} 個字`),
 	content: optionalText(20000),
 	question: optionalText(5000),
 	wrongAnswer: optionalText(5000),
 	correctAnswer: optionalText(5000),
 	reason: optionalText(5000),
-	tags: z.array(z.string().trim().min(1).max(20)).max(10, '最多 10 個標籤'),
+	tags: z.array(z.string().trim().min(1).max(20)).max(NOTE_TAGS_MAX, `最多 ${NOTE_TAGS_MAX} 個標籤`),
 	subjectId: id.nullish(),
 };
 export const noteSchema = z.object({
@@ -213,6 +235,9 @@ export const noteSchema = z.object({
 	// 錯題預設加入複習排程，一般筆記可選擇加入
 	scheduleReview: z.boolean().optional(),
 });
+/** 新增筆記送出的內容 */
+export type NoteInput = z.input<typeof noteSchema>;
+// 和 taskUpdateSchema 一樣逐欄列出：partial() 會套用 tags 的預設值（空陣列），只改標題就會清掉標籤。
 export const noteUpdateSchema = z.object({
 	title: noteFields.title.optional(),
 	content: noteFields.content,
@@ -228,6 +253,12 @@ export const noteUpdateSchema = z.object({
 	scheduleReview: z.boolean().optional(),
 });
 export const reviewSchema = z.object({ result: z.enum(['remembered', 'forgot']) });
+
+/** GET /api/notes 一次最多回傳幾則（最近更新的優先）；前端超過時會提示只顯示這麼多 */
+export const NOTES_LIST_LIMIT = 500;
+
+/** GET /api/notes?q= 的關鍵字最多幾個字（筆記頁與任務頁搜尋框的 maxLength 也用這個） */
+export const LIST_SEARCH_MAX = 100;
 
 /** GET /api/search?q=：全站搜尋的關鍵字（前端輸入框的 maxLength 也用這個） */
 export const SEARCH_QUERY_MAX = 50;
@@ -252,8 +283,3 @@ export const ATTACHMENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as con
 /** 頭像（PRO-1）：前端先裁成正方形並縮小再上傳；後端檢查大小與實際格式（同筆記照片） */
 export const AVATAR_MAX_BYTES = 1024 * 1024;
 export const AVATAR_TYPES = ATTACHMENT_TYPES;
-
-export type RegisterInput = z.input<typeof registerSchema>;
-export type EventInput = z.input<typeof eventSchema>;
-export type TaskInput = z.input<typeof taskSchema>;
-export type NoteInput = z.input<typeof noteSchema>;

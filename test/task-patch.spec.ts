@@ -36,7 +36,7 @@ describe('樂觀更新的套用與還原', () => {
 		expect(applyTaskPatch([a], 'a', { checklist }, 500)[0]).toMatchObject({ status: 'todo', checklist });
 	});
 
-	it('連續拖兩張、第一張失敗：只退回第一張，第二張的樂觀狀態保留（review A1）', () => {
+	it('連續拖兩張、第一張失敗：只退回第一張，第二張的樂觀狀態保留', () => {
 		const a = task('a');
 		const b = task('b');
 		// 先拖 a 到進行中、再拖 b 到已完成（兩個都還在送）

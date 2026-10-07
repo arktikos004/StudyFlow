@@ -9,7 +9,16 @@ export function escapeText(text: string): string {
 		.replace(/\r\n|\r|\n/g, '\\n');
 }
 
-const utf8Length = (codePoint: number) => (codePoint < 0x80 ? 1 : codePoint < 0x800 ? 2 : codePoint < 0x10000 ? 3 : 4);
+/** 一個 code point 編成 UTF-8 佔幾個 octet */
+function utf8Length(codePoint: number): number {
+	if (codePoint < 0x80) return 1;
+	if (codePoint < 0x800) return 2;
+	if (codePoint < 0x10000) return 3;
+	return 4;
+}
+
+/** 3.1：每行最多 75 octets（不含 CRLF） */
+const MAX_LINE_OCTETS = 75;
 
 /**
  * 3.1 折行：每行最多 75 octets（不含 CRLF），續行以一個空白開頭（空白也算在 75 裡）。
@@ -21,7 +30,7 @@ export function foldLine(line: string): string {
 	let octets = 0;
 	for (const ch of line) {
 		const size = utf8Length(ch.codePointAt(0)!);
-		if (octets + size > 75) {
+		if (octets + size > MAX_LINE_OCTETS) {
 			out.push(current);
 			current = ' ';
 			octets = 1;
@@ -35,7 +44,10 @@ export function foldLine(line: string): string {
 
 /** epoch 毫秒 → UTC 的 DATE-TIME，例如 20261010T011000Z */
 export function formatUtc(epochMs: number): string {
-	return new Date(epochMs).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+	return new Date(epochMs)
+		.toISOString()
+		.replace(/[-:]/g, '')
+		.replace(/\.\d{3}/, '');
 }
 
 /** 'YYYY-MM-DD' → DATE，例如 20261010 */
@@ -81,7 +93,13 @@ export function buildCalendar(events: IcsEvent[], { name, now }: { name: string;
 		if (e.description) lines.push(`DESCRIPTION:${escapeText(e.description)}`);
 		if (e.categories) lines.push(`CATEGORIES:${escapeText(e.categories)}`);
 		if (e.alarm) {
-			lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escapeText(e.alarm.description)}`, `TRIGGER:${e.alarm.trigger}`, 'END:VALARM');
+			lines.push(
+				'BEGIN:VALARM',
+				'ACTION:DISPLAY',
+				`DESCRIPTION:${escapeText(e.alarm.description)}`,
+				`TRIGGER:${e.alarm.trigger}`,
+				'END:VALARM',
+			);
 		}
 		lines.push('END:VEVENT');
 	}

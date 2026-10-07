@@ -6,7 +6,11 @@ export function toBase64Url(bytes: ArrayBuffer | Uint8Array): string {
 }
 
 export function fromBase64Url(str: string): Uint8Array {
-	const b64 = str.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((str.length + 3) % 4);
+	// base64url 省略了結尾的 =：補回 4 的倍數
+	const b64 = str
+		.replace(/-/g, '+')
+		.replace(/_/g, '/')
+		.padEnd(Math.ceil(str.length / 4) * 4, '=');
 	const bin = atob(b64);
 	return Uint8Array.from(bin, (c) => c.charCodeAt(0));
 }

@@ -1,4 +1,4 @@
-// 「編輯個人資料」的儲存流程（PRO-1）：純 async 函式，依賴都由呼叫端注入，test/profile-ui-save.spec.ts 用假的依賴直接測。
+// 「編輯個人資料」的儲存流程（PRO-1）：純 async 函式，依賴都由呼叫端注入，test/profile-save.spec.ts 用假的依賴直接測。
 // 元件在 components/settings/ProfileDialog.tsx。
 import type { PhotoDraft } from './profile-photo';
 

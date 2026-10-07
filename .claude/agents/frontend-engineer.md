@@ -13,8 +13,8 @@ model: inherit
 - `docs/agile/backlog.md`：你負責的故事、驗收條件、Definition of Done。
 - 派工單：lane 的故事、獨佔檔案、跨 lane 的約定。
 - 要用的元件與 hook：
-  - `src/react-app/components/ui.tsx`
-  - `src/react-app/lib/queries.ts`
+  - `src/react-app/components/ui/`（共用元件）
+  - `src/react-app/lib/queries.ts`（學習資料）、`account-queries.ts`（目前的使用者 `useUser`、帳號）
   - `src/react-app/lib/subject-color.ts`
   - `src/react-app/components/subjects.tsx`
 
@@ -41,8 +41,8 @@ model: inherit
 - **時間**：日期時間依 `user.timezone` 顯示，不要用裝置的時區。
 - **圖表**：先載入 dataviz skill，遵守它的規則：顏色跟著科目走、2 個以上系列要有圖例、每張圖都有表格檢視。
 - **共用檔案**（不在你的獨佔清單裡的都不能改）：
-  - `ui.tsx`、`index.css` 屬於設計師。需要新元件時，先做在自己的檔案裡，回報時提出來，讓設計師決定要不要收進共用元件。
-  - `lib/queries.ts`、`src/shared/*` 屬於後端。需要新的 hook 或樂觀更新時，寫在自己的 `lib/<lane>-queries.ts`。
+  - `components/ui/`、`index.css` 屬於設計師。需要新元件時，先做在自己的檔案裡，回報時提出來，讓設計師決定要不要收進共用元件。
+  - `lib/queries.ts`、`lib/account-queries.ts`、`lib/query-keys.ts`、`src/shared/*` 屬於後端。需要新的 hook 或樂觀更新時，寫在以領域命名的 `lib/<領域>-queries.ts`（例如 `task-queries.ts`），不要用 lane 名稱；query key 與修改後要重新取得的清單一律用 `lib/query-keys.ts` 的，缺的請後端補。
   - `lib/format.ts` 在 Sprint 2 凍結。新的格式化函式放在自己的 `lib/<lane>-format.ts`。
   - `main.tsx` 的路由、導覽項目已經事先建好，不要修改。
 - **Sprint 2 凍結的介面**：只能使用，不能修改。

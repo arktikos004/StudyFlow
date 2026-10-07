@@ -8,7 +8,17 @@ import { Button, Card, CardHeader, cn, MoreLink, ProgressBar } from '../ui';
 import { useSubjectMark } from './hooks';
 
 /** 準備進度：已完成／全部的準備任務，進度條用科目色；全部完成時加上圖示與「全部完成」 */
-export function PrepProgress({ event, color, size = 'md', className }: { event: EventItem; color?: string; size?: 'sm' | 'md'; className?: string }) {
+export function PrepProgress({
+	event,
+	color,
+	size = 'md',
+	className,
+}: {
+	event: EventItem;
+	color?: string;
+	size?: 'sm' | 'md';
+	className?: string;
+}) {
 	const labelId = useId();
 	const { taskTotal: total, taskDone: done } = event;
 	if (!total) return null;
@@ -67,7 +77,14 @@ export function NextExamCard({
 			/>
 			<div className="px-4 pb-4 sm:px-5 sm:pb-5">
 				<div className="flex items-start gap-4">
-					<CountdownTile kind={event.kind} date={event.date} time={event.time} today={today} timeZone={timeZone} className="min-w-[4.75rem]" />
+					<CountdownTile
+						kind={event.kind}
+						date={event.date}
+						time={event.time}
+						today={today}
+						timeZone={timeZone}
+						className="min-w-[4.75rem]"
+					/>
 					<div className="min-w-0 flex-1 pt-0.5">
 						<p className="text-h3 font-semibold wrap-anywhere text-ink">{event.title}</p>
 						<div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-meta text-ink-2">

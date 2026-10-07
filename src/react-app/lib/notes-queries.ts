@@ -1,10 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { NoteItem } from '../../shared/api-types';
-import { api, qs } from './api';
-import type { NoteFilters } from './queries';
+import { api } from './api';
+import { QK } from './query-keys';
 
-// s2/notes 的資料 hook。
+// 筆記的資料 hook（其餘在 queries.ts）。
 
 /**
  * 釘選／取消釘選（NOTE-1）。後端只改 pinned：不更新「最後更新」時間，也不影響複習排程，
@@ -17,21 +17,8 @@ export function usePinNote() {
 		onSuccess: async ({ note }) => {
 			qc.setQueryData(['note', note.id], note);
 			toast.success(note.pinned ? '已釘選，會排在最前面' : '已取消釘選');
-			await qc.invalidateQueries({ queryKey: ['notes'] });
+			await qc.invalidateQueries({ queryKey: QK.notes });
 		},
 		onError: (e) => toast.error(e instanceof Error ? `更改釘選沒有成功：${e.message}` : '更改釘選沒有成功，請再試一次'),
-	});
-}
-
-/**
- * 和 queries.ts 的 useNotes 相同（同一個 query key 與請求，快取共用），另外可以用 enabled 暫停：
- * 筆記頁在複習檢視時不需要列表，就不發這個請求。
- */
-export function useNotesList(params: NoteFilters, enabled: boolean) {
-	return useQuery({
-		queryKey: ['notes', params],
-		queryFn: async () => (await api.get<{ notes: NoteItem[] }>(`/notes${qs(params)}`)).notes,
-		placeholderData: (prev) => prev,
-		enabled,
 	});
 }

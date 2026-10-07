@@ -1,6 +1,7 @@
 // CSV（RFC 4180）產生工具：給 Excel 開啟用，開頭加 UTF-8 BOM，中文才不會變亂碼
 
-export const CSV_BOM = '﻿';
+/** UTF-8 BOM（U+FEFF）。寫成跳脫字元：直接放在引號裡看不見，容易被當成空字串清掉 */
+export const CSV_BOM = '\uFEFF';
 
 export type CsvValue = string | number | null | undefined;
 

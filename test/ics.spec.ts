@@ -38,7 +38,8 @@ describe('foldLine', () => {
 			const lines = folded.split('\r\n');
 			expect(lines.every((l) => octets(l) <= 75)).toBe(true);
 			// 每一段都是完整的字元：沒有落單的 surrogate，編碼後再解碼不變
-			for (const l of lines) expect(new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(new TextEncoder().encode(l))).toBe(l);
+			for (const l of lines)
+				expect(new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(new TextEncoder().encode(l))).toBe(l);
 			expect(unfold(folded)).toBe(line);
 		}
 	});

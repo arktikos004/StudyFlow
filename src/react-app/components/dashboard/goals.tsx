@@ -2,7 +2,7 @@ import { CircleCheck, Target } from 'lucide-react';
 import { useId } from 'react';
 import type { DashboardResponse } from '../../../shared/api-types';
 import { sortByLag } from '../../lib/dashboard-format';
-import { formatMinutes } from '../../lib/format';
+import { formatMinutes, percent } from '../../lib/format';
 import { SubjectTag } from '../subjects';
 import { Card, CardHeader, EmptyState, GoalProgress, MoreLink, ProgressBar } from '../ui';
 import { useSubjectMark } from './hooks';
@@ -28,7 +28,7 @@ function Goal({ label, value, goal, missing }: { label: string; value: number; g
 function SubjectGoalRow({ goal, color }: { goal: SubjectGoal; color?: string }) {
 	const labelId = useId();
 	const done = goal.minutes >= goal.goalMinutes;
-	const pct = Math.round((goal.minutes / goal.goalMinutes) * 100);
+	const pct = percent(goal.minutes, goal.goalMinutes);
 	const text = `${formatMinutes(goal.minutes)}／${formatMinutes(goal.goalMinutes)}`;
 	return (
 		<li>

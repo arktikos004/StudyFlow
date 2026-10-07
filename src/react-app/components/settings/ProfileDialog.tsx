@@ -3,9 +3,16 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import type { PublicUser } from '../../../shared/api-types';
 import { registerSchema } from '../../../shared/schemas';
-import { useDeleteAvatar, useUpdateProfile, useUploadAvatar } from '../../lib/queries';
+import { useDeleteAvatar, useUpdateProfile, useUploadAvatar } from '../../lib/account-queries';
 import { KEEP_PHOTO, type PhotoDraft } from '../../lib/profile-photo';
-import { photoWasSaved, saveFailureMessage, saveProfile, saveSuccessMessage, type SaveInput, type SaveResult } from '../../lib/profile-save';
+import {
+	photoWasSaved,
+	saveFailureMessage,
+	saveProfile,
+	saveSuccessMessage,
+	type SaveInput,
+	type SaveResult,
+} from '../../lib/profile-save';
 import { Button, Dialog, ErrorNote, Field, Input } from '../ui';
 import { ProfilePhotoField } from './ProfilePhotoField';
 

@@ -1,36 +1,49 @@
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { Hono, type Context } from 'hono';
-import { addDays, localDateTime, today, zonedTime } from '../../shared/dates';
+import { localDateTime, today } from '../../shared/dates';
+import { STUDY_MODE_LABEL, TASK_PRIORITY_LABEL, TASK_STATUS_LABEL } from '../../shared/labels';
 import { calendarExportQuerySchema } from '../../shared/schemas';
 import { achievementUnlocks, attachments, events, notes, studySessions, subjects, tasks } from '../db/schema';
+import { eventToIcs, taskToIcs } from '../lib/calendar-export';
 import type { DB } from '../lib/db';
 import { toCsv } from '../lib/csv';
-import { buildCalendar, type IcsEvent } from '../lib/ics';
+import { buildCalendar } from '../lib/ics';
 import { round1 } from '../lib/stats';
 import { taskItemFields } from '../lib/tasks';
-import { validate } from '../lib/validator';
+import { publicUser } from '../lib/users';
+import { validate } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
 import type { AppEnv } from '../types';
-import { publicUser } from './auth';
 
 // 匯出只查本人的資料：每張表查一次（WHERE user_id = ?），不用 inArray，名稱對照在記憶體裡做
 
-// 和前端 lib/format.ts 的文字一致
-const MODE_LABEL = { pomodoro: '番茄鐘', stopwatch: '碼錶', manual: '手動補登' } as const;
-const STATUS_LABEL = { todo: '待辦', doing: '進行中', done: '已完成' } as const;
-const PRIORITY_LABEL = { high: '高', medium: '中', low: '低' } as const;
-const KIND_LABEL = { exam: '考試', deadline: '截止日' } as const;
-
-const HOUR_MS = 3_600_000;
+const APP_NAME = 'StudyFlow';
 
 /** RFC 5987：encodeURIComponent 不會編碼 ' ( ) *，但 filename* 裡不允許 */
 const rfc5987 = (s: string) => encodeURIComponent(s).replace(/['()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`);
 
-/** 下載檔：中文檔名放在 filename*，filename 給不支援的舊瀏覽器 */
-function download(c: Context<AppEnv>, body: string, type: string, name: string, fallback: string) {
+type DownloadFile = {
+	body: string;
+	/** MIME 類型，例如 text/csv */
+	type: string;
+	/** 中文檔名裡的名稱（「StudyFlow 任務 2026-10-07.csv」的「任務」） */
+	title: string;
+	/** 英文檔名裡的名稱（「studyflow-tasks-2026-10-07.csv」的「tasks」） */
+	slug: string;
+	ext: string;
+};
+
+/**
+ * 下載檔。檔名帶上使用者時區的今天：中文檔名放在 filename*，
+ * 只有英文的 filename 給不支援 filename* 的舊瀏覽器。
+ */
+function download(c: Context<AppEnv>, { body, type, title, slug, ext }: DownloadFile) {
+	const date = today(c.var.user.timezone);
+	const name = `${APP_NAME} ${title} ${date}.${ext}`;
+	const asciiName = `${APP_NAME.toLowerCase()}-${slug}-${date}.${ext}`;
 	return c.body(body, 200, {
 		'Content-Type': `${type}; charset=utf-8`,
-		'Content-Disposition': `attachment; filename="${fallback}"; filename*=UTF-8''${rfc5987(name)}`,
+		'Content-Disposition': `attachment; filename="${asciiName}"; filename*=UTF-8''${rfc5987(name)}`,
 	});
 }
 
@@ -38,9 +51,6 @@ async function subjectNames(db: DB, userId: string) {
 	const rows = await db.select({ id: subjects.id, name: subjects.name }).from(subjects).where(eq(subjects.userId, userId));
 	return new Map(rows.map((s) => [s.id, s.name]));
 }
-
-/** 科目名稱與備註合在一起，當作日曆的說明 */
-const icsDescription = (subject: string | undefined, text: string | null) => [subject && `科目：${subject}`, text].filter(Boolean).join('\n') || null;
 
 export const exportRoutes = new Hono<AppEnv>()
 	.use(requireAuth)
@@ -73,7 +83,7 @@ export const exportRoutes = new Hono<AppEnv>()
 				.orderBy(asc(achievementUnlocks.unlockedAt)),
 		]);
 		const backup = {
-			app: 'StudyFlow',
+			app: APP_NAME,
 			version: 1,
 			exportedAt: new Date().toISOString(),
 			// publicUser：不含密碼雜湊；登入 session 也不匯出
@@ -86,8 +96,7 @@ export const exportRoutes = new Hono<AppEnv>()
 			attachments: attachmentRows,
 			achievementUnlocks: unlockRows,
 		};
-		const date = today(user.timezone);
-		return download(c, JSON.stringify(backup, null, 2), 'application/json', `StudyFlow 備份 ${date}.json`, `studyflow-backup-${date}.json`);
+		return download(c, { body: JSON.stringify(backup, null, 2), type: 'application/json', title: '備份', slug: 'backup', ext: 'json' });
 	})
 	.get('/sessions.csv', async (c) => {
 		const db = c.var.db;
@@ -108,15 +117,14 @@ export const exportRoutes = new Hono<AppEnv>()
 					start,
 					localDateTime(s.endedAt, tz),
 					round1(s.durationSec / 60),
-					MODE_LABEL[s.mode],
+					STUDY_MODE_LABEL[s.mode],
 					s.subjectId ? subjectName.get(s.subjectId) : null,
 					s.taskId ? taskTitle.get(s.taskId) : null,
 					s.note,
 				];
 			}),
 		);
-		const date = today(tz);
-		return download(c, csv, 'text/csv', `StudyFlow 學習紀錄 ${date}.csv`, `studyflow-sessions-${date}.csv`);
+		return download(c, { body: csv, type: 'text/csv', title: '學習紀錄', slug: 'sessions', ext: 'csv' });
 	})
 	.get('/tasks.csv', async (c) => {
 		const db = c.var.db;
@@ -131,8 +139,8 @@ export const exportRoutes = new Hono<AppEnv>()
 			taskRows.map((t) => [
 				t.title,
 				t.subjectId ? subjectName.get(t.subjectId) : null,
-				STATUS_LABEL[t.status],
-				PRIORITY_LABEL[t.priority],
+				TASK_STATUS_LABEL[t.status],
+				TASK_PRIORITY_LABEL[t.priority],
 				t.dueDate,
 				t.estimatedMinutes,
 				t.spentMinutes,
@@ -143,13 +151,11 @@ export const exportRoutes = new Hono<AppEnv>()
 				t.completedAt ? localDateTime(t.completedAt, tz) : null,
 			]),
 		);
-		const date = today(tz);
-		return download(c, csv, 'text/csv', `StudyFlow 任務 ${date}.csv`, `studyflow-tasks-${date}.csv`);
+		return download(c, { body: csv, type: 'text/csv', title: '任務', slug: 'tasks', ext: 'csv' });
 	})
 	.get('/calendar.ics', validate('query', calendarExportQuerySchema), async (c) => {
 		const db = c.var.db;
 		const user = c.var.user;
-		const tz = user.timezone;
 		const withTasks = c.req.valid('query').tasks === '1';
 		const [eventRows, subjectName, taskRows] = await Promise.all([
 			db.select().from(events).where(eq(events.userId, user.id)).orderBy(asc(events.date), asc(events.time)),
@@ -162,47 +168,13 @@ export const exportRoutes = new Hono<AppEnv>()
 						.orderBy(asc(tasks.dueDate))
 				: Promise.resolve([]),
 		]);
+		const nameOf = (subjectId: string | null) => (subjectId ? subjectName.get(subjectId) : undefined);
 
-		const items: IcsEvent[] = eventRows.map((e) => {
-			const exam = e.kind === 'exam';
-			const base = {
-				uid: `${e.id}@studyflow`,
-				summary: `【${KIND_LABEL[e.kind]}】${e.title}`,
-				location: e.location,
-				description: icsDescription(e.subjectId ? subjectName.get(e.subjectId) : undefined, e.notes),
-				categories: KIND_LABEL[e.kind],
-			};
-			const alarmText = `明天考試：${e.title}`;
-			if (e.time) {
-				// 有時間：依使用者時區換算成 UTC，預設 1 小時；考試前一天同一時間提醒
-				const start = zonedTime(e.date, e.time, tz);
-				return {
-					...base,
-					start: { utc: start },
-					end: { utc: start + HOUR_MS },
-					alarm: exam ? { trigger: '-P1D', description: alarmText } : undefined,
-				};
-			}
-			// 沒有時間：全天事件；考試前一天早上 9 點提醒（當天 00:00 往前 15 小時）
-			return {
-				...base,
-				start: { date: e.date },
-				end: { date: addDays(e.date, 1) },
-				alarm: exam ? { trigger: '-PT15H', description: alarmText } : undefined,
-			};
-		});
-		for (const t of taskRows) {
-			items.push({
-				uid: `${t.id}@studyflow`,
-				summary: `【${t.status === 'done' ? '已完成' : '任務'}】${t.title}`,
-				start: { date: t.dueDate! },
-				end: { date: addDays(t.dueDate!, 1) },
-				description: icsDescription(t.subjectId ? subjectName.get(t.subjectId) : undefined, t.description),
-				categories: '任務',
-			});
-		}
-
-		const date = today(tz);
-		const ics = buildCalendar(items, { name: 'StudyFlow', now: Date.now() });
-		return download(c, ics, 'text/calendar', `StudyFlow 行事曆 ${date}.ics`, `studyflow-calendar-${date}.ics`);
+		const items = [
+			...eventRows.map((event) => eventToIcs(event, nameOf(event.subjectId), user.timezone)),
+			// 查詢已經排除沒有期限的任務
+			...taskRows.map((task) => taskToIcs({ ...task, dueDate: task.dueDate! }, nameOf(task.subjectId))),
+		];
+		const ics = buildCalendar(items, { name: APP_NAME, now: Date.now() });
+		return download(c, { body: ics, type: 'text/calendar', title: '行事曆', slug: 'calendar', ext: 'ics' });
 	});

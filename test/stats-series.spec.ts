@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { NO_SUBJECT_KEY } from '../src/shared/api-types';
 import {
 	buildSeries,
 	foldSeries,
 	MAX_STACK_SERIES,
-	NONE_KEY,
 	OTHER_KEY,
+	statsSeries,
 	type DailyMinutes,
 	type StackSeries,
-} from '../src/react-app/components/dashboard/series';
+} from '../src/react-app/lib/stats-series';
 
 // 統計頁每日堆疊圖的系列：顏色跟著科目走、圖上最多 8 種顏色（「未分類」也算一個系列）
 
@@ -18,18 +19,18 @@ const subjects = (n: number) => Array.from({ length: n }, (_, i) => subject(i + 
 /** n 個科目的系列（依科目順序），可選擇加上「未分類」 */
 function makeSeries(n: number, withNone = false): StackSeries[] {
 	const keys = subjects(n).map((s) => s.id);
-	return buildSeries(withNone ? [...keys, NONE_KEY] : keys, subjects(n), color);
+	return buildSeries(withNone ? [...keys, NO_SUBJECT_KEY] : keys, subjects(n), color);
 }
 
 const totalsOf = (entries: [string, number][]) => new Map(entries);
 
 describe('buildSeries', () => {
 	it('依科目順序排列、未分類在最後，找不到的科目顯示成「已刪除的科目」', () => {
-		const s = buildSeries([NONE_KEY, 's2', 'gone', 's1'], subjects(3), color);
+		const s = buildSeries([NO_SUBJECT_KEY, 's2', 'gone', 's1'], subjects(3), color);
 		expect(s.map((x) => x.label)).toEqual(['科目1', '科目2', '已刪除的科目', '未分類']);
 		expect(s[0].color).toBe('mark(#000001)');
 		expect(s[2].color).toBe('gray');
-		expect(s[3]).toEqual({ key: NONE_KEY, label: '未分類', color: 'gray' });
+		expect(s[3]).toEqual({ key: NO_SUBJECT_KEY, label: '未分類', color: 'gray' });
 	});
 
 	it('只列出區間內有學習時間的科目', () => {
@@ -51,7 +52,7 @@ describe('foldSeries', () => {
 		const series = makeSeries(7, true);
 		const r = foldSeries(series, totalsOf([]), [day], 'rest');
 		expect(r.series).toHaveLength(MAX_STACK_SERIES);
-		expect(r.series.at(-1)?.key).toBe(NONE_KEY);
+		expect(r.series.at(-1)?.key).toBe(NO_SUBJECT_KEY);
 		expect(r.others).toEqual([]);
 	});
 
@@ -67,10 +68,10 @@ describe('foldSeries', () => {
 			['s6', 20],
 			['s7', 10],
 			['s8', 5],
-			[NONE_KEY, 500],
+			[NO_SUBJECT_KEY, 500],
 		]);
 		const daily: DailyMinutes[] = [
-			{ date: '2026-09-29', minutes: 35.5, bySubject: { s1: 20, s8: 5.2, [NONE_KEY]: 10.3 } },
+			{ date: '2026-09-29', minutes: 35.5, bySubject: { s1: 20, s8: 5.2, [NO_SUBJECT_KEY]: 10.3 } },
 			{ date: '2026-09-30', minutes: 12, bySubject: { s2: 12 } },
 		];
 		const r = foldSeries(series, totals, daily, 'rest');
@@ -84,7 +85,7 @@ describe('foldSeries', () => {
 		expect(r.daily[0].minutes).toBe(35.5);
 		expect(r.daily[1].bySubject).toEqual({ s2: 12 });
 		// 不改動傳入的資料（表格檢視用完整資料）
-		expect(daily[0].bySubject).toEqual({ s1: 20, s8: 5.2, [NONE_KEY]: 10.3 });
+		expect(daily[0].bySubject).toEqual({ s1: 20, s8: 5.2, [NO_SUBJECT_KEY]: 10.3 });
 	});
 
 	it('留下來的科目維持科目順序與顏色，不依排名重排', () => {
@@ -112,5 +113,32 @@ describe('foldSeries', () => {
 		const r = foldSeries(series, totals, [day], 'rest');
 		expect(r.series.map((s) => s.key)).toEqual(['s1', 's2', 's3', 's4', 's5', 's6', 's7', OTHER_KEY]);
 		expect(r.others.map((s) => s.key)).toEqual(['s8', 's9']);
+	});
+});
+
+describe('statsSeries', () => {
+	const daily = [{ date: '2026-10-07', minutes: 90, bySubject: { s2: 60, [NO_SUBJECT_KEY]: 30 } }];
+
+	it('各科長條照 API 的順序（分鐘數由多到少），名稱與顏色和圖表系列一致', () => {
+		const bySubject = [
+			{ subjectId: 's2', minutes: 60 },
+			{ subjectId: null, minutes: 30 },
+		];
+		const { series, chart, subjectBars } = statsSeries({ bySubject, daily }, subjects(3), color, 'rest');
+		expect(series.map((s) => s.key)).toEqual(['s2', NO_SUBJECT_KEY]);
+		expect(chart.series).toEqual(series);
+		expect(subjectBars).toEqual([
+			{ key: 's2', label: '科目2', color: 'mark(#000002)', minutes: 60 },
+			{ key: NO_SUBJECT_KEY, label: '未分類', color: 'gray', minutes: 30 },
+		]);
+	});
+
+	it('科目超過 8 個時圖表併入「其他」，表格用的系列與各科長條仍是完整的', () => {
+		const bySubject = subjects(10).map((s, i) => ({ subjectId: s.id, minutes: 100 - i }));
+		const { series, chart, subjectBars } = statsSeries({ bySubject, daily: [] }, subjects(10), color, 'rest');
+		expect(series).toHaveLength(10);
+		expect(subjectBars).toHaveLength(10);
+		expect(chart.series).toHaveLength(MAX_STACK_SERIES);
+		expect(chart.series.at(-1)).toMatchObject({ key: OTHER_KEY, color: 'rest' });
 	});
 });

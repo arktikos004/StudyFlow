@@ -20,11 +20,12 @@ describe('全站搜尋（APP-1）', () => {
 		const taskByDesc = (await c.post('/api/tasks', { title: '讀書', description: '先讀線性代數第二章' })).data.task;
 		await c.post('/api/tasks', { title: '微積分作業' });
 
-		const evByTitle = (await c.post('/api/events', { kind: 'exam', title: '線性代數期中考', date: addDays(t, 7), subjectId: subject.id })).data
+		const evByTitle = (await c.post('/api/events', { kind: 'exam', title: '線性代數期中考', date: addDays(t, 7), subjectId: subject.id }))
+			.data.event;
+		const evByLocation = (await c.post('/api/events', { kind: 'exam', title: '小考', date: addDays(t, 3), location: '線性代數教室' })).data
 			.event;
-		const evByLocation = (await c.post('/api/events', { kind: 'exam', title: '小考', date: addDays(t, 3), location: '線性代數教室' })).data.event;
-		const evByNotes = (await c.post('/api/events', { kind: 'deadline', title: 'HW', date: addDays(t, 1), notes: '範圍：線性代數 1–3 章' })).data
-			.event;
+		const evByNotes = (await c.post('/api/events', { kind: 'deadline', title: 'HW', date: addDays(t, 1), notes: '範圍：線性代數 1–3 章' }))
+			.data.event;
 		await c.post('/api/events', { kind: 'exam', title: '微積分期中考', date: addDays(t, 8) });
 
 		const noteByTitle = (await c.post('/api/notes', { kind: 'note', title: '線性代數筆記' })).data.note;

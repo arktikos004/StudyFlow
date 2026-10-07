@@ -93,7 +93,15 @@ export function ProfilePhotoField({
 					)}
 				</div>
 			</div>
-			<input ref={inputRef} type="file" accept={AVATAR_ACCEPT} tabIndex={-1} aria-hidden className="sr-only" onChange={(e) => void onFile(e)} />
+			<input
+				ref={inputRef}
+				type="file"
+				accept={AVATAR_ACCEPT}
+				tabIndex={-1}
+				aria-hidden
+				className="sr-only"
+				onChange={(e) => void onFile(e)}
+			/>
 		</div>
 	);
 }

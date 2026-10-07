@@ -1,30 +1,45 @@
 import { describe, expect, it } from 'vitest';
+import { colorLabel, colorWarnings, DARK_SAME_MAX_DELTA_E, separation, suggestColor } from '../src/shared/color/advice';
 import {
-	CHROMA_FLOOR,
-	colorLabel,
-	colorWarnings,
-	contrastRatio,
-	darkLightness,
-	DARK_BAND,
-	DARK_CHROMA_MAX,
-	DARK_SAME_MAX_DELTA_E,
-	deltaE,
+	clamp,
 	hexToHsv,
+	hexToOklab,
 	hexToOklch,
 	hsvToHex,
-	LIGHT_BAND,
-	mixOklab,
-	neutralTone,
+	oklabToOklch,
 	oklchToHex,
 	parseHex,
 	rgbToHex,
-	separation,
+} from '../src/shared/color/convert';
+import { contrastRatio, deltaE } from '../src/shared/color/metrics';
+import {
+	CHROMA_FLOOR,
+	darkLightness,
+	DARK_BAND,
+	DARK_CHROMA_MAX,
+	LIGHT_BAND,
+	neutralTone,
 	subjectTone,
-	suggestColor,
 	TONE_SURFACES,
-} from '../src/shared/color';
-import { colorName, DARK_STEPS, nextSubjectColor, NO_SUBJECT_COLOR, PALETTE, paletteIndex, RECOMMENDED } from '../src/shared/palette';
-import { SUBJECT_COLORS } from '../src/shared/schemas';
+} from '../src/shared/color/subject-tone';
+import {
+	colorName,
+	DARK_STEPS,
+	nextSubjectColor,
+	NO_SUBJECT_COLOR,
+	PALETTE,
+	paletteIndex,
+	RECOMMENDED,
+	SUBJECT_COLORS,
+} from '../src/shared/palette';
+
+/** 在 OKLab 中混色，等同 CSS 的 color-mix(in oklab, a t, b)；t 是 a 的比例（0–1）。用來算 chip 底色實際呈現的顏色 */
+function mixOklab(a: string, b: string, t: number): string {
+	const pa = hexToOklab(a);
+	const pb = hexToOklab(b);
+	const w = clamp(t, 0, 1);
+	return oklchToHex(oklabToOklch([pb[0] + (pa[0] - pb[0]) * w, pb[1] + (pa[1] - pb[1]) * w, pb[2] + (pa[2] - pb[2]) * w]));
+}
 
 // 8 位元量化（#rrggbb）造成的 OKLCH 誤差上限，只用在「逐一比較相鄰取樣」的單調性檢查
 const QUANT = 0.002;
