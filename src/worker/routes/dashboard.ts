@@ -1,8 +1,9 @@
 import { and, asc, count, eq, gte, isNotNull, lte, ne, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { addDays, dateRange, startOfLocalDay, today, weekStart } from '../../shared/dates';
-import { events, notes, subjects, tasks } from '../db/schema';
+import { events, subjects, tasks } from '../db/schema';
 import { eventItemFields } from '../lib/events';
+import { countReviewDue } from '../lib/notes';
 import { minutesByDate, round1, sessionsBetween, streaks } from '../lib/stats';
 import { requireAuth } from '../middleware/auth';
 import type { DashboardResponse } from '../../shared/api-types';
@@ -14,7 +15,7 @@ export const dashboardRoutes = new Hono<AppEnv>().use(requireAuth).get('/', asyn
 	const tz = user.timezone;
 	const todayStr = today(tz);
 
-	const [upcomingEvents, focusTasks, [openTasks], [reviewDue], yearSessions, goalSubjects] = await Promise.all([
+	const [upcomingEvents, focusTasks, [openTasks], reviewDueCount, yearSessions, goalSubjects] = await Promise.all([
 		// 考試準備進度（DASH-1）：帶相關任務的完成數
 		db
 			.select(eventItemFields())
@@ -33,10 +34,7 @@ export const dashboardRoutes = new Hono<AppEnv>().use(requireAuth).get('/', asyn
 			.select({ n: count() })
 			.from(tasks)
 			.where(and(eq(tasks.userId, user.id), ne(tasks.status, 'done'))),
-		db
-			.select({ n: count() })
-			.from(notes)
-			.where(and(eq(notes.userId, user.id), eq(notes.mastered, false), lte(notes.nextReviewDate, todayStr))),
+		countReviewDue(db, user.id, todayStr),
 		sessionsBetween(db, user.id, tz, addDays(todayStr, -365), todayStr),
 		// 各科每週目標：封存的科目不列入
 		db
@@ -65,7 +63,7 @@ export const dashboardRoutes = new Hono<AppEnv>().use(requireAuth).get('/', asyn
 		upcomingEvents,
 		focusTasks,
 		openTaskCount: openTasks.n,
-		reviewDueCount: reviewDue.n,
+		reviewDueCount,
 		todayMinutes: round1(byDate.get(todayStr) ?? 0),
 		weekMinutes: round1(weekMinutes),
 		streak: streaks(new Set(byDate.keys()), todayStr).current,

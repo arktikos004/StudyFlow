@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { today } from '../../shared/dates';
 import { searchQuerySchema } from '../../shared/schemas';
 import { events, notes, subjects, tasks } from '../db/schema';
+import { noteMatches } from '../lib/notes';
 import { containsText } from '../lib/text';
 import { validate } from '../lib/validator';
 import { requireAuth } from '../middleware/auth';
@@ -38,9 +39,7 @@ export const searchRoutes = new Hono<AppEnv>().use(requireAuth).get('/', validat
 		db
 			.select({ id: notes.id, title: notes.title, kind: notes.kind, subjectId: notes.subjectId })
 			.from(notes)
-			.where(
-				and(eq(notes.userId, user.id), or(containsText(notes.title, q), containsText(notes.content, q), containsText(notes.question, q))),
-			)
+			.where(and(eq(notes.userId, user.id), noteMatches(q)))
 			.orderBy(desc(notes.pinned), desc(notes.updatedAt))
 			.limit(LIMIT),
 		db

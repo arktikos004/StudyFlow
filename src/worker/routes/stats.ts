@@ -2,7 +2,8 @@ import { and, count, eq, gte, lte, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { addDays, dateRange, localDate, today, weekStart } from '../../shared/dates';
-import { notes, tasks } from '../db/schema';
+import { tasks } from '../db/schema';
+import { mistakeCounts } from '../lib/notes';
 import { minutesByDate, round1, sessionsBetween, streaks } from '../lib/stats';
 import { validate } from '../lib/validator';
 import { requireAuth } from '../middleware/auth';
@@ -79,14 +80,7 @@ export const statsRoutes = new Hono<AppEnv>().use(requireAuth).get('/', validate
 		.from(tasks)
 		.where(eq(tasks.userId, user.id));
 
-	const [mistakeCounts] = await db
-		.select({
-			total: count(),
-			mastered: sql<number>`coalesce(sum(CASE WHEN ${notes.mastered} THEN 1 ELSE 0 END), 0)`,
-			due: sql<number>`coalesce(sum(CASE WHEN NOT ${notes.mastered} AND ${notes.nextReviewDate} <= ${to} THEN 1 ELSE 0 END), 0)`,
-		})
-		.from(notes)
-		.where(and(eq(notes.userId, user.id), eq(notes.kind, 'mistake')));
+	const mistakes = await mistakeCounts(db, user.id, to);
 
 	const body: StatsResponse = {
 		range: { from, to, days },
@@ -106,7 +100,7 @@ export const statsRoutes = new Hono<AppEnv>().use(requireAuth).get('/', validate
 		heatmap,
 		weekly,
 		tasks: taskCounts,
-		mistakes: mistakeCounts,
+		mistakes,
 		dailyGoalMinutes: dailyGoal,
 	};
 	return c.json(body);

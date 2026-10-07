@@ -1,11 +1,12 @@
-import { and, asc, count, desc, eq, gte, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ne, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { addDays, startOfLocalDay, today, weekStart } from '../../shared/dates';
 import { subjectOrderSchema, subjectSchema, subjectUpdateSchema } from '../../shared/schemas';
-import { events, notes, studySessions, subjects, tasks } from '../db/schema';
+import { events, studySessions, subjects, tasks } from '../db/schema';
 import { hasValues, notFound, type DB } from '../lib/db';
 import { eventItemFields } from '../lib/events';
+import { mistakeCounts } from '../lib/notes';
 import { round1 } from '../lib/stats';
 import { taskItemFields } from '../lib/tasks';
 import { validate } from '../lib/validator';
@@ -76,7 +77,7 @@ export const subjectRoutes = new Hono<AppEnv>()
 		const last30From = startOfLocalDay(addDays(todayStr, -29), tz);
 
 		// 每個查詢都限定本人，所以可以一起送出，最後再確認科目存在
-		const [subject, upcomingEvents, openTasks, [minutes], [mistakes]] = await Promise.all([
+		const [subject, upcomingEvents, openTasks, [minutes], mistakes] = await Promise.all([
 			db
 				.select()
 				.from(subjects)
@@ -105,14 +106,7 @@ export const subjectRoutes = new Hono<AppEnv>()
 				})
 				.from(studySessions)
 				.where(and(eq(studySessions.userId, user.id), eq(studySessions.subjectId, id), gte(studySessions.startedAt, last30From))),
-			db
-				.select({
-					total: count(),
-					mastered: sql<number>`coalesce(sum(CASE WHEN ${notes.mastered} THEN 1 ELSE 0 END), 0)`,
-					due: sql<number>`coalesce(sum(CASE WHEN NOT ${notes.mastered} AND ${notes.nextReviewDate} <= ${todayStr} THEN 1 ELSE 0 END), 0)`,
-				})
-				.from(notes)
-				.where(and(eq(notes.userId, user.id), eq(notes.kind, 'mistake'), eq(notes.subjectId, id))),
+			mistakeCounts(db, user.id, todayStr, id),
 		]);
 		if (!subject) notFound('科目');
 
