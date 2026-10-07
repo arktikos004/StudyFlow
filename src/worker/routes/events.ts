@@ -1,7 +1,6 @@
 import { and, asc, eq, gte, lte } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { z } from 'zod';
-import { dateString, eventSchema, eventUpdateSchema } from '../../shared/schemas';
+import { dateRangeQuerySchema, eventSchema, eventUpdateSchema } from '../../shared/schemas';
 import { events, subjects } from '../db/schema';
 import { assertOwned, notFound, ownedBy } from '../lib/db';
 import { eventItemFields } from '../lib/events';
@@ -10,11 +9,9 @@ import { requireAuth } from '../middleware/auth';
 import type { EventItem } from '../../shared/api-types';
 import type { AppEnv } from '../types';
 
-const listQuery = z.object({ from: dateString.optional(), to: dateString.optional() });
-
 export const eventRoutes = new Hono<AppEnv>()
 	.use(requireAuth)
-	.get('/', validate('query', listQuery), async (c) => {
+	.get('/', validate('query', dateRangeQuerySchema), async (c) => {
 		const { from, to } = c.req.valid('query');
 		const userId = c.var.user.id;
 		// 每筆都帶「相關任務完成幾項」

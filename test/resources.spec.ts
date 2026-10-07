@@ -64,6 +64,17 @@ describe('考試與任務', () => {
 		expect(res.status).toBe(400);
 		expect(res.data.error).toBe('日期格式錯誤');
 	});
+
+	it('只改標題時，其他欄位都不變（有預設值的優先度、狀態、子項目、標籤不會被洗回預設）', async () => {
+		const c = await registeredClient();
+		const checklist = [{ id: 'a', title: '第一步', done: true }];
+		const task = (await c.post('/api/tasks', { title: '原本', priority: 'high', status: 'doing', checklist })).data.task;
+		const renamed = (await c.patch(`/api/tasks/${task.id}`, { title: '改名' })).data.task;
+		expect(renamed).toMatchObject({ title: '改名', priority: 'high', status: 'doing', checklist });
+
+		const note = (await c.post('/api/notes', { kind: 'note', title: '原本', tags: ['極限'] })).data.note;
+		expect((await c.patch(`/api/notes/${note.id}`, { title: '改名' })).data.note).toMatchObject({ title: '改名', tags: ['極限'] });
+	});
 });
 
 describe('學習紀錄', () => {

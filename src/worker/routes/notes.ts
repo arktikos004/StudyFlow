@@ -7,6 +7,7 @@ import {
 	ATTACHMENT_MAX_BYTES,
 	ATTACHMENT_MAX_PER_NOTE,
 	NOTE_KINDS,
+	NOTES_LIST_LIMIT,
 	noteSchema,
 	noteUpdateSchema,
 	reviewSchema,
@@ -90,7 +91,7 @@ export const noteRoutes = new Hono<AppEnv>()
 			)
 			// 釘選的排最前面（篩選後也一樣），其次依更新時間
 			.orderBy(desc(notes.pinned), desc(notes.updatedAt))
-			.limit(500);
+			.limit(NOTES_LIST_LIMIT);
 		return c.json({ notes: await listWithAttachments(c.var.db, user.id, rows) });
 	})
 	.get('/:id', async (c) => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { contrastRatio, subjectTone } from '../src/shared/color';
+import { subjectTone } from '../src/shared/color';
+import { contrastRatio } from '../src/shared/color/metrics';
 import { NO_SUBJECT_COLOR, PALETTE, RECOMMENDED } from '../src/shared/palette';
 
 // 科目圖示方塊（SubjectIconTile）沒有圖示時顯示名稱的第一個字：19px 粗體是 WCAG 的大字，門檻 3:1。

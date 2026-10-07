@@ -1,5 +1,6 @@
 // API 回應的資料型別。資料表欄位直接由 Drizzle schema 推導，前後端永遠一致。
-import type { Attachment, ChecklistItem, Note, StudyEvent, StudySession, Subject, Task } from '../worker/db/schema';
+import type { Attachment, Note, StudyEvent, StudySession, Subject, Task } from '../worker/db/schema';
+import type { ChecklistItem } from './schemas';
 
 export type { ChecklistItem, StudySession, Subject, Task };
 

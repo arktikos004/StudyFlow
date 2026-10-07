@@ -2,6 +2,7 @@ import { Brain, Check, CircleAlert, CircleCheck, Eye, Plus, Repeat, RotateCcw, S
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import type { NoteItem } from '../../../shared/api-types';
+import { NOTES_LIST_LIMIT } from '../../../shared/schemas';
 import { ApiError } from '../../lib/api';
 import { cramPool, cramQueue, cramTags, retryQueue, tally, type ReviewResult } from '../../lib/notes-cram';
 import { useNotes, useReviewNote, useSubjectMap } from '../../lib/queries';
@@ -456,9 +457,6 @@ type CramStage =
 	| { step: 'run'; queue: NoteItem[]; pool: NoteItem[]; round: number }
 	| { step: 'done'; queue: NoteItem[]; pool: NoteItem[]; results: Results; complete: boolean };
 
-/** 後端列表最多回傳 500 則（routes/notes.ts 的 limit） */
-const LIST_LIMIT = 500;
-
 function CramReview({
 	subjectId,
 	tag,
@@ -633,9 +631,9 @@ function CramReview({
 						<Switch checked={random} onChange={setRandom} label="隨機排序" />
 						<Switch checked={includeMastered} onChange={setIncludeMastered} label="包含已掌握的題目" />
 					</div>
-					{notes.length >= LIST_LIMIT && (
+					{notes.length >= NOTES_LIST_LIMIT && (
 						<p className="text-meta text-ink-3">
-							錯題超過 {LIST_LIMIT} 題，這裡只包含最近更新的 {LIST_LIMIT} 題。
+							錯題超過 {NOTES_LIST_LIMIT} 題，這裡只包含最近更新的 {NOTES_LIST_LIMIT} 題。
 						</p>
 					)}
 				</div>

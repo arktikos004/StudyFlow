@@ -20,7 +20,7 @@ function cached(key: string, create: () => Intl.DateTimeFormat) {
 	return f;
 }
 
-/** 目前快取的 formatter 數量（測試與監控用） */
+/** 目前快取的 formatter 數量（測試用：確認快取有上限） */
 export function formatterCacheSize() {
 	return formatters.size;
 }

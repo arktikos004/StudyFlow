@@ -19,7 +19,7 @@ import {
 	SectionLabel,
 	Segmented,
 } from '../components/ui';
-import { REVIEW_INTERVALS } from '../../shared/schemas';
+import { NOTES_LIST_LIMIT, REVIEW_INTERVALS } from '../../shared/schemas';
 import { ApiError } from '../lib/api';
 import { useNotesList, usePinNote } from '../lib/notes-queries';
 import { useNote, useSubjects, useSummary, useUser, type NoteFilters } from '../lib/queries';
@@ -168,9 +168,9 @@ function NotesList({
 	return (
 		<>
 			{/* 數量顯示在頁首摘要；這裡只給螢幕報讀器（搜尋、篩選後念出找到幾則）。超過上限時才看得到 */}
-			<p role="status" className={cn(notes.length >= 500 ? 'mb-3 text-meta text-ink-3' : 'sr-only')}>
+			<p role="status" className={cn(notes.length >= NOTES_LIST_LIMIT ? 'mb-3 text-meta text-ink-3' : 'sr-only')}>
 				{filtered ? '找到' : '共'} <span className="font-num tabular-nums">{notes.length}</span> 則
-				{notes.length >= 500 && '，只顯示最近更新的 500 則'}
+				{notes.length >= NOTES_LIST_LIMIT && `，只顯示最近更新的 ${NOTES_LIST_LIMIT} 則`}
 			</p>
 			<PageStack
 				className={cn('transition-opacity duration-120', isPlaceholderData && 'opacity-60')}

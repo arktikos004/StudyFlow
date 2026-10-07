@@ -1,9 +1,9 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { z } from 'zod';
+import type { z } from 'zod';
 import { addDays, today } from '../../shared/dates';
-import { dateString, studySessionSchema, studySessionUpdateSchema } from '../../shared/schemas';
+import { dateRangeQuerySchema, studySessionSchema, studySessionUpdateSchema } from '../../shared/schemas';
 import { studySessions, subjects, tasks, type StudySession } from '../db/schema';
 import { assertOwned, notFound, ownedBy, type DB } from '../lib/db';
 import { startedBetween } from '../lib/stats';
@@ -11,8 +11,6 @@ import { recordAchievementUnlocks } from '../middleware/achievement-unlocks';
 import { requireAuth } from '../middleware/auth';
 import { firstIssueMessage, validate } from '../middleware/validate';
 import type { AppEnv } from '../types';
-
-const listQuery = z.object({ from: dateString.optional(), to: dateString.optional() });
 
 /** 沒有指定 from 時列出最近幾天（含 to 當天） */
 const DEFAULT_LIST_DAYS = 7;
@@ -52,7 +50,7 @@ async function assertRefs(db: DB, userId: string, input: { subjectId?: string | 
 export const studySessionRoutes = new Hono<AppEnv>()
 	.use(requireAuth)
 	.use(recordAchievementUnlocks('study'))
-	.get('/', validate('query', listQuery), async (c) => {
+	.get('/', validate('query', dateRangeQuerySchema), async (c) => {
 		const tz = c.var.user.timezone;
 		const to = c.req.valid('query').to ?? today(tz);
 		const from = c.req.valid('query').from ?? addDays(to, -(DEFAULT_LIST_DAYS - 1));
