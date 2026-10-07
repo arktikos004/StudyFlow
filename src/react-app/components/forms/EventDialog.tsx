@@ -41,6 +41,7 @@ function EventForm({
 		const input = { ...form, time: blankToNull(form.time), location: blankToNull(form.location), notes: blankToNull(form.notes) };
 		const parsed = eventSchema.safeParse(input);
 		if (!parsed.success) return setError(parsed.error.issues[0].message);
+		setError(undefined);
 		onSave(input);
 	};
 
@@ -138,8 +139,12 @@ export function EventDialog({
 		if (!event) return;
 		const ok = await confirm({ title: `刪除「${event.title}」？`, message: '相關任務會保留，只是不再連結到這場考試。' });
 		if (!ok) return;
-		await remove.mutateAsync(event.id).catch(() => {});
-		onClose();
+		try {
+			await remove.mutateAsync(event.id);
+			onClose();
+		} catch {
+			// toast 已顯示錯誤；對話框留著，可以再試一次
+		}
 	};
 
 	return (

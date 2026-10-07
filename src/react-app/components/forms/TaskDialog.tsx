@@ -212,8 +212,12 @@ export function TaskDialog({
 	const onDelete = async () => {
 		if (!task) return;
 		if (!(await confirm({ title: `刪除「${task.title}」？` }))) return;
-		await remove.mutateAsync(task.id).catch(() => {});
-		onClose();
+		try {
+			await remove.mutateAsync(task.id);
+			onClose();
+		} catch {
+			// toast 已顯示錯誤；對話框留著，可以再試一次
+		}
 	};
 
 	return (
