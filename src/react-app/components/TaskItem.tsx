@@ -45,7 +45,11 @@ export function TaskCheckbox({ task }: { task: Task }) {
 					{ onError: clear, onSuccess: () => window.setTimeout(clear, PENDING_TIMEOUT) },
 				);
 			}}
-			className="group -m-[11px] grid size-11 shrink-0 place-items-center rounded-full focus-visible:outline-none aria-disabled:cursor-progress"
+			onKeyDown={(e) => {
+				// WAI-ARIA：核取方塊只用空白鍵切換（和 ui 的 Checkbox 一致）
+				if (e.key === 'Enter') e.preventDefault();
+			}}
+			className="group -m-[11px] grid size-11 shrink-0 place-items-center rounded-full focus-visible:outline-0 aria-disabled:cursor-progress"
 		>
 			<span
 				aria-hidden
