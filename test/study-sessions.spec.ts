@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addDays } from '../src/shared/dates';
-import { logSession, noonClient, registeredClient, type Client, makeSubject } from './helpers';
+import { logSession, makeSubject, noonClient, registeredClient, type Client } from './helpers';
 
 /** 一小時前結束、長度 30 分鐘的紀錄 */
 async function makeSession(c: Client, body: Record<string, unknown> = {}) {
@@ -177,5 +177,20 @@ describe('學習紀錄列表的日期區間', () => {
 		await logSession(c, addDays(to, 1), 0, 30);
 		const res = await c.get(`/api/study-sessions?from=${from}&to=${to}`);
 		expect(res.data.sessions.map((s: { id: string }) => s.id)).toEqual([last.id, first.id]);
+	});
+});
+
+describe('學習紀錄', () => {
+	it('新增後出現在列表，並拒絕不合理的時間', async () => {
+		const c = await registeredClient();
+		const endedAt = Date.now() - 60_000;
+		const startedAt = endedAt - 25 * 60_000;
+		const res = await c.post('/api/study-sessions', { mode: 'pomodoro', startedAt, endedAt });
+		expect(res.status).toBe(201);
+		expect(res.data.session.durationSec).toBe(25 * 60);
+
+		expect((await c.get('/api/study-sessions')).data.sessions).toHaveLength(1);
+		expect((await c.post('/api/study-sessions', { mode: 'manual', startedAt: endedAt, endedAt: startedAt })).status).toBe(400);
+		expect((await c.post('/api/study-sessions', { mode: 'manual', startedAt, endedAt, durationSec: 99_999 })).status).toBe(400);
 	});
 });

@@ -69,10 +69,12 @@ model: inherit
   - 新增用的 hook 用 `z.input<建立 schema>`。
   - 更新用的 hook 用 `z.input<更新 schema> & { id: string }`。
   - 保留原本匯出的型別名稱，其他檔案的 import 才不用改。
-- **快取更新**：mutation 成功後，要 invalidate 所有受影響的 query key。例如學習紀錄的新增、修改、刪除都會影響 `['tasks']`（投入時間）。
+- **快取更新**：mutation 成功後，要重新取得所有受影響的資料。key 與清單都在 `lib/query-keys.ts`（`QK`、`SESSION_KEYS`、`TASK_KEYS`…），不要在別處手寫字串。例如學習紀錄的新增、修改、刪除用 `SESSION_KEYS`，裡面包含 `QK.tasks`（任務的投入時間會變）；新增一種資料時，加進所有會影響它的清單。
 
 ## 測試
-- 每個功能開一個新的 spec 檔，例如 `test/goals.spec.ts`，寫法參考 `test/resources.spec.ts`。
+- spec 檔依被測的模組或功能命名（`test/tasks.spec.ts`、`test/notes.spec.ts`、`test/goals.spec.ts`）。既有功能的新測試加進那個功能的檔；只有新的功能或模組才開新檔。檔名不放 lane、Sprint 或版本（不要 `-v2`）。
+- 建立資料用 `test/helpers.ts` 的 `makeSubject`、`makeTask`、`makeNote`、`makeEvent`（會確認 201，失敗時看得到伺服器的錯誤），不要在各檔再寫一份。
+- 測試環境的 D1 套用了「每個查詢最多 100 個參數」（`test/apply-migrations.ts`）：參數會隨資料量變多的寫法（例如 `inArray(大量 id)`）在測試就會失敗，改用其他條件（例如依 `user_id`）。
 - 用 `registeredClient()` 建立使用者，每個 client 有自己的 IP，不會碰到註冊頻率限制。
 - 必測：
   - 正常流程。

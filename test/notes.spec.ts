@@ -1,6 +1,8 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
-import { PNG_1X1, registeredClient, type Client, makeNote } from './helpers';
+import { makeNote, PNG_1X1, registeredClient, type Client } from './helpers';
+
+import { addDays, today } from '../src/shared/dates';
 
 async function upload(c: Client, noteId: string) {
 	const form = new FormData();
@@ -147,5 +149,102 @@ describe('筆記的跨使用者隔離', () => {
 		expect((await alice.get('/api/notes')).data.notes).toMatchObject([
 			{ id: aliceNote.id, pinned: false, attachments: [{ id: aliceAtt.id }] },
 		]);
+	});
+});
+
+const TZ = 'Asia/Taipei';
+
+describe('筆記、錯題與複習', () => {
+	it('錯題預設排入明天複習，答對逐步拉長間隔，全部通過即掌握', async () => {
+		const c = await registeredClient();
+		const n = (
+			await c.post('/api/notes', { kind: 'mistake', title: '遞迴時間複雜度', question: 'T(n)=2T(n/2)+n', correctAnswer: 'O(n log n)' })
+		).data.note;
+		expect(n.nextReviewDate).toBe(addDays(today(TZ), 1));
+
+		// 模擬已到複習日
+		await env.DB.prepare('UPDATE notes SET next_review_date = ? WHERE id = ?').bind(today(TZ), n.id).run();
+		expect((await c.get('/api/notes?review=due')).data.notes).toHaveLength(1);
+
+		let note = (await c.post(`/api/notes/${n.id}/review`, { result: 'remembered' })).data.note;
+		expect(note).toMatchObject({ reviewStage: 1, nextReviewDate: addDays(today(TZ), 3), mastered: false });
+		expect((await c.get('/api/notes?review=due')).data.notes).toHaveLength(0);
+
+		note = (await c.post(`/api/notes/${n.id}/review`, { result: 'forgot' })).data.note;
+		expect(note).toMatchObject({ reviewStage: 0, nextReviewDate: addDays(today(TZ), 1) });
+
+		for (let i = 0; i < 5; i++) note = (await c.post(`/api/notes/${n.id}/review`, { result: 'remembered' })).data.note;
+		expect(note).toMatchObject({ mastered: true, nextReviewDate: null });
+	});
+
+	it('一般筆記預設不排複習，可搜尋關鍵字與標籤', async () => {
+		const c = await registeredClient();
+		const n = (await c.post('/api/notes', { kind: 'note', title: 'TCP 三向交握', content: 'SYN → SYN-ACK → ACK', tags: ['網路'] })).data
+			.note;
+		expect(n.nextReviewDate).toBeNull();
+		await c.post('/api/notes', { kind: 'note', title: '100% 會考', content: '無關內容' });
+
+		expect((await c.get('/api/notes?q=SYN-ACK')).data.notes).toHaveLength(1);
+		expect((await c.get(`/api/notes?q=${encodeURIComponent('%')}`)).data.notes).toHaveLength(1);
+		expect((await c.get(`/api/notes?tag=${encodeURIComponent('網路')}`)).data.notes).toHaveLength(1);
+	});
+
+	it('照片上傳到 R2，檢查真實格式，刪除筆記時一併刪除照片', async () => {
+		const c = await registeredClient();
+		const n = (await c.post('/api/notes', { kind: 'mistake', title: '看圖題' })).data.note;
+
+		const form = new FormData();
+		form.append('file', new File([PNG_1X1], 'q.png', { type: 'image/png' }));
+		const up = await c.post(`/api/notes/${n.id}/attachments`, form);
+		expect(up.status).toBe(201);
+		expect(up.data.attachment.contentType).toBe('image/png');
+
+		const img = await c.get(`/api/attachments/${up.data.attachment.id}`);
+		expect(img.status).toBe(200);
+		expect(img.headers.get('content-type')).toBe('image/png');
+		expect(new Uint8Array(img.data)).toEqual(PNG_1X1);
+
+		// 副檔名是 .png 但內容是 HTML：要擋下
+		const fake = new FormData();
+		fake.append('file', new File(['<script>alert(1)</script>'], 'x.png', { type: 'image/png' }));
+		expect((await c.post(`/api/notes/${n.id}/attachments`, fake)).status).toBe(415);
+
+		const detail = (await c.get(`/api/notes/${n.id}`)).data.note;
+		expect(detail.attachments).toHaveLength(1);
+
+		await c.del(`/api/notes/${n.id}`);
+		expect(await env.BUCKET.get(`users/${c.user.id}/${up.data.attachment.id}`)).toBeNull();
+	});
+
+	it('照片上傳：沒有選檔、送的不是表單、空檔案都回 400「請選擇照片」（和頭像相同），不會變成 500', async () => {
+		const c = await registeredClient();
+		const n = (await c.post('/api/notes', { kind: 'mistake', title: '看圖題' })).data.note;
+		const url = `/api/notes/${n.id}/attachments`;
+
+		const noFile = await c.post(url, new FormData());
+		const json = await c.post(url, { file: 'not-a-file' });
+		const noBody = await c.post(url);
+		const empty = new FormData();
+		empty.append('file', new File([], 'empty.png', { type: 'image/png' }));
+		const emptyFile = await c.post(url, empty);
+
+		for (const res of [noFile, json, noBody, emptyFile]) {
+			expect(res.status, JSON.stringify(res.data)).toBe(400);
+			expect(res.data.error).toBe('請選擇照片');
+		}
+		expect((await c.get(`/api/notes/${n.id}`)).data.note.attachments).toEqual([]);
+	});
+
+	it('刪除單張照片：資料列與 R2 的檔案都刪掉，再刪一次回 404', async () => {
+		const c = await registeredClient();
+		const n = (await c.post('/api/notes', { kind: 'mistake', title: '看圖題' })).data.note;
+		const form = new FormData();
+		form.append('file', new File([PNG_1X1], 'q.png', { type: 'image/png' }));
+		const photo = (await c.post(`/api/notes/${n.id}/attachments`, form)).data.attachment;
+
+		expect((await c.del(`/api/attachments/${photo.id}`)).status).toBe(200);
+		expect(await env.BUCKET.get(`users/${c.user.id}/${photo.id}`)).toBeNull();
+		expect((await c.get(`/api/notes/${n.id}`)).data.note.attachments).toEqual([]);
+		expect((await c.del(`/api/attachments/${photo.id}`)).status).toBe(404);
 	});
 });

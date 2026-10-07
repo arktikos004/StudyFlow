@@ -2,7 +2,7 @@ import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { addDays } from '../src/shared/dates';
 import { SUBJECT_ICONS } from '../src/shared/schemas';
-import { logSession, noonClient, registeredClient, type Client, makeSubject } from './helpers';
+import { logSession, makeSubject, noonClient, registeredClient, type Client } from './helpers';
 
 const names = async (c: Client) => (await c.get('/api/subjects')).data.subjects.map((s: { name: string }) => s.name);
 
@@ -172,5 +172,29 @@ describe('科目的跨使用者隔離', () => {
 
 		const o = (await alice.get(`/api/subjects/${s.id}/overview`)).data;
 		expect(o).toMatchObject({ subject: { icon: 'sigma' }, upcomingEvents: [], openTasks: [] });
+	});
+});
+
+describe('科目', () => {
+	it('新增、改名、刪除；同名會被拒絕', async () => {
+		const c = await registeredClient();
+		const s = await makeSubject(c);
+		expect((await c.post('/api/subjects', { name: '資料結構', color: '#eb6834' })).status).toBe(409);
+
+		const renamed = await c.patch(`/api/subjects/${s.id}`, { name: '演算法' });
+		expect(renamed.data.subject.name).toBe('演算法');
+		expect((await c.get('/api/subjects')).data.subjects).toHaveLength(1);
+
+		expect((await c.del(`/api/subjects/${s.id}`)).status).toBe(200);
+		expect((await c.get('/api/subjects')).data.subjects).toHaveLength(0);
+	});
+
+	it('刪除科目時，相關任務保留但科目欄位清空', async () => {
+		const c = await registeredClient();
+		const s = await makeSubject(c);
+		const t = (await c.post('/api/tasks', { title: '寫作業', subjectId: s.id })).data.task;
+		await c.del(`/api/subjects/${s.id}`);
+		const tasks = (await c.get('/api/tasks')).data.tasks;
+		expect(tasks.find((x: { id: string }) => x.id === t.id).subjectId).toBeNull();
 	});
 });
