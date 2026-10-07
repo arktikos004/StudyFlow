@@ -333,7 +333,7 @@ const tabClass = (active: boolean) =>
 	);
 
 export function Layout() {
-	useTimerEngine();
+	useTimerEngine(useUser().id);
 	useScrollTopOnNavigate();
 	useAchievementToasts();
 	const logout = useLogout();

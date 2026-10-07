@@ -20,8 +20,9 @@ import {
 	type TimerOptions,
 	type TimerState,
 } from './timer-core';
+import { adoptLegacyTimerData, readQueue as readStoredQueue, timerKey, writeQueue as writeStoredQueue } from './timer-storage';
 
-// 計時器狀態存在 localStorage，並以「開始時間戳」計算經過時間：
+// 計時器狀態存在 localStorage（每個使用者各一份，見 timer-storage.ts），並以「開始時間戳」計算經過時間：
 // 重新整理、切換分頁、手機鎖屏都不會讓計時中斷或變慢。
 // 到點切換、長休息、自動開始的規則是純函式，放在 timer-core.ts（有測試）。
 
@@ -44,16 +45,17 @@ export {
 	type TimerState,
 } from './timer-core';
 
-const KEY = 'studyflow:timer';
-const QUEUE_KEY = 'studyflow:pending-sessions';
+/** 目前登入的人：計時狀態與待上傳紀錄都存在這個人的 key（由 useTimerEngine 設定） */
+let owner: string | null = null;
 
 /** 「今天」與輪數跨日依使用者時區；登入資料還沒載入前先用裝置時區 */
 let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 const todayKey = () => localDate(Date.now(), timeZone);
 
 function load(): TimerState {
+	if (!owner) return defaultState(todayKey());
 	try {
-		const raw = localStorage.getItem(KEY);
+		const raw = localStorage.getItem(timerKey(owner));
 		// 舊版缺少的欄位、不合法的值都換成預設值
 		if (raw) return normalizeState(JSON.parse(raw), todayKey());
 	} catch {
@@ -69,7 +71,7 @@ const emit = () => listeners.forEach((l) => l());
 function replaceState(next: TimerState) {
 	state = next;
 	try {
-		localStorage.setItem(KEY, JSON.stringify(state));
+		if (owner) localStorage.setItem(timerKey(owner), JSON.stringify(state));
 	} catch {
 		// 無法儲存時仍可在本頁使用
 	}
@@ -82,11 +84,30 @@ function setState(patch: Partial<TimerState>) {
 
 // 多個分頁同步同一個計時器
 window.addEventListener('storage', (e) => {
-	if (e.key === KEY) {
+	if (owner && e.key === timerKey(owner)) {
 		state = load();
 		emit();
 	}
 });
+
+/**
+ * 換成這個使用者的計時器（同一個人重複呼叫不做事）。
+ * 在 Layout 的 render 中呼叫：頁首膠囊、計時頁第一次 render 就讀到這個人的狀態，
+ * 不會先畫出預設或上一個人的計時（完成動畫也不會因為狀態跳一下而重播）。
+ */
+function setTimerOwner(userId: string) {
+	if (owner === userId) return;
+	owner = userId;
+	try {
+		adoptLegacyTimerData(localStorage, userId);
+	} catch {
+		// 無法存取 localStorage：沿用預設值
+	}
+	state = load();
+	resetBackoff();
+	// 換帳號時會經過登入頁，Layout 重新掛載、訂閱者都已經離開；萬一還有，等這次 render 結束再通知
+	if (listeners.size > 0) queueMicrotask(emit);
+}
 
 // ---- 操作 ----
 
@@ -154,15 +175,11 @@ function tick(): TimerEvent[] {
 // ---- 待上傳佇列（離線時先存著，恢復連線再送） ----
 
 function readQueue(): SessionInput[] {
-	try {
-		return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? '[]');
-	} catch {
-		return [];
-	}
+	return owner ? readStoredQueue(localStorage, owner) : [];
 }
 function writeQueue(q: SessionInput[]) {
 	try {
-		localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+		if (owner) writeStoredQueue(localStorage, owner, q);
 	} catch {
 		// 忽略
 	}
@@ -290,8 +307,9 @@ export function useNow(active: boolean) {
 
 const userTimeZone = (qc: QueryClient) => qc.getQueryData<PublicUser | null>(ME_KEY)?.timezone;
 
-/** 全站只掛一次（在 Layout）：負責到點切換、通知與上傳紀錄 */
-export function useTimerEngine() {
+/** 全站只掛一次（在 Layout）：負責到點切換、通知與上傳紀錄。userId 是目前登入的人，計時與待上傳紀錄依人分開 */
+export function useTimerEngine(userId: string) {
+	setTimerOwner(userId);
 	const qc = useQueryClient();
 	useEffect(() => {
 		const handlers: FlushHandlers = {
