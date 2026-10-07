@@ -13,10 +13,6 @@ const CACHE_CURRENT_VERSION = 'private, max-age=31536000, immutable';
 /** 沒帶 v 或用了舊的 v：每次都要重新驗證，否則換了頭像之後，同一個網址會一直拿到快取裡的舊圖 */
 const CACHE_REVALIDATE = 'private, no-cache';
 
-function avatarNotFound(): never {
-	throw new HTTPException(404, { message: '找不到頭像' });
-}
-
 /**
  * 等工作做完再回應，而且用戶端中途斷線（例如按了取消）也會做完：斷線時 Worker 的這次執行會被取消，
  * 交給 waitUntil 才能再延長最多 30 秒，不會只做一半（存了新檔卻沒改指向，或改了指向卻沒刪舊檔）。
@@ -36,7 +32,7 @@ export const avatarRoutes = new Hono<AppEnv>()
 		// c.var.user 是驗證 session 時讀出的整列資料，不必再查一次 D1
 		const user = c.var.user;
 		const object = user.avatarKey ? await c.env.BUCKET.get(user.avatarKey) : null;
-		if (!object) avatarNotFound();
+		if (!object) throw new HTTPException(404, { message: '找不到頭像' });
 		const isCurrentVersion = c.req.query('v') === String(user.avatarUpdatedAt);
 		return imageResponse(
 			object,

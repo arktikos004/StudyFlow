@@ -58,6 +58,18 @@ describe('編輯學習紀錄（TMR-2）', () => {
 		expect(earlier.data.session.durationSec).toBe(105 * 60);
 	});
 
+	it('沒給秒數時由起訖時間推算，至少 1 秒：新增與編輯用同一個算法（起訖只差 0.3 秒不會存成 0 秒）', async () => {
+		const c = await registeredClient();
+		const endedAt = Date.now() - 60 * 60_000;
+		const created = await c.post('/api/study-sessions', { mode: 'stopwatch', startedAt: endedAt - 300, endedAt });
+		expect(created.status, JSON.stringify(created.data)).toBe(201);
+		expect(created.data.session.durationSec).toBe(1);
+
+		const edited = await c.patch(`/api/study-sessions/${created.data.session.id}`, { startedAt: endedAt - 200 });
+		expect(edited.status).toBe(200);
+		expect(edited.data.session.durationSec).toBe(1);
+	});
+
 	it('可以只改秒數，或同時改時間與秒數；秒數不能超過起訖時間', async () => {
 		const c = await registeredClient();
 		const s = await makeSession(c);

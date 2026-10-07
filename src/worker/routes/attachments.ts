@@ -1,7 +1,6 @@
-import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { attachments } from '../db/schema';
-import { notFound } from '../lib/db';
+import { notFound, ownedBy } from '../lib/db';
 import { imageResponse } from '../lib/image';
 import { deleteObjectsQuietly } from '../lib/storage';
 import { requireAuth } from '../middleware/auth';
@@ -17,20 +16,20 @@ export const attachmentRoutes = new Hono<AppEnv>()
 		const attachment = await c.var.db
 			.select()
 			.from(attachments)
-			.where(and(eq(attachments.id, c.req.param('id')), eq(attachments.userId, c.var.user.id)))
+			.where(ownedBy(attachments, c.req.param('id'), c.var.user.id))
 			.get();
-		if (!attachment) notFound('照片');
+		if (!attachment) notFound(attachments);
 		const object = await c.env.BUCKET.get(attachment.r2Key);
-		if (!object) notFound('照片');
+		if (!object) notFound(attachments);
 		return imageResponse(object, attachment.contentType, CACHE_ONE_DAY);
 	})
 	.delete('/:id', async (c) => {
 		const attachment = await c.var.db
 			.delete(attachments)
-			.where(and(eq(attachments.id, c.req.param('id')), eq(attachments.userId, c.var.user.id)))
+			.where(ownedBy(attachments, c.req.param('id'), c.var.user.id))
 			.returning()
 			.get();
-		if (!attachment) notFound('照片');
+		if (!attachment) notFound(attachments);
 		await deleteObjectsQuietly(c.env.BUCKET, [attachment.r2Key]);
 		return c.json({ ok: true });
 	});

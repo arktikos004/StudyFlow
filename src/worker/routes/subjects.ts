@@ -4,12 +4,12 @@ import { HTTPException } from 'hono/http-exception';
 import { addDays, startOfLocalDay, today, weekStart } from '../../shared/dates';
 import { subjectOrderSchema, subjectSchema, subjectUpdateSchema } from '../../shared/schemas';
 import { events, studySessions, subjects, tasks } from '../db/schema';
-import { hasValues, notFound, type DB } from '../lib/db';
+import { hasValues, notFound, ownedBy, type DB } from '../lib/db';
 import { eventItemFields } from '../lib/events';
 import { mistakeCounts } from '../lib/notes';
 import { round1 } from '../lib/stats';
 import { taskItemFields, taskListOrder } from '../lib/tasks';
-import { validate } from '../lib/validator';
+import { validate } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
 import type { SubjectOverview } from '../../shared/api-types';
 import type { AppEnv } from '../types';
@@ -81,7 +81,7 @@ export const subjectRoutes = new Hono<AppEnv>()
 			db
 				.select()
 				.from(subjects)
-				.where(and(eq(subjects.id, id), eq(subjects.userId, user.id)))
+				.where(ownedBy(subjects, id, user.id))
 				.get(),
 			db
 				.select(eventItemFields())
@@ -103,7 +103,7 @@ export const subjectRoutes = new Hono<AppEnv>()
 				.where(and(eq(studySessions.userId, user.id), eq(studySessions.subjectId, id), gte(studySessions.startedAt, last30From))),
 			mistakeCounts(db, user.id, todayStr, id),
 		]);
-		if (!subject) notFound('科目');
+		if (!subject) notFound(subjects);
 
 		const body: SubjectOverview = {
 			subject,
@@ -118,20 +118,20 @@ export const subjectRoutes = new Hono<AppEnv>()
 		const input = c.req.valid('json');
 		const id = c.req.param('id');
 		if (input.name) await assertNameFree(c.var.db, c.var.user.id, input.name, id);
-		const own = and(eq(subjects.id, id), eq(subjects.userId, c.var.user.id));
+		const own = ownedBy(subjects, id, c.var.user.id);
 		const row = hasValues(input)
 			? await c.var.db.update(subjects).set(input).where(own).returning().get()
 			: await c.var.db.select().from(subjects).where(own).get();
-		if (!row) notFound('科目');
+		if (!row) notFound(subjects);
 		return c.json({ subject: row });
 	})
 	.delete('/:id', async (c) => {
 		// 相關的考試、任務、筆記會保留，只是科目欄位變成空白（ON DELETE SET NULL）
 		const row = await c.var.db
 			.delete(subjects)
-			.where(and(eq(subjects.id, c.req.param('id')), eq(subjects.userId, c.var.user.id)))
+			.where(ownedBy(subjects, c.req.param('id'), c.var.user.id))
 			.returning({ id: subjects.id })
 			.get();
-		if (!row) notFound('科目');
+		if (!row) notFound(subjects);
 		return c.json({ ok: true });
 	});

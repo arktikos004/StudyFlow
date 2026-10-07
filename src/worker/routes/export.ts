@@ -8,7 +8,7 @@ import { toCsv } from '../lib/csv';
 import { buildCalendar, type IcsEvent } from '../lib/ics';
 import { round1 } from '../lib/stats';
 import { taskItemFields } from '../lib/tasks';
-import { validate } from '../lib/validator';
+import { validate } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
 import type { AppEnv } from '../types';
 import { publicUser } from './auth';

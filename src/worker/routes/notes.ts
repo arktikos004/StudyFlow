@@ -12,11 +12,11 @@ import {
 	reviewSchema,
 } from '../../shared/schemas';
 import { attachments, notes, subjects, type Attachment, type Note } from '../db/schema';
-import { assertOwned, hasValues, notFound, type DB } from '../lib/db';
+import { assertOwned, hasValues, notFound, ownedBy, type DB } from '../lib/db';
 import { noteMatches, reviewDue } from '../lib/notes';
 import { afterReview, firstReviewDate, reviewPatch } from '../lib/review';
 import { deleteObjectsQuietly } from '../lib/storage';
-import { validate } from '../lib/validator';
+import { validate } from '../middleware/validate';
 import { recordAchievementUnlocks } from '../middleware/achievement-unlocks';
 import { requireAuth } from '../middleware/auth';
 import { imageUploadLimit, readImageUpload } from '../middleware/upload';
@@ -62,9 +62,9 @@ async function getOwnedNote(db: DB, id: string, userId: string) {
 	const note = await db
 		.select()
 		.from(notes)
-		.where(and(eq(notes.id, id), eq(notes.userId, userId)))
+		.where(ownedBy(notes, id, userId))
 		.get();
-	if (!note) notFound('筆記');
+	if (!note) notFound(notes);
 	return note;
 }
 
@@ -100,7 +100,7 @@ export const noteRoutes = new Hono<AppEnv>()
 	.post('/', validate('json', noteSchema), async (c) => {
 		const { scheduleReview, ...input } = c.req.valid('json');
 		const user = c.var.user;
-		await assertOwned(c.var.db, subjects, input.subjectId, user.id, '科目');
+		await assertOwned(c.var.db, subjects, input.subjectId, user.id);
 		// 錯題預設加入複習排程，一般筆記要明確選擇才加入
 		const schedule = scheduleReview ?? input.kind === 'mistake';
 		const row = await c.var.db
@@ -114,7 +114,7 @@ export const noteRoutes = new Hono<AppEnv>()
 		const { scheduleReview, pinned, ...input } = c.req.valid('json');
 		const db = c.var.db;
 		const user = c.var.user;
-		await assertOwned(db, subjects, input.subjectId, user.id, '科目');
+		await assertOwned(db, subjects, input.subjectId, user.id);
 		const current = await getOwnedNote(db, c.req.param('id'), user.id);
 
 		const patch: Partial<Note> = {

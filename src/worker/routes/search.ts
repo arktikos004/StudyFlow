@@ -5,7 +5,7 @@ import { searchQuerySchema } from '../../shared/schemas';
 import { events, notes, subjects, tasks } from '../db/schema';
 import { noteMatches } from '../lib/notes';
 import { containsText } from '../lib/text';
-import { validate } from '../lib/validator';
+import { validate } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
 import type { SearchResponse } from '../../shared/api-types';
 import type { AppEnv } from '../types';

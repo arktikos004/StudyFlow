@@ -14,7 +14,7 @@ import {
 	summarizeRange,
 } from '../lib/stats';
 import { countTasks, tasksDueBetween } from '../lib/tasks';
-import { validate } from '../lib/validator';
+import { validate } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
 import type { StatsResponse } from '../../shared/api-types';
 import type { AppEnv } from '../types';

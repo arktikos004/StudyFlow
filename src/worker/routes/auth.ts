@@ -7,7 +7,7 @@ import { hasValues } from '../lib/db';
 import { fakeVerify, hashPassword, verifyPassword } from '../lib/password';
 import * as rateLimit from '../lib/rate-limit';
 import { clearSessionCookie, createSession, getSessionToken, setSessionCookie } from '../lib/session';
-import { validate } from '../lib/validator';
+import { validate } from '../middleware/validate';
 import { sha256Hex } from '../lib/encoding';
 import { recordAchievementUnlocks } from '../middleware/achievement-unlocks';
 import { requireAuth } from '../middleware/auth';
