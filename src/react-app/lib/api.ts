@@ -9,8 +9,14 @@ export class ApiError extends Error {
 	}
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-	const init: RequestInit = { method, credentials: 'same-origin', headers: {} };
+/** signal：呼叫端可以中止請求（例如對話框按了取消），瀏覽器會真的取消上傳 */
+export type RequestOptions = { signal?: AbortSignal };
+
+/** 這個錯誤是不是呼叫端自己中止請求造成的（不是連線問題，不必提示） */
+export const isAbortError = (e: unknown) => e instanceof DOMException && e.name === 'AbortError';
+
+async function request<T>(method: string, path: string, body?: unknown, { signal }: RequestOptions = {}): Promise<T> {
+	const init: RequestInit = { method, credentials: 'same-origin', headers: {}, signal };
 	if (body instanceof FormData) {
 		init.body = body;
 	} else if (body !== undefined) {
@@ -21,7 +27,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 	let res: Response;
 	try {
 		res = await fetch(`/api${path}`, init);
-	} catch {
+	} catch (e) {
+		// 呼叫端自己中止的：原樣丟出 AbortError，不包成「無法連線」
+		if (signal?.aborted) throw e;
 		throw new ApiError(navigator.onLine ? '無法連線到伺服器，請稍後再試' : '目前離線，請確認網路連線', 0);
 	}
 	const data = res.headers.get('content-type')?.includes('application/json') ? await res.json() : null;
@@ -30,11 +38,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 export const api = {
-	get: <T>(path: string) => request<T>('GET', path),
-	post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
-	patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
-	put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
-	del: <T = { ok: true }>(path: string) => request<T>('DELETE', path),
+	get: <T>(path: string, options?: RequestOptions) => request<T>('GET', path, undefined, options),
+	post: <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>('POST', path, body, options),
+	patch: <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>('PATCH', path, body, options),
+	put: <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>('PUT', path, body, options),
+	del: <T = { ok: true }>(path: string, options?: RequestOptions) => request<T>('DELETE', path, undefined, options),
 };
 
 export function qs(params: Record<string, string | number | undefined | null>) {

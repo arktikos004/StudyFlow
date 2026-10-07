@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { PhotoDraft } from '../src/react-app/lib/profile-photo';
-import { photoWasSaved, saveFailureMessage, saveProfile, type SaveDeps, type SaveResult } from '../src/react-app/lib/profile-save';
+import { photoWasSaved, saveFailureMessage, saveProfile, saveSuccessMessage, type SaveDeps, type SaveResult } from '../src/react-app/lib/profile-save';
 
 const blob = new Blob(['jpeg'], { type: 'image/jpeg' });
 const SET: PhotoDraft = { kind: 'set', blob, url: 'blob:preview' };
@@ -105,7 +105,7 @@ describe('儲存個人資料（saveProfile）', () => {
 		expect(photoWasSaved(result)).toBe(true);
 	});
 
-	it('上傳途中關掉對話框（review A1）：上傳完成後不存暱稱', async () => {
+	it('上傳途中關掉對話框、上傳在取消前就完成了（review A1）：不存暱稱，回報照片已經存好', async () => {
 		let current = true;
 		let finishUpload: () => void = () => {};
 		const { deps } = fakeDeps({
@@ -116,7 +116,21 @@ describe('儲存個人資料（saveProfile）', () => {
 		// 使用者按「取消」：這一輪不算數了；之後上傳才完成
 		current = false;
 		finishUpload();
-		expect(await pending).toEqual({ status: 'abandoned' });
+		expect(await pending).toEqual({ status: 'abandoned', photoDone: true, nameDone: false });
+		expect(deps.updateName).not.toHaveBeenCalled();
+	});
+
+	it('上傳途中關掉對話框、上傳被中止：放棄，什麼都沒存', async () => {
+		let current = true;
+		let abortUpload: () => void = () => {};
+		const { deps } = fakeDeps({
+			isCurrent: () => current,
+			uploadPhoto: vi.fn(() => new Promise<void>((_, reject) => (abortUpload = () => reject(new DOMException('aborted', 'AbortError'))))),
+		});
+		const pending = saveProfile({ draft: SET, name: '新暱稱' }, deps);
+		current = false;
+		abortUpload();
+		expect(await pending).toEqual({ status: 'abandoned', photoDone: false, nameDone: false });
 		expect(deps.updateName).not.toHaveBeenCalled();
 	});
 
@@ -130,13 +144,28 @@ describe('儲存個人資料（saveProfile）', () => {
 		const pending = saveProfile({ draft: SET, name: null }, deps);
 		current = false;
 		failUpload(new Error('無法連線到伺服器，請稍後再試'));
-		expect(await pending).toEqual({ status: 'abandoned' });
+		expect(await pending).toEqual({ status: 'abandoned', photoDone: false, nameDone: false });
 	});
 
-	it('存暱稱途中關掉對話框：請求收不回來，但回報放棄（呼叫端不碰畫面）', async () => {
+	it('存暱稱途中關掉對話框、請求被中止：回報放棄，照片已經存好、暱稱沒有（呼叫端不碰畫面）', async () => {
+		let current = true;
+		let abortName: () => void = () => {};
+		const { deps, calls } = fakeDeps({
+			isCurrent: () => current,
+			updateName: vi.fn(() => new Promise<void>((_, reject) => (abortName = () => reject(new DOMException('aborted', 'AbortError'))))),
+		});
+		const pending = saveProfile({ draft: SET, name: '新暱稱' }, deps);
+		await vi.waitFor(() => expect(deps.updateName).toHaveBeenCalledWith('新暱稱'));
+		current = false;
+		abortName();
+		expect(await pending).toEqual({ status: 'abandoned', photoDone: true, nameDone: false });
+		expect(calls).toEqual(['upload']);
+	});
+
+	it('存暱稱途中關掉對話框、請求在取消前就完成了：回報兩項都已經存好', async () => {
 		let current = true;
 		let finishName: () => void = () => {};
-		const { deps, calls } = fakeDeps({
+		const { deps } = fakeDeps({
 			isCurrent: () => current,
 			updateName: vi.fn(() => new Promise<void>((resolve) => (finishName = resolve))),
 		});
@@ -144,13 +173,12 @@ describe('儲存個人資料（saveProfile）', () => {
 		await vi.waitFor(() => expect(deps.updateName).toHaveBeenCalledWith('新暱稱'));
 		current = false;
 		finishName();
-		expect(await pending).toEqual({ status: 'abandoned' });
-		expect(calls).toEqual(['upload']);
+		expect(await pending).toEqual({ status: 'abandoned', photoDone: true, nameDone: true });
 	});
 
 	it('一開始就已經不算數（對話框已經關掉）：什麼都不送', async () => {
 		const { deps, calls } = fakeDeps({ isCurrent: () => false });
-		expect(await saveProfile({ draft: SET, name: '新暱稱' }, deps)).toEqual({ status: 'abandoned' });
+		expect(await saveProfile({ draft: SET, name: '新暱稱' }, deps)).toEqual({ status: 'abandoned', photoDone: false, nameDone: false });
 		expect(calls).toEqual([]);
 	});
 
@@ -166,7 +194,7 @@ describe('對話框裡的失敗訊息（saveFailureMessage）', () => {
 
 	it('成功或已放棄時沒有訊息', () => {
 		expect(message({ status: 'saved' }, SET, '新暱稱')).toBeNull();
-		expect(message({ status: 'abandoned' }, SET, '新暱稱')).toBeNull();
+		expect(message({ status: 'abandoned', photoDone: true, nameDone: false }, SET, '新暱稱')).toBeNull();
 	});
 
 	it('離線：什麼都沒送，或照片已經存好只剩暱稱', () => {
@@ -192,5 +220,34 @@ describe('對話框裡的失敗訊息（saveFailureMessage）', () => {
 	it('錯誤沒有訊息時用「請再試一次」', () => {
 		expect(message({ status: 'photo-failed', error: 'boom' }, SET, null)).toBe('照片上傳失敗：請再試一次');
 		expect(message({ status: 'name-failed', error: new Error(''), photoDone: false }, KEEP, '新暱稱')).toBe('暱稱沒有儲存：請再試一次');
+	});
+});
+
+describe('成功的提示（saveSuccessMessage）', () => {
+	const success = (result: SaveResult, draft: PhotoDraft, name: string | null) => saveSuccessMessage(result, { draft, name });
+	const abandoned = (photoDone: boolean, nameDone: boolean): SaveResult => ({ status: 'abandoned', photoDone, nameDone });
+
+	it('全部存好：同時改照片與暱稱也只有一則', () => {
+		expect(success({ status: 'saved' }, SET, '新暱稱')).toBe('已更新個人資料');
+		expect(success({ status: 'saved' }, REMOVE, '新暱稱')).toBe('已更新個人資料');
+		expect(success({ status: 'saved' }, KEEP, '新暱稱')).toBe('已更新個人資料');
+		expect(success({ status: 'saved' }, SET, null)).toBe('已更新照片');
+		expect(success({ status: 'saved' }, REMOVE, null)).toBe('已移除照片');
+		expect(success({ status: 'saved' }, KEEP, null)).toBeNull();
+	});
+
+	it('關掉對話框之前已經存好的部分：照實提示', () => {
+		expect(success(abandoned(true, false), SET, '新暱稱')).toBe('已更新照片');
+		expect(success(abandoned(true, false), REMOVE, '新暱稱')).toBe('已移除照片');
+		expect(success(abandoned(true, true), SET, '新暱稱')).toBe('已更新個人資料');
+		expect(success(abandoned(false, true), KEEP, '新暱稱')).toBe('已更新個人資料');
+		expect(success(abandoned(false, false), SET, '新暱稱')).toBeNull();
+	});
+
+	it('部分成功與失敗不提示成功（由對話框裡的訊息與失敗的 toast 說明）', () => {
+		const error = new Error('無法連線到伺服器，請稍後再試');
+		expect(success({ status: 'offline', photoDone: true }, SET, '新暱稱')).toBeNull();
+		expect(success({ status: 'name-failed', error, photoDone: true }, SET, '新暱稱')).toBeNull();
+		expect(success({ status: 'photo-failed', error }, SET, '新暱稱')).toBeNull();
 	});
 });
