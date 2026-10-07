@@ -98,10 +98,18 @@ export type Achievement = {
 	/** 目前進度，不會超過 target；單位同 description（小時、天、個、題） */
 	progress: number;
 	target: number;
+	/**
+	 * 解鎖的時間（UTC 毫秒）：造成解鎖的那次寫入完成時記下（PRO-2）。
+	 * 還沒解鎖是 null；開始記錄解鎖時間（Sprint 5）之前就解鎖、之後沒有再變動的也是 null（時間不明）。
+	 */
+	unlockedAt: number | null;
 };
 
 /** GET /api/achievements：固定順序的成就清單 */
 export type AchievementsResponse = { achievements: Achievement[] };
+
+/** 個人檔案的徽章：已解鎖的成就，最近解鎖的在前；時間不明的（unlockedAt 為 null）排在最後、依成就的固定順序 */
+export type ProfileBadge = Pick<Achievement, 'id' | 'title' | 'icon' | 'unlockedAt'>;
 
 /** GET /api/profile/summary：個人檔案的累積數字，只有本人；和 GET /api/achievements 用同一份計算 */
 export type ProfileSummary = {
@@ -118,8 +126,8 @@ export type ProfileSummary = {
 	/** 已完成的任務數、已掌握的錯題數（一般筆記不算） */
 	tasksDone: number;
 	mistakesMastered: number;
-	/** 成就：已解鎖數、總數，以及已解鎖的成就（順序同 GET /api/achievements；icon 是 lucide 圖示名稱） */
-	achievements: { unlocked: number; total: number; badges: { id: string; title: string; icon: string }[] };
+	/** 成就：已解鎖數、總數，以及已解鎖的徽章（最近解鎖的在前，見 ProfileBadge；icon 是 lucide 圖示名稱） */
+	achievements: { unlocked: number; total: number; badges: ProfileBadge[] };
 };
 
 export type StatsResponse = {
