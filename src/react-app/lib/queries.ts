@@ -2,10 +2,13 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import type {
+	changePasswordSchema,
 	eventSchema,
+	loginSchema,
 	eventUpdateSchema,
 	noteSchema,
 	noteUpdateSchema,
+	registerSchema,
 	studySessionSchema,
 	studySessionUpdateSchema,
 	subjectSchema,
@@ -359,6 +362,35 @@ function resyncMeAndToast(qc: QueryClient, e: unknown) {
 	void qc.invalidateQueries({ queryKey: ME_KEY });
 	toastError(e);
 }
+
+// ---- 帳號 ----
+
+// 登入、註冊、變更密碼的失敗原因由表單顯示（欄位旁或按鈕上方），不跳 toast。
+// networkMode: 'always'：離線時不要暫停到連線後才送（按鈕會一直轉圈），直接失敗、顯示「目前離線」。
+
+export type LoginInput = z.infer<typeof loginSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+/** 登入或註冊：成功後直接換掉 ME_KEY 的使用者 */
+function useAuthMutation<TInput>(path: '/auth/login' | '/auth/register') {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (input: TInput) => api.post<{ user: PublicUser }>(path, input),
+		onSuccess: ({ user }) => qc.setQueryData(ME_KEY, user),
+		networkMode: 'always',
+	});
+}
+export const useLogin = () => useAuthMutation<LoginInput>('/auth/login');
+export const useRegister = () => useAuthMutation<RegisterInput>('/auth/register');
+
+/** 變更密碼：成功時提示（後端會登出其他裝置） */
+export const useChangePassword = () =>
+	useMutation({
+		mutationFn: (input: ChangePasswordInput) => api.post('/auth/password', input),
+		onSuccess: () => toast.success('密碼已更新，其他裝置已登出'),
+		networkMode: 'always',
+	});
 
 /** 暱稱、時區、每日／每週目標；目標傳 null 代表清除 */
 export type ProfileInput = z.input<typeof updateProfileSchema>;
