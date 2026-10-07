@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import type { StudySession } from '../../shared/api-types';
 import { zonedTime } from '../../shared/dates';
-import { formatDate, formatMinutes, MODE_LABEL } from '../lib/format';
+import { formatDate, formatMinutes } from '../lib/format';
+import { STUDY_MODE_LABEL } from '../../shared/labels';
 import { useCreateSession, useDeleteSession, useTasks, useUpdateSession, useUser } from '../lib/queries';
 import { FUTURE_TOLERANCE_MS } from '../lib/timer-core';
 import { deviceTimeZone, formatClockRange, relativeDateLabel, zonedParts } from '../lib/timer-format';
@@ -120,7 +121,7 @@ function SessionForm({
 		<form id={FORM_ID} onSubmit={submit} className="grid grid-cols-2 gap-4" noValidate>
 			{session && (
 				<p className="col-span-2 text-meta text-ink-3">
-					{MODE_LABEL[session.mode]}的紀錄，原本是 {formatDate(init.date)} {formatClockRange(session.startedAt, session.endedAt, tz)}
+					{STUDY_MODE_LABEL[session.mode]}的紀錄，原本是 {formatDate(init.date)} {formatClockRange(session.startedAt, session.endedAt, tz)}
 				</p>
 			)}
 			<Field label="日期" error={errors.date}>

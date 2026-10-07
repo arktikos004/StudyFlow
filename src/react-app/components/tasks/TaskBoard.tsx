@@ -18,7 +18,7 @@ import { Check, Circle, CircleCheck, CircleDot, CirclePlay, Undo2, type LucideIc
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { EventItem, TaskItem } from '../../../shared/api-types';
-import { STATUS_LABEL } from '../../lib/format';
+import { TASK_STATUS_LABEL } from '../../../shared/labels';
 import { neighborStatuses, TASK_STATUS_ORDER, type TaskStatus } from '../../lib/task-sort';
 import { DescriptionSnippet, TaskCheckbox, TaskMetaLine, TaskTitleButton } from '../TaskItem';
 import { Badge, Button, cn, Highlight, ShowAllToggle, usePrefersReducedMotion } from '../ui';
@@ -106,7 +106,7 @@ export function TaskBoard({
 
 	const moveByButton = (task: TaskItem, to: TaskStatus) => {
 		follow.current = { id: task.id, from: task.status, to, moved: false, failed: false };
-		setMessage(`已把「${task.title}」移到「${STATUS_LABEL[to]}」`);
+		setMessage(`已把「${task.title}」移到「${TASK_STATUS_LABEL[to]}」`);
 		onMove(task, to, (failed) => {
 			const f = follow.current;
 			if (f?.id !== task.id) return;
@@ -141,13 +141,13 @@ export function TaskBoard({
 	const announcements: Announcements = {
 		onDragStart: ({ active }) => `已拿起「${taskOf(active.data)?.title ?? ''}」`,
 		onDragOver: ({ active, over }) =>
-			over && isStatus(over.id) ? `「${taskOf(active.data)?.title ?? ''}」在「${STATUS_LABEL[over.id]}」欄上方` : '不在任何一欄上方',
+			over && isStatus(over.id) ? `「${taskOf(active.data)?.title ?? ''}」在「${TASK_STATUS_LABEL[over.id]}」欄上方` : '不在任何一欄上方',
 		onDragEnd: ({ active, over }) => {
 			const task = taskOf(active.data);
 			if (!task) return undefined;
 			return over && isStatus(over.id) && over.id !== task.status
-				? `已把「${task.title}」移到「${STATUS_LABEL[over.id]}」`
-				: `「${task.title}」放回「${STATUS_LABEL[task.status]}」`;
+				? `已把「${task.title}」移到「${TASK_STATUS_LABEL[over.id]}」`
+				: `「${task.title}」放回「${TASK_STATUS_LABEL[task.status]}」`;
 		},
 		onDragCancel: ({ active }) => `已取消移動，「${taskOf(active.data)?.title ?? ''}」放回原處`,
 	};
@@ -240,7 +240,7 @@ function BoardColumn({
 			<div className="flex min-h-9 items-center justify-between gap-2 px-2 py-1">
 				<h2 id={headingId} className="flex items-center gap-2 text-h3 font-semibold">
 					<Icon className={cn('size-4 shrink-0', status === 'done' ? 'text-success' : 'text-ink-3')} aria-hidden />
-					{STATUS_LABEL[status]}
+					{TASK_STATUS_LABEL[status]}
 					<span className="font-num text-meta font-normal text-ink-3 tabular-nums">
 						<span className="sr-only">，</span>
 						{tasks.length}
@@ -263,7 +263,7 @@ function BoardColumn({
 				))}
 				{tasks.length === 0 && (
 					<li className="px-2 py-8 text-center text-meta text-ink-3">
-						{target ? `拖到這裡，改成「${STATUS_LABEL[status]}」` : '沒有任務'}
+						{target ? `拖到這裡，改成「${TASK_STATUS_LABEL[status]}」` : '沒有任務'}
 					</li>
 				)}
 			</ul>

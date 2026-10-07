@@ -48,7 +48,8 @@ import {
 	TextLink,
 } from '../components/ui';
 import { ApiError } from '../lib/api';
-import { EVENT_KIND_LABEL, formatDate, formatMinutes } from '../lib/format';
+import { formatDate, formatMinutes } from '../lib/format';
+import { EVENT_KIND_LABEL } from '../../shared/labels';
 import { dropKept, keepSaved, mergeKept, pruneKept, type KeptTask } from '../lib/polish-kept';
 import { useTaskResults } from '../lib/polish-queries';
 import { useSubjectOverview, useSubjects, useUser } from '../lib/queries';

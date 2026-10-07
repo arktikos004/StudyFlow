@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import type { EventItem } from '../../../shared/api-types';
 import { today } from '../../../shared/dates';
 import { eventSchema } from '../../../shared/schemas';
-import { EVENT_KIND_LABEL } from '../../lib/format';
+import { EVENT_KIND_LABEL } from '../../../shared/labels';
 import { useCreateEvent, useDeleteEvent, useUpdateEvent, useUser, type EventInput } from '../../lib/queries';
 import { SubjectSelect } from '../subjects';
 import { Dialog, Field, Input, Select, Textarea, useConfirm } from '../ui';

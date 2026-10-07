@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 import type { ChecklistItem, Task, TaskItem } from '../../../shared/api-types';
 import { today } from '../../../shared/dates';
 import { taskSchema } from '../../../shared/schemas';
-import { PRIORITY_LABEL, STATUS_LABEL } from '../../lib/format';
+import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL } from '../../../shared/labels';
 import { useCreateTask, useDeleteTask, useEvents, useUpdateTask, useUser, type TaskInput } from '../../lib/queries';
 import { formatTaskTime, spentOf } from '../../lib/task-format';
 import { SubjectSelect } from '../subjects';
@@ -124,7 +124,7 @@ function TaskForm({
 					<Select id={id} value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as typeof form.priority })}>
 						{(['high', 'medium', 'low'] as const).map((p) => (
 							<option key={p} value={p}>
-								{PRIORITY_LABEL[p]}
+								{TASK_PRIORITY_LABEL[p]}
 							</option>
 						))}
 					</Select>
@@ -135,7 +135,7 @@ function TaskForm({
 					<Select id={id} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as typeof form.status })}>
 						{(['todo', 'doing', 'done'] as const).map((s) => (
 							<option key={s} value={s}>
-								{STATUS_LABEL[s]}
+								{TASK_STATUS_LABEL[s]}
 							</option>
 						))}
 					</Select>

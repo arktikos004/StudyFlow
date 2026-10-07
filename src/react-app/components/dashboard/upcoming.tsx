@@ -1,7 +1,8 @@
 import { CalendarDays, Plus } from 'lucide-react';
 import { Link } from 'react-router';
 import type { EventItem } from '../../../shared/api-types';
-import { EVENT_KIND_LABEL, formatDate } from '../../lib/format';
+import { formatDate } from '../../lib/format';
+import { EVENT_KIND_LABEL } from '../../../shared/labels';
 import { useUser } from '../../lib/queries';
 import { CountdownTile } from '../countdown';
 import { SubjectTag } from '../subjects';

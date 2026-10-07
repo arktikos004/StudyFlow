@@ -8,7 +8,7 @@ import { TaskBoard } from '../components/tasks/TaskBoard';
 import { TaskList } from '../components/tasks/TaskList';
 import { TaskToolbar, type StatusFilter } from '../components/tasks/TaskToolbar';
 import { Button, Card, EmptyState, ErrorNote, PageHeader, PageLoader, useConfirm } from '../components/ui';
-import { STATUS_LABEL } from '../lib/format';
+import { TASK_STATUS_LABEL } from '../../shared/labels';
 import { useEvents, useSubjects, useTasks, useUser } from '../lib/queries';
 import { justCompleted, toggleChecklistItem } from '../lib/task-checklist';
 import { useTaskListParams, useTaskPatch, useTaskView } from '../lib/task-queries';
@@ -75,7 +75,7 @@ export function TasksPage() {
 
 	const moveTask = (task: TaskItem, to: TaskStatus, onSettled?: (failed: boolean) => void) =>
 		patch.mutate(
-			{ id: task.id, status: to, errorTitle: `沒有移動成功，「${task.title}」已放回「${STATUS_LABEL[task.status]}」` },
+			{ id: task.id, status: to, errorTitle: `沒有移動成功，「${task.title}」已放回「${TASK_STATUS_LABEL[task.status]}」` },
 			onSettled && { onSuccess: () => onSettled(false), onError: () => onSettled(true) },
 		);
 
