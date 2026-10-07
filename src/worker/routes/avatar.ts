@@ -1,5 +1,5 @@
 import { eq, sql } from 'drizzle-orm';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { AVATAR_MAX_BYTES } from '../../shared/schemas';
 import { users } from '../db/schema';
@@ -50,6 +50,38 @@ async function swapAvatar(db: DB, userId: string, key: string | null) {
 }
 
 /**
+ * 換上新的頭像檔：先存新檔、資料庫改指向新檔，最後才刪舊檔，任何一步失敗都不會留下壞掉的頭像。
+ * 每次都用新的 key，瀏覽器快取裡的舊圖不會被當成新的。
+ */
+async function replaceAvatar(bucket: R2Bucket, db: DB, userId: string, bytes: Uint8Array, contentType: string) {
+	const key = `users/${userId}/avatar-${crypto.randomUUID()}`;
+	await bucket.put(key, bytes, { httpMetadata: { contentType } });
+	const swapped = await swapAvatar(db, userId, key).catch(async (e) => {
+		// 資料庫沒有更新成功：剛存的新檔沒人引用，刪掉
+		await deleteQuietly(bucket, key);
+		throw e;
+	});
+	await deleteQuietly(bucket, swapped.previous);
+	return swapped.user;
+}
+
+/** 移除頭像：先讓資料庫不再指向舊檔，再刪 R2；本來就沒有頭像也算成功 */
+async function removeAvatar(bucket: R2Bucket, db: DB, userId: string) {
+	const swapped = await swapAvatar(db, userId, null);
+	await deleteQuietly(bucket, swapped.previous);
+	return swapped.user;
+}
+
+/**
+ * 等工作做完再回應，而且用戶端中途斷線（例如按了取消）也會做完：斷線時 Worker 的這次執行會被取消，
+ * 交給 waitUntil 才能再延長最多 30 秒，不會只做一半（存了新檔卻沒改指向，或改了指向卻沒刪舊檔）。
+ */
+function finishEvenIfDisconnected<T>(c: Context<AppEnv>, work: Promise<T>): Promise<T> {
+	c.executionCtx.waitUntil(work.catch(() => {}));
+	return work;
+}
+
+/**
  * 頭像（PRO-1）：和筆記照片一樣存在不公開的 R2 bucket，由 Worker 確認身分後轉送，只有本人讀得到。
  * 一律對應到目前登入的使用者，網址裡沒有任何 id，所以不會讀到或改到別人的頭像。
  */
@@ -85,20 +117,10 @@ export const avatarRoutes = new Hono<AppEnv>()
 		const contentType = sniffImageType(bytes);
 		if (!contentType) throw new HTTPException(415, { message: '只支援 JPEG、PNG、WebP 圖片' });
 
-		// 每次都用新的 key：先存新檔、資料庫改指向新檔，最後才刪舊檔，任何一步失敗都不會留下壞掉的頭像
-		const key = `users/${user.id}/avatar-${crypto.randomUUID()}`;
-		await c.env.BUCKET.put(key, bytes, { httpMetadata: { contentType } });
-		const swapped = await swapAvatar(c.var.db, user.id, key).catch(async (e) => {
-			// 資料庫沒有更新成功：剛存的新檔沒人引用，刪掉
-			await deleteQuietly(c.env.BUCKET, key);
-			throw e;
-		});
-		await deleteQuietly(c.env.BUCKET, swapped.previous);
-		return c.json({ user: publicUser(swapped.user) });
+		const updated = await finishEvenIfDisconnected(c, replaceAvatar(c.env.BUCKET, c.var.db, user.id, bytes, contentType));
+		return c.json({ user: publicUser(updated) });
 	})
 	.delete('/', async (c) => {
-		// 先讓資料庫不再指向舊檔，再刪 R2；本來就沒有頭像也回 200
-		const swapped = await swapAvatar(c.var.db, c.var.user.id, null);
-		await deleteQuietly(c.env.BUCKET, swapped.previous);
-		return c.json({ user: publicUser(swapped.user) });
+		const updated = await finishEvenIfDisconnected(c, removeAvatar(c.env.BUCKET, c.var.db, c.var.user.id));
+		return c.json({ user: publicUser(updated) });
 	});

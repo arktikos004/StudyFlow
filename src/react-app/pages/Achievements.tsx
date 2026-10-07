@@ -16,7 +16,7 @@ import {
 	TextLink,
 } from '../components/ui';
 import { useAchievements, useUser } from '../lib/queries';
-import { achievementUnit, formatProgress, groupAchievements, nextMilestone, splitColumns } from '../lib/shell-achievements';
+import { achievementUnit, formatProgress, groupAchievements, nextMilestone, splitColumns, unlockedDate } from '../lib/shell-achievements';
 import { AchievementIcon } from '../lib/shell-icons';
 
 /**
@@ -100,9 +100,14 @@ function NextUp({ achievement: a, hasDailyGoal }: { achievement: Achievement; ha
 	);
 }
 
-function AchievementRow({ achievement: a, hasDailyGoal }: { achievement: Achievement; hasDailyGoal: boolean }) {
+/**
+ * 一列成就。已解鎖：「已解鎖」badge，下面是解鎖日期（依使用者時區；開始記錄解鎖時間之前就解鎖的沒有日期）；
+ * 還沒解鎖：進度條與「3／25 個」。
+ */
+function AchievementRow({ achievement: a, hasDailyGoal, timeZone }: { achievement: Achievement; hasDailyGoal: boolean; timeZone: string }) {
 	const titleId = useId();
 	const needsGoal = a.id.startsWith('goal-streak-') && !hasDailyGoal && !a.unlocked;
+	const unlockedOn = a.unlockedAt === null ? null : unlockedDate(a.unlockedAt, timeZone);
 	return (
 		<li className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3.5 gap-y-2 px-4 py-3.5 sm:grid-cols-[auto_minmax(0,1fr)_11rem] sm:px-5">
 			<Medal achievement={a} />
@@ -115,10 +120,16 @@ function AchievementRow({ achievement: a, hasDailyGoal }: { achievement: Achieve
 			</div>
 			<div className="col-start-2 sm:col-start-3">
 				{a.unlocked ? (
-					<div className="flex sm:justify-end">
+					// 手機：日期接在 badge 右邊（不多佔一行）；sm 以上在右欄，badge 下面靠右
+					<div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-end">
 						<Badge tone="success" icon={<CircleCheck />}>
 							已解鎖
 						</Badge>
+						{unlockedOn && (
+							<time dateTime={unlockedOn.dateTime} className="font-num text-meta text-ink-3 tabular-nums">
+								{unlockedOn.text}
+							</time>
+						)}
 					</div>
 				) : (
 					<div className="flex flex-col gap-1">
@@ -186,7 +197,7 @@ export function AchievementsPage() {
 									<CardHeader title={g.label} meta={`${g.items.filter((a) => a.unlocked).length}／${g.items.length} 已解鎖`} />
 									<ul className="divide-y divide-line">
 										{g.items.map((a) => (
-											<AchievementRow key={a.id} achievement={a} hasDailyGoal={hasDailyGoal} />
+											<AchievementRow key={a.id} achievement={a} hasDailyGoal={hasDailyGoal} timeZone={user.timezone} />
 										))}
 									</ul>
 								</Card>

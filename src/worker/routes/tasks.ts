@@ -6,6 +6,7 @@ import { events, subjects, tasks } from '../db/schema';
 import { assertOwned, notFound, type DB } from '../lib/db';
 import { taskItemFields } from '../lib/tasks';
 import { validate } from '../lib/validator';
+import { recordAchievementUnlocks } from '../middleware/achievement-unlocks';
 import { requireAuth } from '../middleware/auth';
 import type { TaskItem } from '../../shared/api-types';
 import type { AppEnv } from '../types';
@@ -23,6 +24,8 @@ async function assertRefs(db: DB, userId: string, input: { subjectId?: string | 
 
 export const taskRoutes = new Hono<AppEnv>()
 	.use(requireAuth)
+	// 寫入後記下新解鎖成就的時間（PRO-2）；讀取不經過
+	.use(recordAchievementUnlocks)
 	.get('/', validate('query', listQuery), async (c) => {
 		const q = c.req.valid('query');
 		const rows: TaskItem[] = await c.var.db

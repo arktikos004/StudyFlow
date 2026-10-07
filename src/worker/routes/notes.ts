@@ -18,6 +18,7 @@ import { sniffImageType } from '../lib/image';
 import { containsText } from '../lib/text';
 import { uploadLimit } from '../lib/upload';
 import { validate } from '../lib/validator';
+import { recordAchievementUnlocks } from '../middleware/achievement-unlocks';
 import { requireAuth } from '../middleware/auth';
 import type { NoteItem, PublicAttachment } from '../../shared/api-types';
 import type { AppEnv } from '../types';
@@ -71,6 +72,8 @@ async function getOwnedNote(db: DB, id: string, userId: string) {
 
 export const noteRoutes = new Hono<AppEnv>()
 	.use(requireAuth)
+	// 寫入後記下新解鎖成就的時間（PRO-2）；讀取不經過
+	.use(recordAchievementUnlocks)
 	.get('/', validate('query', listQuery), async (c) => {
 		const q = c.req.valid('query');
 		const user = c.var.user;

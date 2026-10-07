@@ -7,6 +7,7 @@ import { dateString, studySessionSchema, studySessionUpdateSchema } from '../../
 import { studySessions, subjects, tasks } from '../db/schema';
 import { assertOwned, notFound } from '../lib/db';
 import { validate } from '../lib/validator';
+import { recordAchievementUnlocks } from '../middleware/achievement-unlocks';
 import { requireAuth } from '../middleware/auth';
 import type { AppEnv } from '../types';
 
@@ -14,6 +15,8 @@ const listQuery = z.object({ from: dateString.optional(), to: dateString.optiona
 
 export const studySessionRoutes = new Hono<AppEnv>()
 	.use(requireAuth)
+	// 寫入後記下新解鎖成就的時間（PRO-2）；讀取不經過
+	.use(recordAchievementUnlocks)
 	.get('/', validate('query', listQuery), async (c) => {
 		const tz = c.var.user.timezone;
 		const to = c.req.valid('query').to ?? today(tz);

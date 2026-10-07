@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import type {
@@ -30,13 +30,16 @@ import type {
 	SummaryResponse,
 	TaskItem,
 } from '../../shared/api-types';
-import { api, ApiError, qs } from './api';
+import { api, ApiError, isAbortError, qs, type RequestOptions } from './api';
 
 // ---- 查詢 ----
 
+/** 目前登入的使用者；null = 沒有登入 */
+export const ME_KEY = ['me'] as const;
+
 export function useMe() {
 	return useQuery({
-		queryKey: ['me'],
+		queryKey: ME_KEY,
 		queryFn: async () => {
 			try {
 				return (await api.get<{ user: PublicUser }>('/auth/me')).user;
@@ -45,7 +48,11 @@ export function useMe() {
 				throw e;
 			}
 		},
+		// 這台裝置上的變更都會直接寫進快取，平常不必重新取得；
+		// 但別的裝置可能換了照片或暱稱（登入也可能過期）：切回分頁、重新連上網路時一律重新取得
 		staleTime: Infinity,
+		refetchOnWindowFocus: 'always',
+		refetchOnReconnect: 'always',
 	});
 }
 
@@ -178,6 +185,11 @@ export function useProfileSummary() {
 
 // ---- 修改 ----
 
+/** 失敗的提示：顯示後端回傳的錯誤訊息；呼叫端自己中止的請求（例如對話框按了取消）不提示 */
+function toastError(e: unknown) {
+	if (!isAbortError(e)) toast.error(e instanceof Error ? e.message : '發生錯誤');
+}
+
 /**
  * 包裝 useMutation：成功後重新整理相關資料、顯示提示；失敗時顯示後端回傳的錯誤訊息。
  */
@@ -189,7 +201,7 @@ function useApiMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, i
 			invalidate.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
 			if (successMessage) toast.success(successMessage);
 		},
-		onError: (e) => toast.error(e instanceof Error ? e.message : '發生錯誤'),
+		onError: toastError,
 	});
 }
 
@@ -235,7 +247,7 @@ export const useReorderSubjects = () => {
 		},
 		onError: (e, _ids, ctx) => {
 			if (ctx?.prev) qc.setQueryData(['subjects'], ctx.prev);
-			toast.error(e instanceof Error ? e.message : '發生錯誤');
+			toastError(e);
 		},
 		onSettled: () => SUBJECT_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey })),
 	});
@@ -322,48 +334,60 @@ export const useUploadAttachment = () =>
 	}, NOTE_KEYS);
 export const useDeleteAttachment = () => useApiMutation((id: string) => api.del(`/attachments/${id}`), NOTE_KEYS, '已刪除照片');
 
+/**
+ * 使用者資料的修改（個人資料、頭像）失敗或被中止時：請求可能已經在伺服器上完成（例如處理完才斷線、按了取消），
+ * 重新取得使用者，畫面以伺服器為準；再顯示失敗的提示（中止的不提示）。
+ */
+function resyncMeAndToast(qc: QueryClient, e: unknown) {
+	void qc.invalidateQueries({ queryKey: ME_KEY });
+	toastError(e);
+}
+
 /** 暱稱、時區、每日／每週目標；目標傳 null 代表清除 */
 export type ProfileInput = z.input<typeof updateProfileSchema>;
-export const useUpdateProfile = () => {
+/**
+ * 更新個人資料：mutate({ ...欄位, signal? })；signal 可以中止請求，不會送給後端。
+ * successMessage：成功時的提示（例如「已更新時區」）；省略就不提示，由呼叫端自己決定
+ * （例如「編輯個人資料」一次存好照片與暱稱，只提示一次）。
+ */
+export const useUpdateProfile = (successMessage?: string) => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (v: ProfileInput) => api.patch<{ user: PublicUser }>('/auth/me', v),
+		mutationFn: ({ signal, ...input }: ProfileInput & RequestOptions) => api.patch<{ user: PublicUser }>('/auth/me', input, { signal }),
 		onSuccess: ({ user }) => {
-			qc.setQueryData(['me'], user);
+			qc.setQueryData(ME_KEY, user);
 			// 時區改變會影響「今天」的判斷
-			qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
-			toast.success('已更新個人資料');
+			qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== ME_KEY[0] });
+			if (successMessage) toast.success(successMessage);
 		},
-		onError: (e) => toast.error(e.message),
+		onError: (e) => resyncMeAndToast(qc, e),
 	});
 };
 
 /**
- * 頭像的上傳與移除：成功後直接換掉 ['me'] 快取裡的使用者。avatarUpdatedAt 變了，avatarUrl() 就會換網址，
- * 用 useMe／useUser 的地方（側欄、「更多」選單、設定頁）都會跟著更新。失敗時用 toast 顯示後端的錯誤訊息。
+ * 頭像的上傳與移除：成功後直接換掉 ME_KEY 快取裡的使用者。avatarUpdatedAt 變了，avatarUrl() 就會換網址，
+ * 用 useMe／useUser 的地方（側欄、「更多」選單、設定頁）都會跟著更新。
+ * 成功不提示：只有「編輯個人資料」在用，存好整輪才提示一次。失敗時用 toast 顯示後端的錯誤訊息。
  */
-function useAvatarMutation<TVars>(fn: (vars: TVars) => Promise<{ user: PublicUser }>, successMessage: string) {
+function useAvatarMutation<TVars>(fn: (vars: TVars) => Promise<{ user: PublicUser }>) {
 	const qc = useQueryClient();
 	return useMutation({
 		mutationFn: fn,
-		onSuccess: ({ user }) => {
-			qc.setQueryData(['me'], user);
-			toast.success(successMessage);
-		},
-		onError: (e) => toast.error(e.message),
+		onSuccess: ({ user }) => qc.setQueryData(ME_KEY, user),
+		onError: (e) => resyncMeAndToast(qc, e),
 	});
 }
 
 /**
- * 上傳頭像：mutate(file)。請先在前端裁成正方形並縮小；後端上限 AVATAR_MAX_BYTES（1MB），
- * 依檔案內容只接受 JPEG、PNG、WebP（AVATAR_TYPES）。
+ * 上傳頭像：mutate({ file, signal? })。請先在前端裁成正方形並縮小；後端上限 AVATAR_MAX_BYTES（1MB），
+ * 依檔案內容只接受 JPEG、PNG、WebP（AVATAR_TYPES）。signal 可以中止上傳。
  */
 export const useUploadAvatar = () =>
-	useAvatarMutation((file: Blob) => {
+	useAvatarMutation(({ file, signal }: { file: Blob } & RequestOptions) => {
 		const form = new FormData();
 		form.append('file', file, 'avatar');
-		return api.put<{ user: PublicUser }>('/auth/avatar', form);
-	}, '已更新照片');
+		return api.put<{ user: PublicUser }>('/auth/avatar', form, { signal });
+	});
 
-/** 移除頭像：mutate()；之後 avatarUpdatedAt 是 null，畫面改用暱稱首字 */
-export const useDeleteAvatar = () => useAvatarMutation<void>(() => api.del<{ user: PublicUser }>('/auth/avatar'), '已移除照片');
+/** 移除頭像：mutate({ signal? })；之後 avatarUpdatedAt 是 null，畫面改用暱稱首字 */
+export const useDeleteAvatar = () => useAvatarMutation(({ signal }: RequestOptions) => api.del<{ user: PublicUser }>('/auth/avatar', { signal }));

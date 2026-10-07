@@ -20,7 +20,7 @@ const ANCHOR = 'goals';
  */
 export function GoalsCard() {
 	const user = useUser();
-	const update = useUpdateProfile();
+	const update = useUpdateProfile('已更新讀書目標');
 	const { data: subjects = [], isPending: subjectsPending } = useSubjects();
 
 	// 帶著 #goals 進來：捲到這張卡片，焦點移到標題（鍵盤與螢幕報讀器從這裡接著往下）。

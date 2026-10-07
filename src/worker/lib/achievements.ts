@@ -1,7 +1,7 @@
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, eq, inArray } from 'drizzle-orm';
 import { today } from '../../shared/dates';
-import type { Achievement } from '../../shared/api-types';
-import { notes, studySessions, tasks, type User } from '../db/schema';
+import type { Achievement, ProfileBadge } from '../../shared/api-types';
+import { achievementUnlocks, notes, studySessions, tasks, type User } from '../db/schema';
 import type { DB } from './db';
 import { minutesByDate, round1, streaks } from './stats';
 
@@ -80,7 +80,10 @@ export async function loadProgress(db: DB, user: User): Promise<Progress> {
 	};
 }
 
-type Def = Omit<Achievement, 'unlocked' | 'progress'> & {
+/** 成就的定義與目前的進度，還沒加上解鎖時間（achievementList 的結果） */
+export type AchievementState = Omit<Achievement, 'unlockedAt'>;
+
+type Def = Omit<AchievementState, 'unlocked' | 'progress'> & {
 	/** 目前的值（單位同 target）；達到 target 就解鎖 */
 	value: number;
 };
@@ -92,7 +95,7 @@ type Def = Omit<Achievement, 'unlocked' | 'progress'> & {
  * - goal-streak-7 用「目前」的每日目標判斷全部的歷史紀錄：改了目標結果就會跟著變，
  *   沒有設定目標時不計算（進度 0）。
  */
-export function achievementList(p: Progress): Achievement[] {
+export function achievementList(p: Progress): AchievementState[] {
 	const hours = floor1(p.seconds / 3600);
 	const defs: Def[] = [
 		{ id: 'first-session', title: '踏出第一步', description: '記錄第一次讀書時間', icon: 'sparkles', target: 1, value: p.sessions },
@@ -130,4 +133,59 @@ export function achievementList(p: Progress): Achievement[] {
 		},
 	];
 	return defs.map(({ value, ...a }) => ({ ...a, unlocked: value >= a.target, progress: Math.min(value, a.target) }));
+}
+
+/** 本人每個成就的解鎖時間：成就 id → UTC 毫秒 */
+async function loadUnlockTimes(db: DB, userId: string): Promise<Map<string, number>> {
+	const rows = await db
+		.select({ id: achievementUnlocks.achievementId, at: achievementUnlocks.unlockedAt })
+		.from(achievementUnlocks)
+		.where(eq(achievementUnlocks.userId, userId));
+	return new Map(rows.map((r) => [r.id, r.at]));
+}
+
+/**
+ * 成就清單加上解鎖時間（GET /api/achievements 與個人檔案共用）：累積值與解鎖紀錄平行讀取，只讀不寫。
+ * 已解鎖卻沒有紀錄的（開始記錄解鎖時間之前就解鎖）是 null。
+ */
+export async function loadAchievements(db: DB, user: User): Promise<{ progress: Progress; achievements: Achievement[] }> {
+	const [progress, unlockTimes] = await Promise.all([loadProgress(db, user), loadUnlockTimes(db, user.id)]);
+	const achievements = achievementList(progress).map((a) => ({ ...a, unlockedAt: a.unlocked ? (unlockTimes.get(a.id) ?? null) : null }));
+	return { progress, achievements };
+}
+
+/** 個人檔案的徽章：已解鎖的成就，最近解鎖的在前；時間不明的排在最後，依成就的固定順序（sort 是穩定排序） */
+export function recentBadges(achievements: readonly Achievement[]): ProfileBadge[] {
+	return achievements
+		.filter((a) => a.unlocked)
+		.map(({ id, title, icon, unlockedAt }) => ({ id, title, icon, unlockedAt }))
+		.sort((a, b) => (b.unlockedAt ?? 0) - (a.unlockedAt ?? 0));
+}
+
+/** 目前已解鎖的成就 id */
+export async function unlockedIds(db: DB, user: User): Promise<Set<string>> {
+	return new Set(
+		achievementList(await loadProgress(db, user))
+			.filter((a) => a.unlocked)
+			.map((a) => a.id),
+	);
+}
+
+/**
+ * 依一次寫入前後的已解鎖成就，更新解鎖紀錄：新解鎖的記下 now；被收回的刪掉，之後再解鎖會得到新的時間。
+ * 成就 id 來自固定的清單（十幾個），不是使用者的資料，inArray 不會碰到 D1 每個查詢 100 個參數的上限。
+ */
+export async function recordUnlockChanges(db: DB, userId: string, before: ReadonlySet<string>, after: ReadonlySet<string>, now: number) {
+	const unlocked = [...after].filter((id) => !before.has(id));
+	const revoked = [...before].filter((id) => !after.has(id));
+	if (unlocked.length) {
+		// 同時送出的兩個請求可能都判斷為新解鎖：保留先寫入的那個時間
+		await db
+			.insert(achievementUnlocks)
+			.values(unlocked.map((achievementId) => ({ userId, achievementId, unlockedAt: now })))
+			.onConflictDoNothing();
+	}
+	if (revoked.length) {
+		await db.delete(achievementUnlocks).where(and(eq(achievementUnlocks.userId, userId), inArray(achievementUnlocks.achievementId, revoked)));
+	}
 }

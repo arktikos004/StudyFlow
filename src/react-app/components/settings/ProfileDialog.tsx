@@ -5,7 +5,7 @@ import type { PublicUser } from '../../../shared/api-types';
 import { registerSchema } from '../../../shared/schemas';
 import { useDeleteAvatar, useUpdateProfile, useUploadAvatar } from '../../lib/queries';
 import { KEEP_PHOTO, type PhotoDraft } from '../../lib/profile-photo';
-import { photoWasSaved, saveFailureMessage, saveProfile, type SaveInput } from '../../lib/profile-save';
+import { photoWasSaved, saveFailureMessage, saveProfile, saveSuccessMessage, type SaveInput, type SaveResult } from '../../lib/profile-save';
 import { Button, Dialog, ErrorNote, Field, Input } from '../ui';
 import { ProfilePhotoField } from './ProfilePhotoField';
 
@@ -14,11 +14,13 @@ const nameSchema = registerSchema.shape.displayName;
 /**
  * 「編輯個人資料」對話框：照片與暱稱（時區是設定，在「帳號與安全」卡）。
  * 儲存的流程在 lib/profile-save.ts（有單元測試）：先處理照片（上傳或移除），成功才存暱稱。
+ * - 全部存好：關掉對話框，只提示一次（只改照片是「已更新照片」或「已移除照片」，有改暱稱是「已更新個人資料」）。
  * - 照片失敗：什麼都沒存，對話框留著（新選的照片還在），可以再按一次。
  * - 照片成功、暱稱失敗或剛好斷線（部分成功）：照片已經換好（預覽就是新的照片），焦點回到暱稱，再按「儲存」只會存暱稱。
  * - 離線時不送出（TanStack Query 離線時會把 mutation 暫停、連線後才補送），直接提示。
- * - 儲存途中關掉對話框（取消、Esc、點背景、關閉鈕、手機往下拉）就放棄這一輪：已經送出的照片請求收不回來，
- *   但不會再存暱稱，也不會動到重新打開後的狀態（run 是世代編號，每次送出、關閉、開關都會換一個）。
+ * - 儲存途中關掉對話框（取消、Esc、點背景、關閉鈕、手機往下拉）就中止這一輪：進行中的請求會真的被取消（AbortController），
+ *   不會再存暱稱，也不會動到重新打開後的狀態。請求在取消之前就完成的話，提示已經存好的部分；
+ *   hook 會重新取得使用者，畫面以伺服器為準。
  * 失敗的原因除了 hook 的 toast，對話框裡也有一份 role="alert"（對話框是 modal，toast 在外面，螢幕報讀器不一定念得到）。
  * 暱稱的格式錯誤（空白、太長）在送出前檢查，顯示在欄位旁邊。
  * 狀態在每次打開時重設；新選照片的預覽網址（blob:）在換掉、關閉時 revoke。
@@ -44,8 +46,8 @@ export function ProfileDialog({
 	const [nameError, setNameError] = useState<string>();
 	const [failure, setFailure] = useState<string>();
 	const [saving, setSaving] = useState(false);
-	// 儲存的世代：每次送出取一個新的編號；關閉、開關、卸載都會讓進行中的那一輪失效
-	const run = useRef(0);
+	// 進行中的這一輪儲存：關閉、開關、卸載時中止（進行中的請求會真的被取消）
+	const inFlight = useRef<AbortController | null>(null);
 
 	// 每次打開都從目前的資料開始（在 render 中依 open 的變化重設，第一個畫面就是新的狀態）
 	const [wasOpen, setWasOpen] = useState(open);
@@ -59,10 +61,10 @@ export function ProfileDialog({
 			setFailure(undefined);
 		}
 	}
-	// open 改變或卸載時，進行中的儲存不再算數（即使不是經過下面的 close 關掉的）
+	// open 改變或卸載時，進行中的儲存一律中止（即使不是經過下面的 close 關掉的）
 	useEffect(
 		() => () => {
-			run.current++;
+			inFlight.current?.abort();
 		},
 		[open],
 	);
@@ -76,7 +78,7 @@ export function ProfileDialog({
 	);
 
 	const close = () => {
-		run.current++;
+		inFlight.current?.abort();
 		setSaving(false);
 		setDraft(KEEP_PHOTO);
 		onClose();
@@ -97,16 +99,24 @@ export function ProfileDialog({
 		setNameError(undefined);
 		setFailure(undefined);
 		const input: SaveInput = { draft, name: parsed.data === user.displayName ? null : parsed.data };
-		const mine = ++run.current;
+		const controller = new AbortController();
+		inFlight.current = controller;
+		const { signal } = controller;
 		setSaving(true);
-		// 成功與失敗的 toast 由各自的 hook 顯示；離線時 hook 不會被呼叫，這裡自己提示
 		const result = await saveProfile(input, {
-			uploadPhoto: (file) => uploadAvatar.mutateAsync(file),
-			removePhoto: () => deleteAvatar.mutateAsync(),
-			updateName: (displayName) => updateProfile.mutateAsync({ displayName }),
+			uploadPhoto: (file) => uploadAvatar.mutateAsync({ file, signal }),
+			removePhoto: () => deleteAvatar.mutateAsync({ signal }),
+			updateName: (displayName) => updateProfile.mutateAsync({ displayName, signal }),
 			isOnline: () => onlineManager.isOnline(),
-			isCurrent: () => run.current === mine,
+			isCurrent: () => !signal.aborted,
 		});
+		showResult(result, input);
+	};
+
+	/** 依這一輪的結果提示並更新畫面。成功只提示一次；失敗的 toast 由各自的 hook 顯示（離線時 hook 不會被呼叫，這裡自己提示） */
+	const showResult = (result: SaveResult, input: SaveInput) => {
+		const success = saveSuccessMessage(result, input);
+		if (success) toast.success(success);
 		// 對話框已經被關掉（也可能又打開了）：這一輪不算數，不碰任何狀態
 		if (result.status === 'abandoned') return;
 		setSaving(false);

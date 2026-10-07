@@ -17,7 +17,7 @@ const isFinePointer = () => window.matchMedia('(pointer: fine)').matches;
  * 離線時不送出、直接提示（TanStack Query 離線時會把 mutation 暫停，連線後才補送）。
  */
 function TimezoneForm({ user }: { user: PublicUser }) {
-	const update = useUpdateProfile();
+	const update = useUpdateProfile('已更新時區');
 	const [timezone, setTimezone] = useState(user.timezone);
 	const changed = timezone !== user.timezone;
 	return (

@@ -8,6 +8,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { Layout } from './components/Layout';
 import { GuestOnly, RequireAuth } from './components/RequireAuth';
 import { ApiError } from './lib/api';
+import { ME_KEY } from './lib/queries';
 import { initTheme, useIsDark } from './lib/theme';
 import { PageLoader } from './components/ui';
 // 數字字型 Archivo（自架，CSP 為 font-src 'self'）：standard = 字重 + 字寬兩個軸
@@ -37,7 +38,7 @@ registerSW({ immediate: true });
 
 // 任何請求收到 401（例如 session 過期）就視為登出，RequireAuth 會導回登入頁
 const onAuthError = (error: unknown) => {
-	if (error instanceof ApiError && error.status === 401) queryClient.setQueryData(['me'], null);
+	if (error instanceof ApiError && error.status === 401) queryClient.setQueryData(ME_KEY, null);
 };
 const queryClient = new QueryClient({
 	queryCache: new QueryCache({ onError: onAuthError }),

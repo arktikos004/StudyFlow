@@ -399,19 +399,23 @@ describe('個人檔案摘要（PRO-1）', () => {
 			achievements: {
 				unlocked: 3,
 				total: 12,
-				badges: [
-					{ id: 'first-session', title: '踏出第一步', icon: 'sparkles' },
-					{ id: 'streak-7', title: '連續一週', icon: 'flame' },
-					{ id: 'mastered-10', title: '錯題剋星', icon: 'brain' },
-				],
+				// 三個都是經過 API 解鎖的，都有解鎖時間；「最近解鎖的在前」的順序在 achievement-unlocks.spec.ts 測
+				badges: expect.arrayContaining([
+					{ id: 'first-session', title: '踏出第一步', icon: 'sparkles', unlockedAt: expect.any(Number) },
+					{ id: 'streak-7', title: '連續一週', icon: 'flame', unlockedAt: expect.any(Number) },
+					{ id: 'mastered-10', title: '錯題剋星', icon: 'brain', unlockedAt: expect.any(Number) },
+				]),
 			},
 		});
+		expect(s.achievements.badges).toHaveLength(3);
 
 		const list: Achievement[] = (await c.get('/api/achievements')).data.achievements;
 		const unlocked = list.filter((a) => a.unlocked);
+		const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id);
 		expect(s.achievements.total).toBe(list.length);
 		expect(s.achievements.unlocked).toBe(unlocked.length);
-		expect(s.achievements.badges).toEqual(unlocked.map(({ id, title, icon }) => ({ id, title, icon })));
+		// 徽章和成就頁的已解鎖成就一致，解鎖時間也相同
+		expect([...s.achievements.badges].sort(byId)).toEqual(unlocked.map(({ id, title, icon, unlockedAt }) => ({ id, title, icon, unlockedAt })).sort(byId));
 		const progress = Object.fromEntries(list.map((a) => [a.id, a.progress]));
 		expect(progress).toMatchObject({
 			'first-session': 1,
@@ -425,7 +429,7 @@ describe('個人檔案摘要（PRO-1）', () => {
 		await c.patch(`/api/notes/${tenth.id}`, { mastered: false });
 		const after = await summary(c);
 		expect(after.mistakesMastered).toBe(9);
-		expect(after.achievements.badges.map((b) => b.id)).toEqual(['first-session', 'streak-7']);
+		expect(after.achievements.badges.map((b) => b.id).sort()).toEqual(['first-session', 'streak-7']);
 	});
 
 	it('累積分鐘數無條件捨去：換算成時數後和成就頁一致（3599 秒是 59 分、0.9 小時）', async () => {
@@ -514,7 +518,11 @@ describe('個人檔案摘要的跨使用者隔離', () => {
 			longestStreak: 1,
 			tasksDone: 1,
 			mistakesMastered: 1,
-			achievements: { unlocked: 1, total: 12, badges: [{ id: 'first-session', title: '踏出第一步', icon: 'sparkles' }] },
+			achievements: {
+				unlocked: 1,
+				total: 12,
+				badges: [{ id: 'first-session', title: '踏出第一步', icon: 'sparkles', unlockedAt: expect.any(Number) }],
+			},
 		});
 	});
 

@@ -2,7 +2,7 @@ import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { Hono, type Context } from 'hono';
 import { addDays, localDateTime, today, zonedTime } from '../../shared/dates';
 import { calendarExportQuerySchema } from '../../shared/schemas';
-import { attachments, events, notes, studySessions, subjects, tasks } from '../db/schema';
+import { achievementUnlocks, attachments, events, notes, studySessions, subjects, tasks } from '../db/schema';
 import type { DB } from '../lib/db';
 import { toCsv } from '../lib/csv';
 import { buildCalendar, type IcsEvent } from '../lib/ics';
@@ -47,7 +47,7 @@ export const exportRoutes = new Hono<AppEnv>()
 	.get('/backup.json', async (c) => {
 		const db = c.var.db;
 		const user = c.var.user;
-		const [subjectRows, eventRows, taskRows, sessionRows, noteRows, attachmentRows] = await Promise.all([
+		const [subjectRows, eventRows, taskRows, sessionRows, noteRows, attachmentRows, unlockRows] = await Promise.all([
 			db.select().from(subjects).where(eq(subjects.userId, user.id)).orderBy(asc(subjects.sortOrder), asc(subjects.createdAt)),
 			db.select().from(events).where(eq(events.userId, user.id)).orderBy(asc(events.date), asc(events.time)),
 			db.select().from(tasks).where(eq(tasks.userId, user.id)).orderBy(asc(tasks.createdAt)),
@@ -65,6 +65,12 @@ export const exportRoutes = new Hono<AppEnv>()
 				.from(attachments)
 				.where(eq(attachments.userId, user.id))
 				.orderBy(asc(attachments.createdAt)),
+			// 成就的解鎖時間（PRO-2）：無法從其他資料算回來，所以也要備份
+			db
+				.select({ achievementId: achievementUnlocks.achievementId, unlockedAt: achievementUnlocks.unlockedAt })
+				.from(achievementUnlocks)
+				.where(eq(achievementUnlocks.userId, user.id))
+				.orderBy(asc(achievementUnlocks.unlockedAt)),
 		]);
 		const backup = {
 			app: 'StudyFlow',
@@ -78,6 +84,7 @@ export const exportRoutes = new Hono<AppEnv>()
 			studySessions: sessionRows,
 			notes: noteRows,
 			attachments: attachmentRows,
+			achievementUnlocks: unlockRows,
 		};
 		const date = today(user.timezone);
 		return download(c, JSON.stringify(backup, null, 2), 'application/json', `StudyFlow 備份 ${date}.json`, `studyflow-backup-${date}.json`);

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 // 慣例：
 // - 「瞬間」（登入、學習時段起訖）一律存 UTC epoch 毫秒（integer）
@@ -205,6 +205,23 @@ export const attachments = sqliteTable(
 		// 筆記列表一次取出本人的全部照片（D1 每個查詢最多 100 個參數，不能用 inArray）
 		index('attachments_user_idx').on(t.userId),
 	],
+);
+
+/**
+ * 成就的解鎖時間（PRO-2）。成就本身仍由現有資料即時計算（lib/achievements.ts），這裡只記「什麼時候解鎖的」：
+ * 造成解鎖的寫入完成時新增一列；徽章被收回（例如刪了紀錄）時刪掉，之後再解鎖會得到新的時間。
+ */
+export const achievementUnlocks = sqliteTable(
+	'achievement_unlocks',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		// lib/achievements.ts 的成就 id，例如 'hours-10'
+		achievementId: text('achievement_id').notNull(),
+		unlockedAt: integer('unlocked_at').notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.achievementId] })],
 );
 
 export type User = typeof users.$inferSelect;

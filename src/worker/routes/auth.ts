@@ -9,6 +9,7 @@ import * as rateLimit from '../lib/rate-limit';
 import { clearSessionCookie, createSession, getSessionToken, setSessionCookie } from '../lib/session';
 import { validate } from '../lib/validator';
 import { sha256Hex } from '../lib/encoding';
+import { recordAchievementUnlocks } from '../middleware/achievement-unlocks';
 import { requireAuth } from '../middleware/auth';
 import type { PublicUser } from '../../shared/api-types';
 import type { AppEnv } from '../types';
@@ -82,7 +83,8 @@ export const authRoutes = new Hono<AppEnv>()
 		return c.json({ ok: true });
 	})
 	.get('/me', requireAuth, (c) => c.json({ user: publicUser(c.var.user) }))
-	.patch('/me', requireAuth, validate('json', updateProfileSchema), async (c) => {
+	// 每日目標與時區會改變成就（「說到做到」、連續天數）：記下新解鎖的時間（PRO-2）
+	.patch('/me', requireAuth, recordAchievementUnlocks, validate('json', updateProfileSchema), async (c) => {
 		const input = c.req.valid('json');
 		if (!hasValues(input)) return c.json({ user: publicUser(c.var.user) });
 		const user = await c.var.db.update(users).set(input).where(eq(users.id, c.var.user.id)).returning().get();

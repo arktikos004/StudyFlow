@@ -8,7 +8,7 @@ export type SaveDeps = {
 	updateName: (displayName: string) => Promise<unknown>;
 	/** 現在有沒有網路（TanStack Query 的 onlineManager）：離線時 mutation 會被暫停、連線後才補送，所以離線就不送 */
 	isOnline: () => boolean;
-	/** 這一輪儲存還算數嗎？對話框被關掉（或關掉後重新打開）就回傳 false，後面的步驟全部放棄 */
+	/** 這一輪儲存還算數嗎？對話框被關掉（或關掉後重新打開）就回傳 false，後面的步驟全部放棄（進行中的請求由呼叫端中止） */
 	isCurrent: () => boolean;
 };
 
@@ -21,8 +21,11 @@ export type SaveInput = {
 export type SaveResult =
 	/** 全部存好了 */
 	| { status: 'saved' }
-	/** 使用者關掉了對話框：不再往下做，呼叫端不要碰畫面的狀態（已經送出的請求收不回來） */
-	| { status: 'abandoned' }
+	/**
+	 * 使用者關掉了對話框：不再往下做，呼叫端不要碰畫面的狀態。
+	 * photoDone、nameDone：關掉之前已經存好的部分（請求在中止前就完成了），用來提示使用者
+	 */
+	| { status: 'abandoned'; photoDone: boolean; nameDone: boolean }
 	/** 離線所以沒有送出；photoDone 為 true 代表照片已經存好，只剩暱稱（部分成功） */
 	| { status: 'offline'; photoDone: boolean }
 	/** 照片上傳或移除失敗：什麼都沒存 */
@@ -35,11 +38,11 @@ export type SaveResult =
  * - 一開始就離線：什麼都不送。
  * - 照片失敗：不存暱稱。
  * - 照片成功後才斷線、或暱稱失敗：照片已經存好，回報部分成功，再存一次只需要存暱稱。
- * - 每個等待結束後都檢查 isCurrent()：對話框已經關掉就放棄（不存暱稱、回傳 abandoned）。
+ * - 每個等待結束後都檢查 isCurrent()：對話框已經關掉就放棄（不存暱稱、回傳 abandoned，並說明已經存好的部分）。
  */
 export async function saveProfile({ draft, name }: SaveInput, deps: SaveDeps): Promise<SaveResult> {
-	const abandoned: SaveResult = { status: 'abandoned' };
-	if (!deps.isCurrent()) return abandoned;
+	const abandoned = (photoDone: boolean, nameDone = false): SaveResult => ({ status: 'abandoned', photoDone, nameDone });
+	if (!deps.isCurrent()) return abandoned(false);
 	if (!deps.isOnline()) return { status: 'offline', photoDone: false };
 
 	const photoChanged = draft.kind !== 'keep';
@@ -48,9 +51,9 @@ export async function saveProfile({ draft, name }: SaveInput, deps: SaveDeps): P
 			if (draft.kind === 'set') await deps.uploadPhoto(draft.blob);
 			else await deps.removePhoto();
 		} catch (error) {
-			return deps.isCurrent() ? { status: 'photo-failed', error } : abandoned;
+			return deps.isCurrent() ? { status: 'photo-failed', error } : abandoned(false);
 		}
-		if (!deps.isCurrent()) return abandoned;
+		if (!deps.isCurrent()) return abandoned(true);
 	}
 
 	if (name === null) return { status: 'saved' };
@@ -58,14 +61,37 @@ export async function saveProfile({ draft, name }: SaveInput, deps: SaveDeps): P
 	try {
 		await deps.updateName(name);
 	} catch (error) {
-		return deps.isCurrent() ? { status: 'name-failed', error, photoDone: photoChanged } : abandoned;
+		return deps.isCurrent() ? { status: 'name-failed', error, photoDone: photoChanged } : abandoned(photoChanged);
 	}
-	return deps.isCurrent() ? { status: 'saved' } : abandoned;
+	return deps.isCurrent() ? { status: 'saved' } : abandoned(photoChanged, true);
 }
 
 /** 這次儲存有沒有把照片存好（畫面要把「新選的照片」換成「目前的照片」） */
 export function photoWasSaved(result: SaveResult): boolean {
 	return (result.status === 'offline' || result.status === 'name-failed') && result.photoDone;
+}
+
+/**
+ * 成功的提示（toast）：一次儲存只提示一次。全部存好，或對話框關掉之前已經存好一部分時回傳訊息；其他情況回傳 null。
+ * - 有存到暱稱：「已更新個人資料」（同時也換了照片時，一則就涵蓋）。
+ * - 只存到照片：「已更新照片」或「已移除照片」。
+ */
+export function saveSuccessMessage(result: SaveResult, { draft, name }: SaveInput): string | null {
+	let photoSaved: boolean;
+	let nameSaved: boolean;
+	if (result.status === 'saved') {
+		photoSaved = draft.kind !== 'keep';
+		nameSaved = name !== null;
+	} else if (result.status === 'abandoned') {
+		photoSaved = result.photoDone;
+		nameSaved = result.nameDone;
+	} else {
+		// 部分成功（離線、暱稱失敗）由對話框裡的訊息說明，失敗的原因由 hook 的 toast 顯示：不再提示成功
+		return null;
+	}
+	if (nameSaved) return '已更新個人資料';
+	if (photoSaved) return draft.kind === 'remove' ? '已移除照片' : '已更新照片';
+	return null;
 }
 
 const reason = (error: unknown) => (error instanceof Error && error.message ? error.message : '請再試一次');
