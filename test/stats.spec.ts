@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, diffDays, localDate, startOfLocalDay, today, weekStart } from '../src/shared/dates';
+import { addDays, diffDays, localDate, startOfLocalDay, weekStart } from '../src/shared/dates';
 import { streaks } from '../src/worker/lib/stats';
-import { registeredClient } from './helpers';
+import { logSession, noonClient, registeredClient } from './helpers';
 
 const TZ = 'Asia/Taipei';
 
@@ -40,16 +40,15 @@ describe('日期工具', () => {
 
 describe('統計 API', () => {
 	it('依日期與科目加總學習時間，並計算任務與錯題數據', async () => {
-		const c = await registeredClient();
+		// 使用者的時區是「現在剛好是當地中午」：今天早上一定有空檔，不管幾點跑，今天的紀錄都不會落到昨天
+		const c = await noonClient();
 		const math = (await c.post('/api/subjects', { name: '微積分', color: '#2a78d6' })).data.subject;
-		const todayStr = today(TZ);
-		const at = (date: string, hour: number) => startOfLocalDay(date, TZ) + hour * 3_600_000;
+		const todayStr = c.today;
+		const y = addDays(todayStr, -1);
 
 		// 今天 30 分鐘（微積分）、昨天 60 分鐘（無科目）
-		const todayStart = Math.min(at(todayStr, 0) + 60_000, Date.now() - 31 * 60_000);
-		await c.post('/api/study-sessions', { mode: 'manual', startedAt: todayStart, endedAt: todayStart + 30 * 60_000, subjectId: math.id });
-		const y = addDays(todayStr, -1);
-		await c.post('/api/study-sessions', { mode: 'manual', startedAt: at(y, 10), endedAt: at(y, 11) });
+		await logSession(c, todayStr, 8, 30, { subjectId: math.id });
+		await logSession(c, y, 10, 60);
 
 		await c.post('/api/tasks', { title: '今天到期', dueDate: todayStr, status: 'done' });
 		await c.post('/api/tasks', { title: '逾期', dueDate: addDays(todayStr, -2) });
