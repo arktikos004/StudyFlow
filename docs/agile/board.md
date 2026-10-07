@@ -53,7 +53,7 @@
 | 項目 | 負責 | 狀態 |
 |---|---|---|
 | s5/followup：PRO-1 的已知限制（按取消真的中止、只提示一次成功、切回分頁更新使用者）、統計測試的時間邊界、PRO-2 成就的解鎖時間（migration 0003） | Scrum Master | 已合併（無頭 Chrome 實測 21 項通過；測試與實測都用「故意改壞」確認抓得到） |
-| 第一次部署：Sprint 1–4 與 s5/followup（遠端 D1 套用 0001–0003） | Scrum Master | 待辦 |
+| 第一次部署：Sprint 1–4 與 s5/followup（遠端 D1 套用 0001–0003） | Scrum Master | 完成（2026-10-07：先記下 Time Travel bookmark、匯出備份，套用 0001–0003 後 `npm run deploy`；push main 後 Workers Builds 又自動部署同一個 commit。不登入的檢查通過，正式資料完好） |
 | 全 codebase clean code review | code-reviewer × 5（Sonnet，分區、只讀） | 待辦 |
 | s5/clean-code：依 review 修正 | Scrum Master | 待辦 |
 | 第二次部署 | Scrum Master | 待辦 |
