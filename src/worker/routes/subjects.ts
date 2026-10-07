@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, ne, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { addDays, startOfLocalDay, today, weekStart } from '../../shared/dates';
@@ -8,7 +8,7 @@ import { hasValues, notFound, type DB } from '../lib/db';
 import { eventItemFields } from '../lib/events';
 import { mistakeCounts } from '../lib/notes';
 import { round1 } from '../lib/stats';
-import { taskItemFields } from '../lib/tasks';
+import { taskItemFields, taskListOrder } from '../lib/tasks';
 import { validate } from '../lib/validator';
 import { requireAuth } from '../middleware/auth';
 import type { SubjectOverview } from '../../shared/api-types';
@@ -92,12 +92,7 @@ export const subjectRoutes = new Hono<AppEnv>()
 				.select(taskItemFields())
 				.from(tasks)
 				.where(and(eq(tasks.userId, user.id), eq(tasks.subjectId, id), ne(tasks.status, 'done')))
-				.orderBy(
-					sql`${tasks.dueDate} IS NULL`,
-					asc(tasks.dueDate),
-					sql`CASE ${tasks.priority} WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END`,
-					desc(tasks.createdAt),
-				),
+				.orderBy(...taskListOrder()),
 			// 近 30 天的已包含本週（週一最早是 6 天前）
 			db
 				.select({

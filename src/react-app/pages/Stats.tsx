@@ -10,6 +10,7 @@ import {
 	WeeklyTaskBars,
 	type StatItem,
 } from '../components/charts';
+import { NO_SUBJECT_KEY } from '../../shared/api-types';
 import { buildSeries, foldSeries } from '../components/dashboard/series';
 import {
 	Badge,
@@ -52,13 +53,13 @@ export function StatsPage() {
 	if (error) return <ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />;
 
 	// 系列依科目順序排列，顏色跟著科目走，不因篩選或排名改變；表格檢視用完整的系列
-	const totals = new Map(data.bySubject.map((b) => [b.subjectId ?? 'none', b.minutes]));
+	const totals = new Map(data.bySubject.map((b) => [b.subjectId ?? NO_SUBJECT_KEY, b.minutes]));
 	const series = buildSeries(totals.keys(), subjects, colorOf);
 	// 圖表最多 8 個系列：科目超過 8 個時，取前 7 個，其餘併入「其他」（中性色）
 	const chart = foldSeries(series, totals, data.daily, 'var(--chart-rest)');
 	const seriesMap = new Map(series.map((s) => [s.key, s]));
 	const subjectItems = data.bySubject.map((b) => {
-		const s = seriesMap.get(b.subjectId ?? 'none')!;
+		const s = seriesMap.get(b.subjectId ?? NO_SUBJECT_KEY)!;
 		return { key: s.key, label: s.label, color: s.color, minutes: b.minutes };
 	});
 

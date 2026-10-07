@@ -1,9 +1,8 @@
-import type { Subject } from '../../../shared/api-types';
+import { NO_SUBJECT_KEY, type Subject } from '../../../shared/api-types';
 
 // 統計頁每日堆疊圖的系列（DESIGN.md §3「堆疊圖：超過 8 個科目時，多的併入其他」、dataviz 的 8 色上限）。
 // 純函式，不依賴 React 或瀏覽器：test/stats-series.spec.ts 直接測試。
 
-export const NONE_KEY = 'none';
 export const OTHER_KEY = '__other';
 /** 圖上最多幾種顏色（系列數，含「未分類」與「其他」） */
 export const MAX_STACK_SERIES = 8;
@@ -25,9 +24,9 @@ export function buildSeries(
 	const known = subjects.filter((s) => keys.has(s.id)).map((s) => ({ key: s.id, label: s.name, color: colorOf(s.color) }));
 	const knownIds = new Set(known.map((s) => s.key));
 	const unknown = [...keys]
-		.filter((k) => k !== NONE_KEY && !knownIds.has(k))
+		.filter((k) => k !== NO_SUBJECT_KEY && !knownIds.has(k))
 		.map((k) => ({ key: k, label: '已刪除的科目', color: colorOf(null) }));
-	const none = keys.has(NONE_KEY) ? [{ key: NONE_KEY, label: '未分類', color: colorOf(null) }] : [];
+	const none = keys.has(NO_SUBJECT_KEY) ? [{ key: NO_SUBJECT_KEY, label: '未分類', color: colorOf(null) }] : [];
 	return [...known, ...unknown, ...none];
 }
 
@@ -47,7 +46,7 @@ export function foldSeries(
 
 	const keep = new Set(
 		series
-			.filter((s) => s.key !== NONE_KEY)
+			.filter((s) => s.key !== NO_SUBJECT_KEY)
 			.map((s, i) => ({ key: s.key, i, minutes: totals.get(s.key) ?? 0 }))
 			.sort((a, b) => b.minutes - a.minutes || a.i - b.i)
 			.slice(0, MAX_STACK_SERIES - 1)

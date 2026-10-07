@@ -130,6 +130,9 @@ export type ProfileSummary = {
 	achievements: { unlocked: number; total: number; badges: ProfileBadge[] };
 };
 
+/** StatsResponse.daily[].bySubject 裡「沒有科目」的 key（科目的 key 是它的 id） */
+export const NO_SUBJECT_KEY = 'none';
+
 export type StatsResponse = {
 	range: { from: string; to: string; days: number };
 	totals: {
@@ -142,6 +145,7 @@ export type StatsResponse = {
 		/** 區間內達成每日目標的天數；沒有設定目標時為 0 */
 		goalMetDays: number;
 	};
+	/** bySubject 的 key 是科目 id，沒有科目的是 NO_SUBJECT_KEY */
 	daily: { date: string; minutes: number; bySubject: Record<string, number> }[];
 	bySubject: { subjectId: string | null; minutes: number }[];
 	heatmap: { date: string; minutes: number }[];

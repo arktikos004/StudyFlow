@@ -1,10 +1,10 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { TASK_STATUSES, taskSchema, taskUpdateSchema } from '../../shared/schemas';
 import { events, subjects, tasks } from '../db/schema';
 import { assertOwned, notFound, type DB } from '../lib/db';
-import { taskItemFields } from '../lib/tasks';
+import { completedAtAfter, taskItemFields, taskListOrder } from '../lib/tasks';
 import { validate } from '../lib/validator';
 import { recordAchievementUnlocks } from '../middleware/achievement-unlocks';
 import { requireAuth } from '../middleware/auth';
@@ -38,13 +38,7 @@ export const taskRoutes = new Hono<AppEnv>()
 					q.eventId ? eq(tasks.eventId, q.eventId) : undefined,
 				),
 			)
-			// 有期限的排前面、期限近的優先，再依優先度
-			.orderBy(
-				sql`${tasks.dueDate} IS NULL`,
-				asc(tasks.dueDate),
-				sql`CASE ${tasks.priority} WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END`,
-				desc(tasks.createdAt),
-			);
+			.orderBy(...taskListOrder());
 		return c.json({ tasks: rows });
 	})
 	.post('/', validate('json', taskSchema), async (c) => {
@@ -52,7 +46,7 @@ export const taskRoutes = new Hono<AppEnv>()
 		await assertRefs(c.var.db, c.var.user.id, input);
 		const row = await c.var.db
 			.insert(tasks)
-			.values({ ...input, userId: c.var.user.id, completedAt: input.status === 'done' ? Date.now() : null })
+			.values({ ...input, userId: c.var.user.id, completedAt: completedAtAfter(input.status, null, Date.now()) })
 			.returning()
 			.get();
 		const task: TaskItem = { ...row, spentMinutes: 0 };
@@ -71,14 +65,11 @@ export const taskRoutes = new Hono<AppEnv>()
 			.get();
 		if (!current) notFound('任務');
 
-		let completedAt = current.completedAt;
-		if (input.status && input.status !== current.status) {
-			completedAt = input.status === 'done' ? Date.now() : null;
-		}
+		const now = Date.now();
 		// 回應和列表一樣帶 spentMinutes，前端可以直接換掉快取裡的那一筆
 		const task: TaskItem = await db
 			.update(tasks)
-			.set({ ...input, completedAt, updatedAt: Date.now() })
+			.set({ ...input, completedAt: completedAtAfter(input.status, current, now), updatedAt: now })
 			.where(eq(tasks.id, current.id))
 			.returning(taskItemFields())
 			.get();
