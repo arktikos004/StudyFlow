@@ -65,7 +65,8 @@ function useRowSpace<T extends HTMLElement>(enabled: boolean) {
 
 /**
  * 已解鎖的徽章：和成就頁一樣是藍筆塗滿的章（accent 底、on-accent 圖示、外圈 accent-soft），縮小成 28px。
- * 一列放不下時最後一格是「+N」。徽章名稱給螢幕報讀器（sr-only），看得到的人點整格到成就頁看名稱。
+ * 照 API 的順序：最近解鎖的在前（PRO-2）。一列放不下時最後一格是「+N」，收起的是最舊的那幾個。
+ * 徽章名稱給螢幕報讀器（sr-only），看得到的人點整格到成就頁看名稱。
  */
 function BadgeRow({ badges }: { badges: ProfileSummary['achievements']['badges'] }) {
 	const [ref, space] = useRowSpace<HTMLUListElement>(badges.length > 0);
@@ -75,7 +76,7 @@ function BadgeRow({ badges }: { badges: ProfileSummary['achievements']['badges']
 	const shown = badges.slice(0, badgeRowCapacity(space?.width ?? 0, badges.length, space?.rootFontSize ?? 16));
 	const rest = badges.length - shown.length;
 	return (
-		<ul ref={ref} aria-label="已解鎖的徽章" className="flex items-center gap-2">
+		<ul ref={ref} aria-label="已解鎖的徽章，最近解鎖的在前" className="flex items-center gap-2">
 			{shown.map((b) => (
 				<li key={b.id} className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-on-accent ring-2 ring-accent-soft">
 					<AchievementIcon name={b.icon} className="size-3.5" strokeWidth={2.25} aria-hidden />

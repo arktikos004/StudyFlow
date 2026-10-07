@@ -1,4 +1,5 @@
 import type { Achievement } from '../../shared/api-types';
+import { localDate } from '../../shared/dates';
 
 // 成就（APP-2）的純邏輯：已看過的紀錄、新解鎖的判斷、單位與分組、下一個目標。
 // 不碰 DOM 與 React（localStorage 由呼叫端傳入），test/shell-achievements.spec.ts 直接測。
@@ -29,6 +30,17 @@ export function diffUnlocked(seen: readonly string[] | null, unlockedIds: readon
 	const known = new Set(seen);
 	const announce = [...new Set(unlockedIds)].filter((id) => !known.has(id));
 	return { announce, next: announce.length ? [...seen, ...announce] : [...seen] };
+}
+
+/**
+ * 解鎖日期（PRO-2），依使用者時區：「10 月 7 日」；不是今年時加上年份（「2025 年 12 月 31 日」）。
+ * dateTime 給 <time dateTime>（YYYY-MM-DD）。
+ */
+export function unlockedDate(unlockedAt: number, timeZone: string, now: number = Date.now()): { text: string; dateTime: string } {
+	const dateTime = localDate(unlockedAt, timeZone);
+	const [year, month, day] = dateTime.split('-').map(Number);
+	const thisYear = Number(localDate(now, timeZone).slice(0, 4));
+	return { text: `${year === thisYear ? '' : `${year} 年 `}${month} 月 ${day} 日`, dateTime };
 }
 
 /** 進度的單位（同 description）：依成就 id 的前綴判斷，新的成就沒有對應時回傳空字串 */

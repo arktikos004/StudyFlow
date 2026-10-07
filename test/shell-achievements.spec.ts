@@ -7,6 +7,7 @@ import {
 	nextMilestone,
 	parseSeen,
 	seenKey,
+	unlockedDate,
 } from '../src/react-app/lib/shell-achievements';
 
 describe('成就：已看過的紀錄', () => {
@@ -41,6 +42,21 @@ describe('成就：已看過的紀錄', () => {
 		const revoked = diffUnlocked(['first-session', 'hours-10'], ['first-session']);
 		expect(revoked).toEqual({ announce: [], next: ['first-session', 'hours-10'] });
 		expect(diffUnlocked(revoked.next, ['first-session', 'hours-10'])).toEqual({ announce: [], next: ['first-session', 'hours-10'] });
+	});
+});
+
+describe('成就：解鎖日期（PRO-2）', () => {
+	const now = Date.UTC(2026, 9, 7, 4); // 台北 2026-10-07 12:00
+
+	it('今年只顯示月日；依使用者時區換日', () => {
+		// 2026-10-06 17:30Z：UTC 還是 10/6，台北已經是 10/7
+		const t = Date.UTC(2026, 9, 6, 17, 30);
+		expect(unlockedDate(t, 'Asia/Taipei', now)).toEqual({ text: '10 月 7 日', dateTime: '2026-10-07' });
+		expect(unlockedDate(t, 'UTC', now)).toEqual({ text: '10 月 6 日', dateTime: '2026-10-06' });
+	});
+
+	it('不是今年時加上年份', () => {
+		expect(unlockedDate(Date.UTC(2025, 11, 31, 4), 'Asia/Taipei', now)).toEqual({ text: '2025 年 12 月 31 日', dateTime: '2025-12-31' });
 	});
 });
 
