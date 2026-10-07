@@ -14,12 +14,12 @@ import {
 } from '../../shared/schemas';
 import { attachments, notes, subjects, type Attachment, type Note } from '../db/schema';
 import { assertOwned, hasValues, notFound, type DB } from '../lib/db';
-import { sniffImageType } from '../lib/image';
+import { deleteObjectsQuietly } from '../lib/storage';
 import { containsText } from '../lib/text';
-import { uploadLimit } from '../lib/upload';
 import { validate } from '../lib/validator';
 import { recordAchievementUnlocks } from '../middleware/achievement-unlocks';
 import { requireAuth } from '../middleware/auth';
+import { imageUploadLimit, readImageUpload } from '../middleware/upload';
 import type { NoteItem, PublicAttachment } from '../../shared/api-types';
 import type { AppEnv } from '../types';
 
@@ -31,8 +31,6 @@ const listQuery = z.object({
 	review: z.enum(['due']).optional(),
 	mastered: z.enum(['true', 'false']).optional(),
 });
-
-const PHOTO_TOO_LARGE = '照片太大（上限 5MB）';
 
 function publicAttachment(a: Attachment): PublicAttachment {
 	return { id: a.id, noteId: a.noteId, contentType: a.contentType, size: a.size, createdAt: a.createdAt };
@@ -165,13 +163,17 @@ export const noteRoutes = new Hono<AppEnv>()
 	.delete('/:id', async (c) => {
 		const db = c.var.db;
 		const note = await getOwnedNote(db, c.req.param('id'), c.var.user.id);
-		const atts = await db.select({ r2Key: attachments.r2Key }).from(attachments).where(eq(attachments.noteId, note.id));
-		if (atts.length) await c.env.BUCKET.delete(atts.map((a) => a.r2Key));
+		// 先刪筆記（照片的資料列跟著 CASCADE），再刪 R2 的檔案
+		const photos = await db.select({ r2Key: attachments.r2Key }).from(attachments).where(eq(attachments.noteId, note.id));
 		await db.delete(notes).where(eq(notes.id, note.id));
+		await deleteObjectsQuietly(
+			c.env.BUCKET,
+			photos.map((photo) => photo.r2Key),
+		);
 		return c.json({ ok: true });
 	})
 	// 大小上限放在 handler 之前：沒有 Content-Length（chunked）的上傳也會在讀進記憶體前擋下
-	.post('/:id/attachments', uploadLimit(ATTACHMENT_MAX_BYTES + 64 * 1024, PHOTO_TOO_LARGE), async (c) => {
+	.post('/:id/attachments', imageUploadLimit(ATTACHMENT_MAX_BYTES), async (c) => {
 		const db = c.var.db;
 		const user = c.var.user;
 		const note = await getOwnedNote(db, c.req.param('id'), user.id);
@@ -179,23 +181,20 @@ export const noteRoutes = new Hono<AppEnv>()
 		const [{ n }] = await db.select({ n: count() }).from(attachments).where(eq(attachments.noteId, note.id));
 		if (n >= ATTACHMENT_MAX_PER_NOTE) throw new HTTPException(400, { message: `每則筆記最多 ${ATTACHMENT_MAX_PER_NOTE} 張照片` });
 
-		const form = await c.req.formData();
-		const file = form.get('file');
-		if (!(file instanceof File)) throw new HTTPException(400, { message: '請選擇照片' });
-		if (file.size > ATTACHMENT_MAX_BYTES) throw new HTTPException(413, { message: PHOTO_TOO_LARGE });
-
-		const bytes = new Uint8Array(await file.arrayBuffer());
-		const contentType = sniffImageType(bytes);
-		if (!contentType) throw new HTTPException(415, { message: '只支援 JPEG、PNG、WebP 圖片' });
+		const { bytes, contentType } = await readImageUpload(c, ATTACHMENT_MAX_BYTES);
 
 		const id = crypto.randomUUID();
 		const r2Key = `users/${user.id}/${id}`;
 		await c.env.BUCKET.put(r2Key, bytes, { httpMetadata: { contentType } });
-		const row = await db
-			.insert(attachments)
-			.values({ id, userId: user.id, noteId: note.id, r2Key, contentType, size: bytes.byteLength })
-			.returning()
-			.get();
-		await db.update(notes).set({ updatedAt: Date.now() }).where(eq(notes.id, note.id));
+		// 照片的資料列與筆記的「最後更新」一起寫入（同一個交易）；沒寫成功的話，剛存的檔案沒人引用，刪掉
+		const [[row]] = await db
+			.batch([
+				db.insert(attachments).values({ id, userId: user.id, noteId: note.id, r2Key, contentType, size: bytes.byteLength }).returning(),
+				db.update(notes).set({ updatedAt: Date.now() }).where(eq(notes.id, note.id)),
+			])
+			.catch(async (e) => {
+				await deleteObjectsQuietly(c.env.BUCKET, [r2Key]);
+				throw e;
+			});
 		return c.json({ attachment: publicAttachment(row) }, 201);
 	});

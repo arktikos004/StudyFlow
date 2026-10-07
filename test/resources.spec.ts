@@ -142,6 +142,38 @@ describe('筆記、錯題與複習', () => {
 		await c.del(`/api/notes/${n.id}`);
 		expect(await env.BUCKET.get(`users/${c.user.id}/${up.data.attachment.id}`)).toBeNull();
 	});
+
+	it('照片上傳：沒有選檔、送的不是表單、空檔案都回 400「請選擇照片」（和頭像相同），不會變成 500', async () => {
+		const c = await registeredClient();
+		const n = (await c.post('/api/notes', { kind: 'mistake', title: '看圖題' })).data.note;
+		const url = `/api/notes/${n.id}/attachments`;
+
+		const noFile = await c.post(url, new FormData());
+		const json = await c.post(url, { file: 'not-a-file' });
+		const noBody = await c.post(url);
+		const empty = new FormData();
+		empty.append('file', new File([], 'empty.png', { type: 'image/png' }));
+		const emptyFile = await c.post(url, empty);
+
+		for (const res of [noFile, json, noBody, emptyFile]) {
+			expect(res.status, JSON.stringify(res.data)).toBe(400);
+			expect(res.data.error).toBe('請選擇照片');
+		}
+		expect((await c.get(`/api/notes/${n.id}`)).data.note.attachments).toEqual([]);
+	});
+
+	it('刪除單張照片：資料列與 R2 的檔案都刪掉，再刪一次回 404', async () => {
+		const c = await registeredClient();
+		const n = (await c.post('/api/notes', { kind: 'mistake', title: '看圖題' })).data.note;
+		const form = new FormData();
+		form.append('file', new File([PNG_1X1], 'q.png', { type: 'image/png' }));
+		const photo = (await c.post(`/api/notes/${n.id}/attachments`, form)).data.attachment;
+
+		expect((await c.del(`/api/attachments/${photo.id}`)).status).toBe(200);
+		expect(await env.BUCKET.get(`users/${c.user.id}/${photo.id}`)).toBeNull();
+		expect((await c.get(`/api/notes/${n.id}`)).data.note.attachments).toEqual([]);
+		expect((await c.del(`/api/attachments/${photo.id}`)).status).toBe(404);
+	});
 });
 
 describe('使用者之間的資料隔離', () => {
