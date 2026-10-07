@@ -250,6 +250,9 @@ export const reviewSchema = z.object({ result: z.enum(['remembered', 'forgot']) 
 /** GET /api/notes 一次最多回傳幾則（最近更新的優先）；前端超過時會提示只顯示這麼多 */
 export const NOTES_LIST_LIMIT = 500;
 
+/** GET /api/notes?q= 的關鍵字最多幾個字（筆記頁與任務頁搜尋框的 maxLength 也用這個） */
+export const LIST_SEARCH_MAX = 100;
+
 /** GET /api/search?q=：全站搜尋的關鍵字（前端輸入框的 maxLength 也用這個） */
 export const SEARCH_QUERY_MAX = 50;
 export const searchQuerySchema = z.object({

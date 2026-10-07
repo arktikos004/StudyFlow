@@ -1,11 +1,9 @@
+import type { ReviewMode } from '../../../lib/notes-params';
 import { CramReview } from './cram';
 import { DueReview } from './due';
-import type { ReviewMode } from './mode-switch';
 
 // 複習（NOTE-2）：「今天到期」走間隔複習（呼叫 /notes/:id/review），
 // 「考前衝刺」只在前端記錄這一輪的結果，不呼叫 useReviewNote，不影響複習排程。
-
-export type { ReviewMode } from './mode-switch';
 
 /** 複習：「今天到期」（間隔複習）或「考前衝刺」（只在這一輪記錄，不影響排程） */
 export function ReviewView({

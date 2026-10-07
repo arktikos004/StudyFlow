@@ -6,6 +6,7 @@ import { today } from '../../shared/dates';
 import {
 	ATTACHMENT_MAX_BYTES,
 	ATTACHMENT_MAX_PER_NOTE,
+	LIST_SEARCH_MAX,
 	NOTE_KINDS,
 	NOTES_LIST_LIMIT,
 	noteSchema,
@@ -27,7 +28,7 @@ import type { AppEnv } from '../types';
 const listQuery = z.object({
 	kind: z.enum(NOTE_KINDS).optional(),
 	subjectId: z.uuid().optional(),
-	q: z.string().trim().max(100).optional(),
+	q: z.string().trim().max(LIST_SEARCH_MAX).optional(),
 	tag: z.string().trim().max(20).optional(),
 	review: z.enum(['due']).optional(),
 	mastered: z.enum(['true', 'false']).optional(),

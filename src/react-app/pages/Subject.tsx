@@ -12,7 +12,7 @@ import { TasksCard } from '../components/subject/tasks';
 import { UpcomingCard } from '../components/subject/upcoming';
 import { SubjectIconTile } from '../components/subjects';
 import { Badge, Button, ButtonLink, Card, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack } from '../components/ui';
-import { ApiError } from '../lib/api';
+import { isNotFound } from '../lib/api';
 import { formatMinutes } from '../lib/format';
 import { useSubjectOverview, useSubjects, useUser } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
@@ -137,7 +137,7 @@ export function SubjectPage() {
 	useSubjects();
 	if (isPending) return <PageLoader />;
 	if (error) {
-		if (error instanceof ApiError && error.status === 404) return <SubjectNotFound />;
+		if (isNotFound(error)) return <SubjectNotFound />;
 		return <ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />;
 	}
 	return <Overview key={data.subject.id} data={data} />;

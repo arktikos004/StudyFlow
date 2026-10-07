@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayLabel, noteSnippet, stripMarkdown } from '../src/react-app/lib/notes-format';
+import { dayLabel, noteSnippet, notesSummary, stripMarkdown } from '../src/react-app/lib/notes-format';
 
 describe('筆記卡的摘要', () => {
 	it('Markdown 轉成一行純文字', () => {
@@ -39,5 +39,19 @@ describe('筆記卡的摘要', () => {
 		expect(dayLabel(tpe, 'UTC', '2026-10-06')).toBe('昨天');
 		expect(dayLabel(tpe, 'Asia/Taipei', '2026-10-09')).toBe('10/6（二）');
 		expect(dayLabel(tpe, 'Asia/Taipei', '2027-01-02')).toBe('2026/10/6（二）');
+	});
+});
+
+describe('筆記頁頁首的摘要（notesSummary）', () => {
+	it('數量與待複習用「，」連接；有篩選時說「找到」', () => {
+		expect(notesSummary({ count: 7, due: 2, filtered: false, empty: false })).toBe('共 7 則，今天有 2 題待複習');
+		expect(notesSummary({ count: 3, due: 0, filtered: true, empty: false })).toBe('找到 3 則，今天沒有待複習的題目');
+		expect(notesSummary({ count: 0, due: undefined, filtered: true, empty: false })).toBe('找到 0 則');
+	});
+
+	it('數量還不知道、沒有任何資料、或沒篩選卻是 0 則時不報數量', () => {
+		expect(notesSummary({ count: undefined, due: 1, filtered: false, empty: false })).toBe('今天有 1 題待複習');
+		expect(notesSummary({ count: 0, due: 0, filtered: false, empty: true })).toBe('今天沒有待複習的題目');
+		expect(notesSummary({ count: 0, due: undefined, filtered: false, empty: false })).toBe('');
 	});
 });

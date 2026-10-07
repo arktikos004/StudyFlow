@@ -2,7 +2,7 @@ import { Check, CircleAlert, Eye, RotateCcw, SkipForward, X } from 'lucide-react
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import type { NoteItem } from '../../../../shared/api-types';
-import { ApiError } from '../../../lib/api';
+import { isNotFound } from '../../../lib/api';
 import type { ReviewResults } from '../../../lib/notes-cram';
 import { tally, type ReviewResult } from '../../../lib/notes-cram';
 import { SubjectTag } from '../../subjects';
@@ -78,7 +78,7 @@ export function ReviewRunner({
 			try {
 				await record(note, result);
 			} catch (e) {
-				if (e instanceof ApiError && e.status === 404) {
+				if (isNotFound(e)) {
 					toast.info('這題已經被刪除，先跳過');
 					return advance(results);
 				}

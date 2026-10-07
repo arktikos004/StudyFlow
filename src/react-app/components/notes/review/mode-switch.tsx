@@ -1,7 +1,5 @@
+import type { ReviewMode } from '../../../lib/notes-params';
 import { Segmented } from '../../ui';
-
-/** 網址上的複習方式（?mode=） */
-export type ReviewMode = 'due' | 'cram';
 
 /** 切換「今天到期」與「考前衝刺」 */
 export function ModeSwitch({ value, onChange }: { value: ReviewMode; onChange: (m: ReviewMode) => void }) {

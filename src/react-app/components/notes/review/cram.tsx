@@ -4,10 +4,11 @@ import type { NoteItem } from '../../../../shared/api-types';
 import { NOTES_LIST_LIMIT } from '../../../../shared/schemas';
 import type { ReviewResults } from '../../../lib/notes-cram';
 import { cramPool, cramQueue, cramTags, retryQueue } from '../../../lib/notes-cram';
+import type { ReviewMode } from '../../../lib/notes-params';
 import { useNotes, useSubjectMap } from '../../../lib/queries';
 import { SubjectSelect } from '../../subjects';
 import { Badge, Button, Card, cn, ErrorNote, Field, NumDisplay, Select, Switch } from '../../ui';
-import { ModeSwitch, type ReviewMode } from './mode-switch';
+import { ModeSwitch } from './mode-switch';
 import { ReviewRunner } from './runner';
 import { RoundSummary } from './summary';
 

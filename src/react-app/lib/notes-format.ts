@@ -70,3 +70,24 @@ export function dayLabel(epochMs: number, timeZone: string, today: string): stri
 	if (days === 1) return '昨天';
 	return formatDateForToday(date, today);
 }
+
+/**
+ * 筆記頁頁首的摘要：「共 N 則」（有篩選時「找到 N 則」）與今天有幾題待複習，用「，」連接。
+ * 數量還不知道、帳號完全沒有資料、或沒篩選卻是 0 則時不報數量（由空狀態說明）；兩項都沒有時是空字串。
+ */
+export function notesSummary({
+	count,
+	due,
+	filtered,
+	empty,
+}: {
+	count: number | undefined;
+	due: number | undefined;
+	filtered: boolean;
+	empty: boolean;
+}): string {
+	const parts: string[] = [];
+	if (count !== undefined && !empty && (filtered || count > 0)) parts.push(`${filtered ? '找到' : '共'} ${count} 則`);
+	if (due !== undefined) parts.push(due > 0 ? `今天有 ${due} 題待複習` : '今天沒有待複習的題目');
+	return parts.join('，');
+}

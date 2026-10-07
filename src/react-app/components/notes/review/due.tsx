@@ -2,10 +2,11 @@ import { Plus, Sparkles, Zap } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { NoteItem } from '../../../../shared/api-types';
 import type { ReviewResults } from '../../../lib/notes-cram';
+import type { ReviewMode } from '../../../lib/notes-params';
 import { useNotes, useReviewNote } from '../../../lib/queries';
 import { SubjectSelect } from '../../subjects';
 import { Button, Card, EmptyState, ErrorNote, PageLoader } from '../../ui';
-import { ModeSwitch, type ReviewMode } from './mode-switch';
+import { ModeSwitch } from './mode-switch';
 import { ReviewRunner } from './runner';
 import { RoundSummary } from './summary';
 
