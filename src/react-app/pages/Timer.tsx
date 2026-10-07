@@ -58,8 +58,8 @@ import {
 	type TimerMode,
 	type TimerState,
 } from '../lib/timer';
-import { formatClockRange, relativeDateLabel } from '../lib/timer-format';
-import { useDeepLink } from '../lib/timer-queries';
+import { formatClockRange, relativeDateLabel } from '../lib/time-format';
+import { useDeepLink } from '../lib/deep-link';
 
 /** 常用的分鐘數；也可以直接輸入 LIMITS 範圍內的任何整數 */
 const PRESETS: Partial<Record<NumericOption, number[]>> = {

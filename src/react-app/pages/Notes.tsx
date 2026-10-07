@@ -21,9 +21,9 @@ import {
 } from '../components/ui';
 import { NOTES_LIST_LIMIT, REVIEW_INTERVALS } from '../../shared/schemas';
 import { ApiError } from '../lib/api';
-import { useNotesList, usePinNote } from '../lib/notes-queries';
-import { useNote, useSubjects, useSummary, useUser, type NoteFilters } from '../lib/queries';
-import { useDeepLink } from '../lib/timer-queries';
+import { useNotes, useNote, useSubjects, useSummary, useUser, type NoteFilters } from '../lib/queries';
+import { usePinNote } from '../lib/notes-queries';
+import { useDeepLink } from '../lib/deep-link';
 
 type View = 'all' | 'mistake' | 'note' | 'review';
 const VIEWS: readonly View[] = ['all', 'mistake', 'note', 'review'];
@@ -52,7 +52,7 @@ function NotesList({
 	onNew,
 	onClear,
 }: {
-	notesQuery: ReturnType<typeof useNotesList>;
+	notesQuery: ReturnType<typeof useNotes>;
 	/** 本人一則筆記或錯題都沒有：空狀態負責唯一的主要動作（頁首不放、篩選列隱藏） */
 	empty: boolean;
 	query: string;
@@ -276,9 +276,9 @@ export function NotesPage() {
 	const due = summary.data?.reviewDueCount;
 	// 列表與「帳號有沒有任何筆記」只在列表檢視需要：複習檢視不發這兩個請求（review B2）
 	const listView = view !== 'review';
-	const notesQuery = useNotesList(filters, listView);
+	const notesQuery = useNotes(filters, { enabled: listView });
 	// 本人完全沒有筆記與錯題（不篩選的全部清單是空的）：頁首不放主要動作、篩選列隱藏，由空狀態負責（跨頁慣例）
-	const everything = useNotesList({}, listView);
+	const everything = useNotes({}, { enabled: listView });
 	const empty = listView && everything.data?.length === 0;
 	// 還不知道有沒有資料（冷載入）：頁首動作、篩選列、列表都先不畫，不會先出現兩組 primary 再換成空狀態（review B1）
 	const checking = listView && everything.isPending;

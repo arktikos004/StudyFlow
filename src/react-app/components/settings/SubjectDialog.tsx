@@ -6,7 +6,7 @@ import { ApiError } from '../../lib/api';
 import { useCreateSubject, useDeleteSubject, useUpdateSubject, useUser, type SubjectInput } from '../../lib/queries';
 import { nextSubjectColor, useSubjectTone } from '../../lib/subject-color';
 import { isSubjectIcon, subjectIcon } from '../../lib/subject-icons';
-import { goalToInput, parseGoalInput, sumSubjectGoals } from '../../lib/subjects-format';
+import { goalToInput, parseGoalInput, sumSubjectGoals } from '../../lib/goals';
 import { ColorPicker } from '../ColorPicker';
 import { DialogFooter } from '../forms/shared';
 import { Dialog, Field, Input, Switch, useConfirm } from '../ui';

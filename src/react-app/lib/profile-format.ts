@@ -1,6 +1,6 @@
 // 個人檔案（PRO-1）的純邏輯：加入時間、累積數字的文字、一列放得下幾個徽章、時區選單。
 // 累積數字的型別是 src/shared/api-types.ts 的 ProfileSummary（GET /api/profile/summary）。
-// 不碰 DOM 與 React，test/profile-ui-format.spec.ts 直接測。
+// 不碰 DOM 與 React，test/profile-format.spec.ts 直接測。
 
 const COUNT = new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 1 });
 

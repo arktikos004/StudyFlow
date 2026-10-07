@@ -19,11 +19,12 @@ import { EventDialog, TaskDialog } from '../components/forms';
 import { SessionDialog } from '../components/SessionDialog';
 import { SubjectTag } from '../components/subjects';
 import { Button, Card, ErrorNote, PageHeader, PageStack, Segmented } from '../components/ui';
-import { formatDate, formatMinutes, formatMonthDay } from '../lib/format';
-import { dateRange } from '../lib/polish-format';
-import { useEvents, useSubjectMap, useTasks, useUser } from '../lib/queries';
+import { formatDate, formatMinutes, formatMonthDay, formatRange } from '../lib/format';
+import { useMinuteClock } from '../lib/clock';
+import { useDeepLink } from '../lib/deep-link';
+import { useMediaQuery } from '../lib/media-query';
+import { useEvents, useStudySessions, useSubjectMap, useTasks, useUser } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
-import { useDeepLink, useEventsKeep, useMediaQuery, useMinuteClock, useSessionsKeep } from '../lib/timer-queries';
 
 type View = 'month' | 'week';
 const VIEW_KEY = 'studyflow:calendar-view';
@@ -115,10 +116,10 @@ export function CalendarPage() {
 	const week = weekDays(selected);
 	const [from, to] = view === 'month' ? [grid[0], grid[41]] : [week[0], week[6]];
 	// 換月份或週次時保留上一個範圍的資料，新資料到之前 chip、分鐘數、方塊不會閃成空白
-	const eventsQuery = useEventsKeep({ from, to });
+	const eventsQuery = useEvents({ from, to }, { keepPrevious: true });
 	const tasksQuery = useTasks();
 	// 前一天開始、跨午夜到範圍第一天的紀錄也要畫出來
-	const sessionsQuery = useSessionsKeep({ from: addDays(from, -1), to });
+	const sessionsQuery = useStudySessions({ from: addDays(from, -1), to }, { keepPrevious: true });
 	const events = useMemo(() => eventsQuery.data ?? [], [eventsQuery.data]);
 	const tasks = useMemo(() => tasksQuery.data ?? [], [tasksQuery.data]);
 	const sessions = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data]);
@@ -193,7 +194,7 @@ export function CalendarPage() {
 			? `${y} 年 ${Number(m)} 月`
 			: single
 				? formatDate(selected, selected.slice(0, 4) !== today.slice(0, 4))
-				: `${week[0].slice(0, 4)} 年 ${dateRange(formatMonthDay(week[0]), formatMonthDay(week[6]))}`;
+				: `${week[0].slice(0, 4)} 年 ${formatRange(formatMonthDay(week[0]), formatMonthDay(week[6]))}`;
 	const step =
 		view === 'month'
 			? { prev: '上個月', next: '下個月' }

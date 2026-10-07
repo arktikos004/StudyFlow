@@ -16,10 +16,10 @@ import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigationType } fr
 import { toast } from 'sonner';
 import { api, avatarUrl } from '../lib/api';
 import { ME_KEY, useAchievements, useSummary, useUser } from '../lib/queries';
-import { diffUnlocked, parseSeen, seenKey } from '../lib/shell-achievements';
-import { achievementIcon } from '../lib/shell-icons';
-import { badgeLabel, navBadges, type NavBadge } from '../lib/shell-nav';
-import { isApplePlatform, isPaletteShortcut } from '../lib/shell-palette';
+import { diffUnlocked, parseSeen, seenKey } from '../lib/achievement-display';
+import { achievementIcon } from '../lib/achievement-icons';
+import { badgeLabel, navBadges, type NavBadge } from '../lib/nav-badges';
+import { isApplePlatform, isPaletteShortcut } from '../lib/command-palette';
 import { useTimerEngine } from '../lib/timer';
 import { Logo } from './Logo';
 import { MOBILE_MAIN, NAV, NAV_GROUPS, type NavItem } from './nav';

@@ -48,13 +48,12 @@ import {
 	TextLink,
 } from '../components/ui';
 import { ApiError } from '../lib/api';
-import { formatDate, formatMinutes } from '../lib/format';
+import { formatDate, formatMinutes, splitMinutes } from '../lib/format';
 import { EVENT_KIND_LABEL } from '../../shared/labels';
-import { dropKept, keepSaved, mergeKept, pruneKept, type KeptTask } from '../lib/polish-kept';
-import { useTaskResults } from '../lib/polish-queries';
+import { dropKept, keepSaved, mergeKept, pruneKept, type KeptTask } from '../lib/kept-tasks';
+import { useTaskResults } from '../lib/task-queries';
 import { useSubjectOverview, useSubjects, useUser } from '../lib/queries';
 import { useSubjectTone } from '../lib/subject-color';
-import { splitMinutes } from '../lib/subjects-format';
 import { timer, useTimerState } from '../lib/timer';
 
 // 單科總覽（SUB-3）：/subjects/:id，資料用一次 API（useSubjectOverview）取得。
@@ -388,7 +387,7 @@ function TaskLine({ task, today, onOpen }: { task: TaskItem; today: string; onOp
 /**
  * 這一科還沒完成的任務，可以直接勾選（TaskCheckbox）。
  * 在這裡完成的任務會從 API 的清單消失；為了能馬上取消、焦點也不會掉，把伺服器回傳的那一筆留在原位顯示「剛完成」
- * （規則在 lib/polish-kept.ts）。同一個 key 的 <li> 不會重新掛載，TaskCheckbox 儲存中用的是 aria-disabled，
+ * （規則在 lib/kept-tasks.ts）。同一個 key 的 <li> 不會重新掛載，TaskCheckbox 儲存中用的是 aria-disabled，
  * 勾選框的焦點從頭到尾都留在原地，不需要另外把焦點放回去。
  */
 function TasksCard({

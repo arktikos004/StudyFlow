@@ -5,7 +5,7 @@ import { formatDate, formatMinutes } from '../lib/format';
 import { STUDY_MODE_LABEL } from '../../shared/labels';
 import { useCreateSession, useDeleteSession, useTasks, useUpdateSession, useUser } from '../lib/queries';
 import { FUTURE_TOLERANCE_MS } from '../lib/timer-core';
-import { deviceTimeZone, formatClockRange, relativeDateLabel, zonedParts } from '../lib/timer-format';
+import { deviceTimeZone, formatClockRange, relativeDateLabel, zonedParts } from '../lib/time-format';
 import { DialogFooter } from './forms';
 import { SubjectSelect } from './subjects';
 import { Dialog, Field, Input, Select, useConfirm } from './ui';

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import type {
@@ -85,10 +85,17 @@ export function useSubjectOverview(id: string | undefined) {
 	});
 }
 
-export function useEvents(params: { from?: string; to?: string } = {}) {
+/** 日期區間的查詢（考試、學習紀錄）共用的選項 */
+type RangeQueryOptions = {
+	/** 換範圍時，新資料載入前先顯示上一個範圍的資料（月曆切換月份或週次時，畫面不會閃成空白） */
+	keepPrevious?: boolean;
+};
+
+export function useEvents(params: { from?: string; to?: string } = {}, { keepPrevious = false }: RangeQueryOptions = {}) {
 	return useQuery({
 		queryKey: ['events', params],
 		queryFn: async () => (await api.get<{ events: EventItem[] }>(`/events${qs(params)}`)).events,
+		placeholderData: keepPrevious ? keepPreviousData : undefined,
 	});
 }
 
@@ -108,11 +115,13 @@ export type NoteFilters = {
 	review?: 'due';
 	mastered?: 'true' | 'false';
 };
-export function useNotes(params: NoteFilters = {}) {
+/** 筆記列表；換篩選條件時保留上一次的結果。enabled 為 false 時不發請求（例如筆記頁在複習檢視時不需要列表） */
+export function useNotes(params: NoteFilters = {}, { enabled = true }: { enabled?: boolean } = {}) {
 	return useQuery({
 		queryKey: ['notes', params],
 		queryFn: async () => (await api.get<{ notes: NoteItem[] }>(`/notes${qs(params)}`)).notes,
-		placeholderData: (prev) => prev,
+		placeholderData: keepPreviousData,
+		enabled,
 	});
 }
 
@@ -124,10 +133,11 @@ export function useNote(id: string | undefined) {
 	});
 }
 
-export function useStudySessions(params: { from?: string; to?: string } = {}) {
+export function useStudySessions(params: { from?: string; to?: string } = {}, { keepPrevious = false }: RangeQueryOptions = {}) {
 	return useQuery({
 		queryKey: ['sessions', params],
 		queryFn: async () => (await api.get<{ sessions: StudySession[] }>(`/study-sessions${qs(params)}`)).sessions,
+		placeholderData: keepPrevious ? keepPreviousData : undefined,
 	});
 }
 

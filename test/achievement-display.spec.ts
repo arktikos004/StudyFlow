@@ -8,7 +8,7 @@ import {
 	parseSeen,
 	seenKey,
 	unlockedDate,
-} from '../src/react-app/lib/shell-achievements';
+} from '../src/react-app/lib/achievement-display';
 
 describe('成就：已看過的紀錄', () => {
 	it('key 依使用者分開', () => {

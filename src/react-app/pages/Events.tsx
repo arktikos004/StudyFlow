@@ -11,9 +11,10 @@ import { CountdownTile } from '../components/countdown';
 import { Badge, Button, Card, cn, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack, TextLink } from '../components/ui';
 import { formatDate } from '../lib/format';
 import { EVENT_KIND_LABEL } from '../../shared/labels';
-import { eventsSummary } from '../lib/notes-exams';
+import { eventsSummary } from '../lib/events-format';
 import { useEvents, useSubjectMap, useSubjects, useUser } from '../lib/queries';
-import { useDeepLink, useMinuteClock } from '../lib/timer-queries';
+import { useDeepLink } from '../lib/deep-link';
+import { useMinuteClock } from '../lib/clock';
 
 function EventCard({
 	event,

@@ -13,7 +13,7 @@ import { useEvents, useSubjects, useTasks, useUser } from '../lib/queries';
 import { justCompleted, toggleChecklistItem } from '../lib/task-checklist';
 import { useTaskListParams, useTaskPatch, useTaskView } from '../lib/task-queries';
 import { boardColumns, filterTasks, groupTasks, taskSummary, type TaskStatus } from '../lib/task-sort';
-import { useDeepLink } from '../lib/timer-queries';
+import { useDeepLink } from '../lib/deep-link';
 
 /** 頁首的即時摘要：未完成、已逾期、今天到期（數字用等寬數字） */
 function Summary({ open, overdue, dueToday }: { open: number; overdue: number; dueToday: number }) {

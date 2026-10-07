@@ -7,7 +7,7 @@ import {
 	QUICK_ACTIONS,
 	resultHref,
 	stepIndex,
-} from '../src/react-app/lib/shell-palette';
+} from '../src/react-app/lib/command-palette';
 
 const key = (k: string, mods: Partial<{ metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean }> = {}, code?: string) => ({
 	key: k,

@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ProfileSummary } from '../../../shared/api-types';
 import { badgeRowCapacity, formatCount, masteredNote, sessionsNote, streakNote, studyTotal } from '../../lib/profile-format';
-import { AchievementIcon } from '../../lib/shell-icons';
+import { AchievementIcon } from '../../lib/achievement-icons';
 import { cn, MoreLink, Unit } from '../ui';
 
 /** 一格數字：dt（圖示＋標籤）、dd 數值（font-num 28px／600）、dd 副標。第二格起的左框與第二列的上框都是分隔線 */

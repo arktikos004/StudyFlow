@@ -370,14 +370,14 @@
   - compact 版：8px 圓點＋圖示＋名稱（12px ink-2），用在空間很擠的地方。
   - `asLink`：連到 `/subjects/:id`，名稱後加 sr-only「的科目總覽」；觸控裝置用 `::after` 把點擊範圍上下延伸到 44px。已經在按鈕或連結裡時不要加。
   - icon 版（`SubjectIconTile`，單科總覽頁的標題方塊）：40px、圓角 lg、科目 mark 底、onMark 圖示（20px），**純裝飾**（aria-hidden、沒有 `title`），旁邊一定要有可見的科目名稱；不可放進按鈕或連結當唯一內容。
-    - 沒有科目圖示時顯示名稱的第一個字：**19px 粗體**（WCAG 的大字，門檻 3:1），以字素切（`Intl.Segmenter`，`lib/polish-format.ts` 的 `firstGrapheme`），emoji、組合字不會被切半。
-    - 對比（`test/polish-subject-tile.spec.ts` 實際計算）：onMark／mark 在 48 色中最低 4.24（淺色）／4.39（深色），6／48 與 8／48 低於 4.5:1，但以大字的 3:1 計算全部通過；「未分類」的灰色與任意自訂色（抽樣 4000 色）也都 ≥ 3:1。圖示是圖形（≥ 3:1），同樣全部通過。
+    - 沒有科目圖示時顯示名稱的第一個字：**19px 粗體**（WCAG 的大字，門檻 3:1），以字素切（`Intl.Segmenter`，`lib/format.ts` 的 `firstGrapheme`），emoji、組合字不會被切半。
+    - 對比（`test/subject-tile-contrast.spec.ts` 實際計算）：onMark／mark 在 48 色中最低 4.24（淺色）／4.39（深色），6／48 與 8／48 低於 4.5:1，但以大字的 3:1 計算全部通過；「未分類」的灰色與任意自訂色（抽樣 4000 色）也都 ≥ 3:1。圖示是圖形（≥ 3:1），同樣全部通過。
   - 科目圖示只透過 `components/subjects.tsx` 的元件顯示。
 - **成就（Achievements 頁）**（Sprint 2，APP-2）：
   - 徽章：已解鎖是藍筆塗滿（accent 底、on-accent 圖示、外圈 4px accent-soft 像蓋章）＋ success 的「已解鎖」badge；未解鎖是 1.5px line-field 虛線框、ink-3 圖示（還沒描上墨的鉛筆稿）＋進度條與「3／25 個」。狀態都有文字，不只靠顏色。
   - 解鎖日期（Sprint 5，PRO-2）：已解鎖的在 badge 旁邊加上日期（`<time>`，13px ink-3 等寬數字，依 `user.timezone`；「10 月 7 日」，不是今年時加上年份，`unlockedDate`）。sm 以上在右欄、badge 下面靠右；手機接在 badge 右邊，不多佔一行。開始記錄解鎖時間之前就解鎖的沒有日期（`unlockedAt` 為 null）。
   - 這頁的焦點是「下一個目標」：最接近解鎖的成就、還差多少、一個前往的動作。其餘依讀書時數／連續天數／番茄鐘／錯題與任務分組，每組一張卡片、列之間用分隔線（不做一排一樣的卡片）。
-  - 圖示：後端回傳 lucide 名稱，前端用白名單（`lib/shell-icons.ts` 的 `AchievementIcon`）對應，不動態 import 整包。
+  - 圖示：後端回傳 lucide 名稱，前端用白名單（`lib/achievement-icons.ts` 的 `AchievementIcon`）對應，不動態 import 整包。
   - 新解鎖的 toast 由 Layout 全站跳一次：「解鎖成就「名稱」」＋說明＋「查看」動作；同時解鎖多個時合併成一則。
 - **個人檔案（設定頁最上面，Sprint 4，PRO-1）**（`components/settings/ProfileSection.tsx`；外觀在 `ProfileHeader`、`ProfileStats`）：
   - 整頁寬的一張卡片，放在設定頁兩欄卡片的上方（`PageStack` 的第一個區塊）。上半是身分：Avatar lg、暱稱（h2，1.25rem／1.4／700，前面有 sr-only「個人檔案：」）、Email（14px ink-2）、加入時間（13px ink-3，「2026 年 9 月加入」，依 `user.timezone`，`<time dateTime="2026-09">`）。
@@ -568,9 +568,9 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 | `Avatar` | `name`（暱稱，必填）、`src?: string \| null`（照片網址，例如 `avatarUrl(user)`、預覽的 `blob:`）、`size?: AvatarSize`（預設 'md'）、`label?: string`、`className?` | 圓形頭像。有照片顯示照片；沒有或載入失敗時顯示暱稱的第一個字素（accent 底、on-accent 字）。旁邊有暱稱時不給 `label`（`aria-hidden`）；單獨出現時給 `label`（`role="img"`） |
 | `AvatarSize` | 型別：`'sm' \| 'md' \| 'lg' \| 'xl'` | 32／40／72／96px |
 
-`firstGrapheme` 沒有搬家：它本來就在中性的 `lib/polish-format.ts`（沒有 React），`ui.tsx` 與 `components/subjects.tsx` 都從那裡 import，`ui.tsx` 不必反過來 import `subjects.tsx`。
+`firstGrapheme` 沒有搬家：它本來就在中性的 `lib/format.ts`（沒有 React），`ui.tsx` 與 `components/subjects.tsx` 都從那裡 import，`ui.tsx` 不必反過來 import `subjects.tsx`。
 
-個人檔案的純邏輯（都有單元測試）：`lib/profile-format.ts`（`joinedLabel`、`studyTotal`、`sessionsNote`、`streakNote`、`masteredNote`、`formatCount`、`badgeCapacity`、`emailParts`、`timezoneOptions`、`timezoneLabel`）、`lib/profile-crop.ts`（`squareCrop`、`AVATAR_MAX_EDGE`、`AvatarImageError`、`withinAvatarLimit`、`AVATAR_TOO_LARGE`）、`lib/profile-photo.ts`（照片的變更 `PhotoDraft`、`draftPreview`、`removeDraft`、`photoNote`）、`lib/profile-save.ts`（儲存流程 `saveProfile`、`saveFailureMessage`）。瀏覽器端的照片處理是 `lib/profile-image.ts` 的 `prepareAvatar(file)`，測試用假的 `createImageBitmap` 與 canvas（`test/profile-ui-prepare.spec.ts`）。資料用 `lib/queries.ts` 的 `useProfileSummary`、`useUploadAvatar`、`useDeleteAvatar` 與 `lib/api.ts` 的 `avatarUrl(user)`（s4/profile-api），型別是 `src/shared/api-types.ts` 的 `ProfileSummary`。頭像網址一律用 `avatarUrl(user)` 組：`?v=` 等於目前的 `avatarUpdatedAt` 時後端才讓瀏覽器快取一年。
+個人檔案的純邏輯（都有單元測試）：`lib/profile-format.ts`（`joinedLabel`、`studyTotal`、`sessionsNote`、`streakNote`、`masteredNote`、`formatCount`、`badgeCapacity`、`emailParts`、`timezoneOptions`、`timezoneLabel`）、`lib/profile-crop.ts`（`squareCrop`、`AVATAR_MAX_EDGE`、`AvatarImageError`、`withinAvatarLimit`、`AVATAR_TOO_LARGE`）、`lib/profile-photo.ts`（照片的變更 `PhotoDraft`、`draftPreview`、`removeDraft`、`photoNote`）、`lib/profile-save.ts`（儲存流程 `saveProfile`、`saveFailureMessage`）。瀏覽器端的照片處理是 `lib/profile-image.ts` 的 `prepareAvatar(file)`，測試用假的 `createImageBitmap` 與 canvas（`test/profile-image.spec.ts`）。資料用 `lib/queries.ts` 的 `useProfileSummary`、`useUploadAvatar`、`useDeleteAvatar` 與 `lib/api.ts` 的 `avatarUrl(user)`（s4/profile-api），型別是 `src/shared/api-types.ts` 的 `ProfileSummary`。頭像網址一律用 `avatarUrl(user)` 組：`?v=` 等於目前的 `avatarUpdatedAt` 時後端才讓瀏覽器快取一年。
 
 **頁面端遷移（給 s3/polish，照這張表換）**
 
@@ -591,7 +591,7 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 | `lib/task-queries.ts` 的 `usePrefersReducedMotion` | 從 `components/ui` 匯入（原本那份可以改成 re-export 或刪掉） |
 | 任務、筆記、考試頁的 `<ErrorNote error={error} />` | `<ErrorNote error={error} onRetry={() => void refetch()} retrying={isRefetching} />` |
 
-**殼層（s2/shell）**：`components/CommandPalette.tsx` 的 `CommandPalette({ onClose })` 由 Layout 掛載（分開打包、閒置時預載），頁面不必使用。純邏輯在 `lib/shell-palette.ts`（`resultHref`、`QUICK_ACTIONS`、`PAGE_KEYWORDS`、`matchesQuery`、`isPaletteShortcut`）、`lib/shell-nav.ts`（`navBadges`、`badgeLabel`）、`lib/shell-achievements.ts`（`seenKey`、`parseSeen`、`diffUnlocked`、`achievementUnit`、`groupAchievements`、`nextMilestone`、`formatProgress`、`splitColumns`（Sprint 3：把依序排列的區塊分成兩欄，各欄自己堆疊、單欄時順序不變））、`lib/shell-icons.ts`（`achievementIcon`、`AchievementIcon`）。
+**殼層（s2/shell）**：`components/CommandPalette.tsx` 的 `CommandPalette({ onClose })` 由 Layout 掛載（分開打包、閒置時預載），頁面不必使用。純邏輯在 `lib/command-palette.ts`（`resultHref`、`QUICK_ACTIONS`、`PAGE_KEYWORDS`、`matchesQuery`、`isPaletteShortcut`）、`lib/nav-badges.ts`（`navBadges`、`badgeLabel`）、`lib/achievement-display.ts`（`seenKey`、`parseSeen`、`diffUnlocked`、`achievementUnit`、`groupAchievements`、`nextMilestone`、`formatProgress`、`splitColumns`（Sprint 3：把依序排列的區塊分成兩欄，各欄自己堆疊、單欄時順序不變））、`lib/achievement-icons.ts`（`achievementIcon`、`AchievementIcon`）。
 - 搜尋結果的深連結：任務 `/tasks?open=<id>`、考試 `/events?open=<id>`、筆記 `/notes?open=<id>`、科目 `/subjects/<id>`；快捷動作 `/timer`、`/tasks?new=1`、`/notes?new=mistake`、`/settings?new=1`。**目標頁已經開著時也要能反應網址參數的改變**（例如在任務頁按 ⌘K 選另一個任務）。
 - 已看過的成就：localStorage `studyflow:achievements-seen:<userId>`（JSON 字串陣列）。
 

@@ -2,7 +2,7 @@ import type { Achievement } from '../../shared/api-types';
 import { localDate } from '../../shared/dates';
 
 // 成就（APP-2）的純邏輯：已看過的紀錄、新解鎖的判斷、單位與分組、下一個目標。
-// 不碰 DOM 與 React（localStorage 由呼叫端傳入），test/shell-achievements.spec.ts 直接測。
+// 不碰 DOM 與 React（localStorage 由呼叫端傳入），test/achievement-display.spec.ts 直接測。
 
 /** localStorage 的 key：依使用者分開，同一台電腦換帳號登入不會互相影響 */
 export const seenKey = (userId: string) => `studyflow:achievements-seen:${userId}`;

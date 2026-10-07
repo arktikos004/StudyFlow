@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { badgeLabel, navBadges } from '../src/react-app/lib/shell-nav';
+import { badgeLabel, navBadges } from '../src/react-app/lib/nav-badges';
 
 describe('導覽的數量標籤', () => {
 	it('任務 = 逾期＋今天到期；有逾期時用 danger，報讀文字寫出逾期數', () => {

@@ -31,8 +31,7 @@ import {
 	TableToggle,
 	Unit,
 } from '../components/ui';
-import { formatDate, formatMinutes } from '../lib/format';
-import { dateRange } from '../lib/polish-format';
+import { formatDate, formatMinutes, formatRange } from '../lib/format';
 import { useStats, useSubjects } from '../lib/queries';
 
 type Range = '7' | '30' | '90';
@@ -126,7 +125,10 @@ export function StatsPage() {
 
 	return (
 		<div>
-			<PageHeader title="學習統計" description={dateRange(formatDate(data.range.from, crossYear), formatDate(data.range.to, crossYear))} />
+			<PageHeader
+				title="學習統計"
+				description={formatRange(formatDate(data.range.from, crossYear), formatDate(data.range.to, crossYear))}
+			/>
 
 			{/* 篩選器放在所有圖表上方，一次套用到全部；篩選列到內容一律 mb-5（跨頁慣例） */}
 			<div className="mb-5">

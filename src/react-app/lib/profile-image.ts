@@ -1,6 +1,6 @@
 // 頭像照片的前端處理（PRO-1）：置中裁成正方形、縮到最大 512×512、轉成 JPEG（透明的地方鋪白）。
 // 裁切範圍與大小上限是 lib/profile-crop.ts 的純函式；這裡用瀏覽器的 createImageBitmap 與 canvas。
-// 測試（test/profile-ui-image.spec.ts）用 vi.stubGlobal 換成假的 createImageBitmap 與 document。
+// 測試（test/profile-crop.spec.ts）用 vi.stubGlobal 換成假的 createImageBitmap 與 document。
 import { AVATAR_TYPES } from '../../shared/schemas';
 import { AVATAR_TOO_LARGE, AvatarImageError, squareCrop, withinAvatarLimit } from './profile-crop';
 

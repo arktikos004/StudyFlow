@@ -1,4 +1,4 @@
-// 頭像裁切範圍與大小上限的純函式（PRO-1）。不碰 DOM，test/profile-ui-image.spec.ts 直接測；
+// 頭像裁切範圍與大小上限的純函式（PRO-1）。不碰 DOM，test/profile-crop.spec.ts 直接測；
 // 實際的解碼與 canvas 在 lib/profile-image.ts。
 import { AVATAR_MAX_BYTES } from '../../shared/schemas';
 

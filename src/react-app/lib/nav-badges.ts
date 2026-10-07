@@ -1,6 +1,6 @@
 import type { SummaryResponse } from '../../shared/api-types';
 
-// 導覽的數量標籤：由頁首摘要（GET /api/summary）算出，純函式，test/shell-nav.spec.ts 直接測。
+// 導覽的數量標籤：由頁首摘要（GET /api/summary）算出，純函式，test/nav-badges.spec.ts 直接測。
 
 export type NavBadge = {
 	count: number;

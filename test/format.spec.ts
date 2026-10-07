@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { dateRange, firstGrapheme } from '../src/react-app/lib/polish-format';
+import { formatRange, firstGrapheme } from '../src/react-app/lib/format';
 
 describe('firstGrapheme', () => {
 	afterEach(() => vi.unstubAllGlobals());
@@ -32,10 +32,10 @@ describe('firstGrapheme', () => {
 	});
 });
 
-describe('dateRange', () => {
+describe('formatRange', () => {
 	it('用「至」連接，不用破折號', () => {
-		expect(dateRange('9/7（一）', '10/6（二）')).toBe('9/7（一）至 10/6（二）');
-		expect(dateRange('10/5', '10/11')).toBe('10/5 至 10/11');
-		expect(dateRange('2025/12/29（一）', '2026/1/4（日）')).not.toMatch(/[–—~-]/);
+		expect(formatRange('9/7（一）', '10/6（二）')).toBe('9/7（一）至 10/6（二）');
+		expect(formatRange('10/5', '10/11')).toBe('10/5 至 10/11');
+		expect(formatRange('2025/12/29（一）', '2026/1/4（日）')).not.toMatch(/[–—~-]/);
 	});
 });

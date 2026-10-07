@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLocation, useNavigationType } from 'react-router';
 import { GOAL_LIMITS, updateProfileSchema } from '../../../shared/schemas';
 import { useSubjects, useUpdateProfile, useUser } from '../../lib/queries';
-import { goalToInput, parseGoalInput, sumSubjectGoals } from '../../lib/subjects-format';
+import { goalToInput, parseGoalInput, sumSubjectGoals } from '../../lib/goals';
 import { Button, Card, CardHeader } from '../ui';
 import { GoalField } from './GoalField';
 import { GoalSumWarning } from './GoalSumWarning';

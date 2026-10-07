@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { splitColumns } from '../src/react-app/lib/shell-achievements';
+import { splitColumns } from '../src/react-app/lib/achievement-display';
 
 const byLen = (g: { n: number }) => g.n;
 const ids = (cols: [{ id: string }[], { id: string }[]]) => cols.map((c) => c.map((g) => g.id).join(''));

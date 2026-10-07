@@ -24,7 +24,7 @@ import { SEARCH_QUERY_MAX } from '../../shared/schemas';
 import { formatDate } from '../lib/format';
 import { EVENT_KIND_LABEL } from '../../shared/labels';
 import { useSearch } from '../lib/queries';
-import { matchesQuery, PAGE_KEYWORDS, QUICK_ACTIONS, resultHref, stepIndex, type QuickActionId } from '../lib/shell-palette';
+import { matchesQuery, PAGE_KEYWORDS, QUICK_ACTIONS, resultHref, stepIndex, type QuickActionId } from '../lib/command-palette';
 import { useTimerState } from '../lib/timer';
 import { NAV } from './nav';
 import { SubjectDot, SubjectTag } from './subjects';

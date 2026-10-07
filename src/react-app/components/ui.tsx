@@ -38,8 +38,7 @@ import {
 	type TextareaHTMLAttributes,
 } from 'react';
 import { Link, type LinkProps } from 'react-router';
-import { formatDuration } from '../lib/format';
-import { firstGrapheme } from '../lib/polish-format';
+import { formatDuration, firstGrapheme } from '../lib/format';
 
 export const cn = (...args: ClassValue[]) => clsx(args);
 

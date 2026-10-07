@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TaskItem } from '../src/shared/api-types';
-import { dropKept, keepSaved, mergeKept, pruneKept, type KeptTask } from '../src/react-app/lib/polish-kept';
+import { dropKept, keepSaved, mergeKept, pruneKept, type KeptTask } from '../src/react-app/lib/kept-tasks';
 
 // 單科總覽的「剛完成」列：留著的資料以伺服器的儲存結果為準。
 

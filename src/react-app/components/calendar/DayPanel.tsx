@@ -3,7 +3,7 @@ import { useId } from 'react';
 import type { EventItem, StudySession, Task } from '../../../shared/api-types';
 import { formatDate, formatMinutes } from '../../lib/format';
 import { EVENT_KIND_LABEL, STUDY_MODE_LABEL } from '../../../shared/labels';
-import { formatClockRange, relativeDateLabel } from '../../lib/timer-format';
+import { formatClockRange, relativeDateLabel } from '../../lib/time-format';
 import { SubjectTag } from '../subjects';
 import { TaskCheckbox } from '../TaskItem';
 import { Badge, Button, Card, CardHeader, cn, EmptyState } from '../ui';

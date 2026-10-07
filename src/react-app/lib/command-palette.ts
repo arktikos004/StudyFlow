@@ -1,5 +1,5 @@
 // 指令面板（APP-1）的純邏輯：快速鍵判斷、本機比對、搜尋結果的深連結。
-// 不碰 DOM 與 React，test/shell-palette.spec.ts 直接測。
+// 不碰 DOM 與 React，test/command-palette.spec.ts 直接測。
 
 /** 搜尋結果的種類（後端 /api/search 的四組） */
 export type SearchKind = 'task' | 'event' | 'note' | 'subject';
