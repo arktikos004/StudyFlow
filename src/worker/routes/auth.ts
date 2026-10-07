@@ -83,11 +83,13 @@ export const authRoutes = new Hono<AppEnv>()
 		return c.json({ ok: true });
 	})
 	.get('/me', requireAuth, (c) => c.json({ user: publicUser(c.var.user) }))
-	// 每日目標與時區會改變成就（「說到做到」、連續天數）：記下新解鎖的時間（PRO-2）
-	.patch('/me', requireAuth, recordAchievementUnlocks, validate('json', updateProfileSchema), async (c) => {
+	// 每日目標與時區會改變學習紀錄的成就（「說到做到」、連續天數）
+	.patch('/me', requireAuth, recordAchievementUnlocks('study'), validate('json', updateProfileSchema), async (c) => {
 		const input = c.req.valid('json');
 		if (!hasValues(input)) return c.json({ user: publicUser(c.var.user) });
 		const user = await c.var.db.update(users).set(input).where(eq(users.id, c.var.user.id)).returning().get();
+		// 後面的 middleware（成就的解鎖時間）要用更新後的每日目標與時區
+		c.set('user', user);
 		return c.json({ user: publicUser(user) });
 	})
 	.post('/password', requireAuth, validate('json', changePasswordSchema), async (c) => {

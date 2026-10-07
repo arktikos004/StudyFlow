@@ -53,3 +53,6 @@ export function streaks(activeDates: Set<string>, todayStr: string) {
 }
 
 export const round1 = (n: number) => Math.round(n * 10) / 10;
+
+/** 這一天有沒有達成每日目標：和畫面顯示的一樣，用四捨五入到 0.1 分的分鐘數判斷 */
+export const metDailyGoal = (minutes: number, goalMinutes: number) => round1(minutes) >= goalMinutes;

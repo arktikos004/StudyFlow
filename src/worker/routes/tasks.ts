@@ -24,8 +24,7 @@ async function assertRefs(db: DB, userId: string, input: { subjectId?: string | 
 
 export const taskRoutes = new Hono<AppEnv>()
 	.use(requireAuth)
-	// 寫入後記下新解鎖成就的時間（PRO-2）；讀取不經過
-	.use(recordAchievementUnlocks)
+	.use(recordAchievementUnlocks('tasks'))
 	.get('/', validate('query', listQuery), async (c) => {
 		const q = c.req.valid('query');
 		const rows: TaskItem[] = await c.var.db

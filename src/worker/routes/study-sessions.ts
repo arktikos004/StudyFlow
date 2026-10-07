@@ -15,8 +15,7 @@ const listQuery = z.object({ from: dateString.optional(), to: dateString.optiona
 
 export const studySessionRoutes = new Hono<AppEnv>()
 	.use(requireAuth)
-	// 寫入後記下新解鎖成就的時間（PRO-2）；讀取不經過
-	.use(recordAchievementUnlocks)
+	.use(recordAchievementUnlocks('study'))
 	.get('/', validate('query', listQuery), async (c) => {
 		const tz = c.var.user.timezone;
 		const to = c.req.valid('query').to ?? today(tz);

@@ -103,6 +103,24 @@ describe('成就的解鎖時間（PRO-2）', () => {
 		expect((await unlockRows(c.user.id)).map((r) => r.id)).not.toContain('goal-streak-7');
 	});
 
+	it('完成第 50 個任務而解鎖「使命必達」：記在完成的那個請求；改回未完成就收回', async () => {
+		const c = await noonClient();
+		const base = Date.now();
+		const insert = env.DB.prepare("INSERT INTO tasks (id, user_id, title, status, created_at, updated_at) VALUES (?, ?, ?, 'done', ?, ?)");
+		await env.DB.batch(Array.from({ length: 49 }, (_, i) => insert.bind(crypto.randomUUID(), c.user.id, `任務 ${i}`, base, base)));
+		const last = (await c.post('/api/tasks', { title: '第 50 個' })).data.task;
+		expect((await achievements(c))['tasks-50']).toMatchObject({ unlocked: false, unlockedAt: null });
+
+		await at(base + 60_000, () => c.patch(`/api/tasks/${last.id}`, { status: 'done' }));
+		expect((await achievements(c))['tasks-50']).toMatchObject({ unlocked: true, unlockedAt: base + 60_000 });
+		// 任務的寫入只比對任務的成就：沒有學習紀錄，其他成就不受影響
+		expect((await unlockRows(c.user.id)).map((r) => r.id)).toEqual(['tasks-50']);
+
+		await c.patch(`/api/tasks/${last.id}`, { status: 'todo' });
+		expect((await achievements(c))['tasks-50']).toMatchObject({ unlocked: false, unlockedAt: null });
+		expect(await unlockRows(c.user.id)).toEqual([]);
+	});
+
 	it('個人檔案的徽章：最近解鎖的在前，時間不明的排在最後', async () => {
 		const c = await noonClient();
 		// 開始記錄之前就有的資料：解鎖「踏出第一步」，沒有時間

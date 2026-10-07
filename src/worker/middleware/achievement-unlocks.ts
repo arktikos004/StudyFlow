@@ -1,21 +1,21 @@
-import { eq } from 'drizzle-orm';
 import { createMiddleware } from 'hono/factory';
-import { users } from '../db/schema';
-import { recordUnlockChanges, unlockedIds } from '../lib/achievements';
+import { recordUnlockChanges, unlockedIdsFrom, type AchievementSource } from '../lib/achievements';
 import type { AppEnv } from '../types';
 
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
 /**
- * 記錄成就的解鎖時間（PRO-2），放在 requireAuth 之後。掛在會改變成就進度的寫入上：
- * 學習紀錄、任務、筆記，以及個人資料（每日目標影響「說到做到」、時區影響連續天數）。
- * 寫入前後各算一次已解鎖的成就，寫入成功才比對；讀取（GET）直接放行，只讀不寫。
+ * 記錄成就的解鎖時間（PRO-2），放在 requireAuth 之後、會改變成就進度的寫入路由上。
+ * source 是這組路由會改變的資料來源：寫入前後各算一次「那一種來源」已解鎖的成就，寫入成功才比對。
+ * 讀取（GET、HEAD）直接放行，只讀不寫。
+ * 改個人資料的 handler 要把更新後的使用者放回 c.var.user：每日目標與時區會影響學習紀錄的成就。
  */
-export const recordAchievementUnlocks = createMiddleware<AppEnv>(async (c, next) => {
-	if (c.req.method === 'GET') return next();
-	const db = c.var.db;
-	const before = await unlockedIds(db, c.var.user);
-	await next();
-	if (!c.res.ok) return;
-	// 改了每日目標或時區時，c.var.user 還是寫入前的資料：重新讀一次
-	const user = (await db.select().from(users).where(eq(users.id, c.var.user.id)).get()) ?? c.var.user;
-	await recordUnlockChanges(db, user.id, before, await unlockedIds(db, user), Date.now());
-});
+export const recordAchievementUnlocks = (source: AchievementSource) =>
+	createMiddleware<AppEnv>(async (c, next) => {
+		if (!WRITE_METHODS.has(c.req.method)) return next();
+		const before = await unlockedIdsFrom(c.var.db, c.var.user, source);
+		await next();
+		if (!c.res.ok) return;
+		const after = await unlockedIdsFrom(c.var.db, c.var.user, source);
+		await recordUnlockChanges(c.var.db, c.var.user.id, before, after, Date.now());
+	});
