@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import type {
@@ -74,16 +75,17 @@ export function useSubjects() {
 }
 
 /** 科目 id → 科目，方便各頁面顯示顏色與名稱 */
+/** 科目 id → 科目；同一份科目清單只建一次（計時頁計時中每 250ms 重繪，每個 SubjectTag 也會呼叫） */
 export function useSubjectMap() {
 	const { data } = useSubjects();
-	return new Map((data ?? []).map((s) => [s.id, s]));
+	return useMemo(() => new Map((data ?? []).map((s) => [s.id, s])), [data]);
 }
 
 /** 單科總覽；不是本人的科目會得到 ApiError（status 404） */
 export function useSubjectOverview(id: string | undefined) {
 	return useQuery({
 		queryKey: ['subject-overview', id],
-		queryFn: () => api.get<SubjectOverview>(`/subjects/${id}/overview`),
+		queryFn: () => api.get<SubjectOverview>(`/subjects/${encodeURIComponent(id ?? '')}/overview`),
 		enabled: !!id,
 	});
 }
@@ -421,10 +423,11 @@ export const useUpdateProfile = (successMessage?: string) => {
 	const qc = useQueryClient();
 	return useMutation({
 		mutationFn: ({ signal, ...input }: ProfileInput & RequestOptions) => api.patch<{ user: PublicUser }>('/auth/me', input, { signal }),
-		onSuccess: ({ user }) => {
+		onSuccess: ({ user }, input) => {
 			qc.setQueryData(ME_KEY, user);
-			// 時區改變會影響「今天」的判斷
-			qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== ME_KEY[0] });
+			// 時區會改變「今天」，目標會改變總覽、統計與成就：其他資料都要重新取得。只改暱稱時不必
+			const changed = Object.keys(input).filter((k) => k !== 'signal');
+			if (changed.some((k) => k !== 'displayName')) qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== ME_KEY[0] });
 			if (successMessage) toast.success(successMessage);
 		},
 		onError: (e) => resyncMeAndToast(qc, e),
