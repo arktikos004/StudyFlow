@@ -108,16 +108,16 @@ function StartFocusButton({ subjectId }: { subjectId: string }) {
 	const navigate = useNavigate();
 	if (state.phase !== 'idle')
 		return (
-			<Button variant="primary" onClick={() => navigate('/timer')}>
+			<ButtonLink to="/timer" variant="primary">
 				<Timer className="size-4" aria-hidden />
 				前往計時
-			</Button>
+			</ButtonLink>
 		);
 	return (
 		<Button
 			variant="primary"
 			onClick={() => {
-				timer.configure({ subjectId, taskId: null });
+				timer.configure({ mode: 'pomodoro', subjectId, taskId: null });
 				timer.start();
 				navigate('/timer');
 			}}

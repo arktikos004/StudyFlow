@@ -41,10 +41,9 @@ export function NoteDetail({
 								variant="ghost"
 								className="mr-auto text-danger hover:text-danger"
 								onClick={async () => {
-									if (await confirm({ title: `刪除「${note.title}」？`, message: '照片也會一起刪除，刪除後無法復原。' })) {
-										await remove.mutateAsync(note.id).catch(() => {});
-										onClose();
-									}
+									if (!(await confirm({ title: `刪除「${note.title}」？`, message: '照片也會一起刪除，刪除後無法復原。' }))) return;
+									// 刪除失敗時視窗留著（原因由 hook 的 toast 顯示），可以再試一次
+									remove.mutate(note.id, { onSuccess: onClose });
 								}}
 							>
 								<Trash2 className="size-4" aria-hidden />

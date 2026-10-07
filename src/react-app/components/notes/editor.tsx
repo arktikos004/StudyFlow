@@ -267,7 +267,7 @@ function NoteEditorForm({
 					<span className={sectionLabel} id={contentLabel}>
 						{isMistake ? '補充筆記（選填，支援 Markdown）' : '內容（支援 Markdown）'}
 					</span>
-					<Button size="sm" variant="ghost" aria-pressed={preview} onClick={() => setPreview((p) => !p)}>
+					<Button size="sm" variant="ghost" onClick={() => setPreview((p) => !p)}>
 						{preview ? <Pencil className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
 						{preview ? '回到編輯' : '預覽'}
 					</Button>

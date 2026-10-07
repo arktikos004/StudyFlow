@@ -3,7 +3,7 @@ import { useId } from 'react';
 import type { EventItem, StudySession, Task } from '../../../shared/api-types';
 import { formatDate, formatMinutes } from '../../lib/format';
 import { EVENT_KIND_LABEL, STUDY_MODE_LABEL } from '../../../shared/labels';
-import { formatClockRange, relativeDateLabel } from '../../lib/time-format';
+import { formatClockRange } from '../../lib/time-format';
 import { SubjectTag } from '../subjects';
 import { TaskCheckbox } from '../TaskItem';
 import { Badge, Button, Card, CardHeader, cn, EmptyState } from '../ui';
@@ -51,7 +51,6 @@ export function DayPanel({
 	const titleId = useId();
 	const sessionsId = useId();
 	const total = sessions.reduce((sum, s) => sum + s.durationSec, 0) / 60;
-	const label = relativeDateLabel(date, today);
 
 	return (
 		<section aria-labelledby={titleId} className={className}>
@@ -60,7 +59,7 @@ export function DayPanel({
 					title={
 						<span id={titleId} className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
 							<span className="whitespace-nowrap">{formatDate(date, date.slice(0, 4) !== today.slice(0, 4))}</span>
-							{label === '今天' && <Badge tone="accent">今天</Badge>}
+							{date === today && <Badge tone="accent">今天</Badge>}
 						</span>
 					}
 					action={
