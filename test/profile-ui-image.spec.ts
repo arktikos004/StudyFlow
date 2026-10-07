@@ -81,3 +81,12 @@ describe('送出前的大小檢查（withinAvatarLimit）', () => {
 		expect(AVATAR_TOO_LARGE).toBe('照片太大（上限 1MB），請換一張照片');
 	});
 });
+
+describe('極端比例的照片（review B3）', () => {
+	it('很寬或很長的照片：取中間的正方形，邊長是短邊', () => {
+		expect(squareCrop(10000, 100)).toEqual({ sx: 4950, sy: 0, side: 100, out: 100 });
+		expect(squareCrop(100, 10000)).toEqual({ sx: 0, sy: 4950, side: 100, out: 100 });
+		expect(squareCrop(12000, 2000)).toEqual({ sx: 5000, sy: 0, side: 2000, out: 512 });
+		expect(squareCrop(1, 5000)).toEqual({ sx: 0, sy: 2499, side: 1, out: 1 });
+	});
+});
