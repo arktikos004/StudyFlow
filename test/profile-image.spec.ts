@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AVATAR_QUALITIES, prepareAvatar } from '../src/react-app/lib/profile-image';
 import { AVATAR_TOO_LARGE, AvatarImageError } from '../src/react-app/lib/profile-crop';
 
-// prepareAvatar 用到瀏覽器的 createImageBitmap 與 canvas（review B3）：這裡換成假的，
+// prepareAvatar 用到瀏覽器的 createImageBitmap 與 canvas：這裡換成假的，
 // 檢查解碼的後備、裁切參數、品質重試的順序、大小上限，以及任何路徑都會釋放 bitmap。
 const KB = 1024;
 const MB = 1024 * KB;
@@ -97,7 +97,7 @@ describe('把照片做成頭像（prepareAvatar）', () => {
 		expect(tooBig.bitmap.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('瀏覽器不接受 imageOrientation 時，不帶選項再解碼一次（review B1）', async () => {
+	it('瀏覽器不接受 imageOrientation 時，不帶選項再解碼一次', async () => {
 		const s = stubImaging({
 			decode: async (options) => {
 				if (options) throw new TypeError('imageOrientation');

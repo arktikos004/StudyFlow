@@ -97,7 +97,7 @@ describe('儲存個人資料（saveProfile）', () => {
 		expect(deps.updateName).not.toHaveBeenCalled();
 	});
 
-	it('照片存好之後才斷線（review A2）：不送暱稱，回報照片已經存好', async () => {
+	it('照片存好之後才斷線：不送暱稱，回報照片已經存好', async () => {
 		let online = true;
 		const { deps, calls } = fakeDeps({
 			isOnline: () => online,
@@ -112,7 +112,7 @@ describe('儲存個人資料（saveProfile）', () => {
 		expect(photoWasSaved(result)).toBe(true);
 	});
 
-	it('上傳途中關掉對話框、上傳在取消前就完成了（review A1）：不存暱稱，回報照片已經存好', async () => {
+	it('上傳途中關掉對話框、上傳在取消前就完成了：不存暱稱，回報照片已經存好', async () => {
 		let current = true;
 		let finishUpload: () => void = () => {};
 		const { deps } = fakeDeps({

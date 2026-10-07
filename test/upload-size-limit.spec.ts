@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ATTACHMENT_MAX_BYTES, AVATAR_MAX_BYTES } from '../src/shared/schemas';
 import { BASE, PNG_1X1, registeredClient, type Client } from './helpers';
 
-// code review 1：沒有 Content-Length（chunked）的上傳，也要在整個 body 讀進記憶體之前擋下
+// 沒有 Content-Length（chunked）的上傳，也要在整個 body 讀進記憶體之前擋下
 
 const MB = 1024 * 1024;
 const BOUNDARY = 'studyflow-chunked-upload';
@@ -54,7 +54,7 @@ async function chunkedUpload(c: Client, method: 'PUT' | 'POST', path: string, he
 	return { status: res.status, data, pulled };
 }
 
-describe('沒有 Content-Length 的上傳：頭像（review 1）', () => {
+describe('沒有 Content-Length 的上傳：頭像', () => {
 	it('24MB 的串流在讀到上限附近就回 413，不會整個讀進記憶體；原本沒有頭像也不會被改', async () => {
 		const c = await registeredClient();
 		const res = await chunkedUpload(c, 'PUT', '/api/auth/avatar', PNG_1X1, 24 * MB);
@@ -81,7 +81,7 @@ describe('沒有 Content-Length 的上傳：頭像（review 1）', () => {
 	});
 });
 
-describe('沒有 Content-Length 的上傳：筆記照片（review 1）', () => {
+describe('沒有 Content-Length 的上傳：筆記照片', () => {
 	async function makeNote(c: Client): Promise<{ id: string }> {
 		const res = await c.post('/api/notes', { kind: 'note', title: '有照片的筆記' });
 		expect(res.status).toBe(201);

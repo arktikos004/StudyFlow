@@ -104,7 +104,7 @@ describe('一列放得下幾個徽章（badgeCapacity）', () => {
 	});
 });
 
-describe('個人檔案的徽章列（badgeRowCapacity，review A4）', () => {
+describe('個人檔案的徽章列（badgeRowCapacity）', () => {
 	it('預設字級 16px：和以 px 計算的結果相同（徽章 28、間距 8、「+N」34）', () => {
 		for (const width of [0, 100, 132, 147, 204, 500]) {
 			expect(badgeRowCapacity(width, 12, 16)).toBe(badgeCapacity(width, 12, 28, 8, 34));

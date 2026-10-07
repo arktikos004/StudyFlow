@@ -62,7 +62,7 @@ describe('頭像（PRO-1）', () => {
 		expect(key).toMatch(keyPattern(c.user.id));
 		expect((await env.BUCKET.head(key!))?.httpMetadata?.contentType).toBe('image/png');
 
-		// review 2：v 等於目前的 avatarUpdatedAt（avatarUrl() 的網址）才 immutable；沒帶 v 或 v 不對時每次重新驗證
+		// v 等於目前的 avatarUpdatedAt（avatarUrl() 的網址）才 immutable；沒帶 v 或 v 不對時每次重新驗證
 		const cases: [string, string][] = [
 			[`/api/auth/avatar?v=${user.avatarUpdatedAt}`, 'private, max-age=31536000, immutable'],
 			['/api/auth/avatar', 'private, no-cache'],
@@ -215,7 +215,7 @@ describe('頭像（PRO-1）', () => {
 	});
 });
 
-describe('頭像的併發與時鐘（review 3）', () => {
+describe('頭像的併發與時鐘', () => {
 	it('同時送出 6 次上傳：全部成功、avatarUpdatedAt 都不同、R2 只留資料庫指向的那一個', async () => {
 		const c = await registeredClient();
 		const results = await Promise.all(Array.from({ length: 6 }, () => c.put('/api/auth/avatar', avatarForm(PNG_1X1))));

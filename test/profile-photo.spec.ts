@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { draftPreview, KEEP_PHOTO, photoNote, removeDraft, type PhotoDraft } from '../src/react-app/lib/profile-photo';
 
-// 編輯個人資料時，照片的變更（review B5）：「移除照片」的語意都在這三個純函式裡。
+// 編輯個人資料時，照片的變更：「移除照片」的語意都在這三個純函式裡。
 const CURRENT = '/api/auth/avatar?v=1';
 const picked: PhotoDraft = { kind: 'set', blob: new Blob(['x'], { type: 'image/jpeg' }), url: 'blob:preview' };
 const removed: PhotoDraft = { kind: 'remove' };

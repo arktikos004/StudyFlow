@@ -82,7 +82,7 @@ describe('送出前的大小檢查（withinAvatarLimit）', () => {
 	});
 });
 
-describe('極端比例的照片（review B3）', () => {
+describe('極端比例的照片', () => {
 	it('很寬或很長的照片：取中間的正方形，邊長是短邊', () => {
 		expect(squareCrop(10000, 100)).toEqual({ sx: 4950, sy: 0, side: 100, out: 100 });
 		expect(squareCrop(100, 10000)).toEqual({ sx: 0, sy: 4950, side: 100, out: 100 });

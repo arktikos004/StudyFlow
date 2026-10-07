@@ -171,7 +171,7 @@ describe('番茄鐘到點切換（advance）', () => {
 });
 
 describe('舊版 localStorage 狀態（normalizeState）', () => {
-	it('Sprint 1 的狀態缺少新欄位：用預設值補上，原本的欄位保留', () => {
+	it('沒有新欄位的舊版 localStorage 狀態：用預設值補上，原本的欄位保留', () => {
 		const old = {
 			mode: 'pomodoro',
 			phase: 'focus',
