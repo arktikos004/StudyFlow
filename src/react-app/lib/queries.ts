@@ -179,6 +179,9 @@ export function useSearch(q: string) {
 		queryFn: () => api.get<SearchResponse>(`/search${qs({ q: term })}`),
 		enabled: term.length > 0,
 		placeholderData: (prev) => (term ? prev : undefined),
+		// 每次搜尋都重新取得（先顯示上次的結果）：新增、刪除、改名之後再搜同一個字要看到最新的。
+		// 面板開著時不會有其他修改，所以不必在每個修改後另外讓搜尋失效。
+		staleTime: 0,
 	});
 }
 
