@@ -2,7 +2,7 @@ import { CalendarClock, ChevronRight, GraduationCap, MapPin, Plus } from 'lucide
 import { useId, useState } from 'react';
 import type { EventItem } from '../../../shared/api-types';
 import { EVENT_KIND_LABEL } from '../../../shared/labels';
-import { formatDateForToday } from '../../lib/format';
+import { formatDateForToday, percent } from '../../lib/format';
 import { CountdownTile } from '../countdown';
 import { Badge, Button, Card, CardHeader, EmptyState, ProgressBar } from '../ui';
 import { ShowMore } from './show-more';
@@ -52,7 +52,7 @@ function NextEvent({
 	onOpen: () => void;
 }) {
 	const labelId = useId();
-	const pct = event.taskTotal ? Math.round((event.taskDone / event.taskTotal) * 100) : 0;
+	const pct = percent(event.taskDone, event.taskTotal);
 	const progressText = `${event.taskDone}／${event.taskTotal} 項任務，${pct}%`;
 	return (
 		<div className="flex items-start gap-4 px-4 pt-1 pb-4 sm:px-5">

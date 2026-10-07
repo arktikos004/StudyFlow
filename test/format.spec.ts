@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { firstGrapheme, formatDateForToday, formatRange } from '../src/react-app/lib/format';
+import { firstGrapheme, formatDateForToday, formatRange, percent } from '../src/react-app/lib/format';
 
 describe('firstGrapheme', () => {
 	afterEach(() => vi.unstubAllGlobals());
@@ -45,5 +45,14 @@ describe('formatDateForToday', () => {
 		expect(formatDateForToday('2026-10-07', '2026-01-01')).toBe('10/7（三）');
 		expect(formatDateForToday('2025-12-31', '2026-01-01')).toBe('2025/12/31（三）');
 		expect(formatDateForToday('2027-01-04', '2026-12-31')).toBe('2027/1/4（一）');
+	});
+});
+
+describe('percent', () => {
+	it('四捨五入到整數；分母是 0 時是 0（不是 NaN）', () => {
+		expect(percent(1, 3)).toBe(33);
+		expect(percent(2, 3)).toBe(67);
+		expect(percent(5, 5)).toBe(100);
+		expect(percent(0, 0)).toBe(0);
 	});
 });

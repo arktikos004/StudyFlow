@@ -5,9 +5,10 @@ import {
 	foldSeries,
 	MAX_STACK_SERIES,
 	OTHER_KEY,
+	statsSeries,
 	type DailyMinutes,
 	type StackSeries,
-} from '../src/react-app/components/dashboard/series';
+} from '../src/react-app/lib/stats-series';
 
 // 統計頁每日堆疊圖的系列：顏色跟著科目走、圖上最多 8 種顏色（「未分類」也算一個系列）
 
@@ -112,5 +113,32 @@ describe('foldSeries', () => {
 		const r = foldSeries(series, totals, [day], 'rest');
 		expect(r.series.map((s) => s.key)).toEqual(['s1', 's2', 's3', 's4', 's5', 's6', 's7', OTHER_KEY]);
 		expect(r.others.map((s) => s.key)).toEqual(['s8', 's9']);
+	});
+});
+
+describe('statsSeries', () => {
+	const daily = [{ date: '2026-10-07', minutes: 90, bySubject: { s2: 60, [NO_SUBJECT_KEY]: 30 } }];
+
+	it('各科長條照 API 的順序（分鐘數由多到少），名稱與顏色和圖表系列一致', () => {
+		const bySubject = [
+			{ subjectId: 's2', minutes: 60 },
+			{ subjectId: null, minutes: 30 },
+		];
+		const { series, chart, subjectBars } = statsSeries({ bySubject, daily }, subjects(3), color, 'rest');
+		expect(series.map((s) => s.key)).toEqual(['s2', NO_SUBJECT_KEY]);
+		expect(chart.series).toEqual(series);
+		expect(subjectBars).toEqual([
+			{ key: 's2', label: '科目2', color: 'mark(#000002)', minutes: 60 },
+			{ key: NO_SUBJECT_KEY, label: '未分類', color: 'gray', minutes: 30 },
+		]);
+	});
+
+	it('科目超過 8 個時圖表併入「其他」，表格用的系列與各科長條仍是完整的', () => {
+		const bySubject = subjects(10).map((s, i) => ({ subjectId: s.id, minutes: 100 - i }));
+		const { series, chart, subjectBars } = statsSeries({ bySubject, daily: [] }, subjects(10), color, 'rest');
+		expect(series).toHaveLength(10);
+		expect(subjectBars).toHaveLength(10);
+		expect(chart.series).toHaveLength(MAX_STACK_SERIES);
+		expect(chart.series.at(-1)).toMatchObject({ key: OTHER_KEY, color: 'rest' });
 	});
 });

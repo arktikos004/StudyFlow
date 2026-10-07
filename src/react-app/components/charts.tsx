@@ -10,11 +10,8 @@ import {
 	YAxis,
 	type TooltipContentProps,
 } from 'recharts';
-import { formatDate, formatMinutes, formatMinutesShort, formatMonthDay, weekdayLabel } from '../lib/format';
+import { formatDate, formatMinutes, formatMinutesShort, formatMonthDay, percent, weekdayLabel } from '../lib/format';
 import { cn, TableToggle } from './ui';
-
-// 科目色的邏輯在 lib/subject-color.ts；這裡保留 re-export，既有的 import 不用改
-export { NO_SUBJECT_COLOR, nextSubjectColor, useSubjectColor } from '../lib/subject-color';
 
 // ---- 共用 ----
 
@@ -258,7 +255,7 @@ export function SubjectBars({ items }: { items: { key: string; label: string; co
 						</span>
 						<span className="shrink-0 font-num text-ink-2 tabular-nums">
 							{formatMinutes(i.minutes)}
-							<span className="ml-1.5 text-xs text-ink-3">{Math.round((i.minutes / total) * 100)}%</span>
+							<span className="ml-1.5 text-xs text-ink-3">{percent(i.minutes, total)}%</span>
 						</span>
 					</div>
 					<div className="h-2.5 overflow-hidden rounded-full bg-subtle">
@@ -305,7 +302,7 @@ export function WeeklyTaskBars({ data }: { data: { weekStart: string; due: numbe
 									<TooltipRow color="var(--accent)" label="已完成" value={`${w.done} 項`} />
 									<TooltipRow color="var(--chart-rest)" label="未完成" value={`${w.due - w.done} 項`} />
 									<div className="mt-1 border-t border-line pt-1">
-										<TooltipRow label="完成率" value={w.due ? `${Math.round((w.done / w.due) * 100)}%` : '—'} />
+										<TooltipRow label="完成率" value={w.due ? `${percent(w.done, w.due)}%` : '—'} />
 									</div>
 								</TooltipBox>
 							);

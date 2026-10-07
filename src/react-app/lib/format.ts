@@ -38,6 +38,9 @@ export function formatDate(date: string, withYear = false): string {
 	return `${withYear ? `${y}/` : ''}${m}/${d}（${WEEKDAYS[dow]}）`;
 }
 
+/** part 占 total 的百分比，四捨五入到整數；total 是 0 時是 0 */
+export const percent = (part: number, total: number) => (total ? Math.round((part / total) * 100) : 0);
+
 /** 9/29（一）；和 today 不同年時加上年份（2025/9/29（一）） */
 export function formatDateForToday(date: string, today: string): string {
 	return formatDate(date, date.slice(0, 4) !== today.slice(0, 4));

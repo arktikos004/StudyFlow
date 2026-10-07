@@ -1,6 +1,7 @@
 import { Brain, CircleCheck, Clock } from 'lucide-react';
 import { useId } from 'react';
 import type { SubjectOverview } from '../../../shared/api-types';
+import { percent } from '../../lib/format';
 import { ButtonLink, Card, CardHeader, EmptyState, Figure, NumDisplay, ProgressBar, TextLink } from '../ui';
 
 /** 錯題卡底部的一句狀態：今天有幾題到期；沒有到期時，全部掌握了就說一聲 */
@@ -26,7 +27,7 @@ function MistakesStatus({ due, mastered, total }: SubjectOverview['mistakes']) {
 export function MistakesCard({ mistakes, subjectId, color }: { mistakes: SubjectOverview['mistakes']; subjectId: string; color: string }) {
 	const labelId = useId();
 	const { total, mastered, due } = mistakes;
-	const pct = total ? Math.round((mastered / total) * 100) : 0;
+	const pct = percent(mastered, total);
 	return (
 		<Card>
 			<CardHeader title="錯題" icon={Brain} />
