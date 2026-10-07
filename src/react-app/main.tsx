@@ -7,6 +7,7 @@ import { Toaster } from 'sonner';
 import { registerSW } from 'virtual:pwa-register';
 import { Layout } from './components/Layout';
 import { GuestOnly, RequireAuth } from './components/RequireAuth';
+import { AppError, PageError } from './components/RouteError';
 import { ApiError } from './lib/api';
 import { ME_KEY } from './lib/queries';
 import { initTheme, useIsDark } from './lib/theme';
@@ -67,10 +68,12 @@ const router = createBrowserRouter([
 	{
 		path: '/login',
 		element: <GuestOnly>{page(<LoginPage />)}</GuestOnly>,
+		errorElement: <AppError />,
 	},
 	{
 		path: '/register',
 		element: <GuestOnly>{page(<RegisterPage />)}</GuestOnly>,
+		errorElement: <AppError />,
 	},
 	{
 		element: (
@@ -78,18 +81,25 @@ const router = createBrowserRouter([
 				<Layout />
 			</RequireAuth>
 		),
+		errorElement: <AppError />,
 		children: [
-			{ index: true, element: page(<DashboardPage />) },
-			{ path: 'calendar', element: page(<CalendarPage />) },
-			{ path: 'events', element: page(<EventsPage />) },
-			{ path: 'tasks', element: page(<TasksPage />) },
-			{ path: 'timer', element: page(<TimerPage />) },
-			{ path: 'notes', element: page(<NotesPage />) },
-			{ path: 'stats', element: page(<StatsPage />) },
-			{ path: 'settings', element: page(<SettingsPage />) },
-			{ path: 'subjects/:id', element: page(<SubjectPage />) },
-			{ path: 'achievements', element: page(<AchievementsPage />) },
-			{ path: '*', element: <NotFound /> },
+			{
+				// 頁面出錯（程式檔下載失敗、render 例外）只換掉內容區，側欄與頁首還在
+				errorElement: <PageError />,
+				children: [
+					{ index: true, element: page(<DashboardPage />) },
+					{ path: 'calendar', element: page(<CalendarPage />) },
+					{ path: 'events', element: page(<EventsPage />) },
+					{ path: 'tasks', element: page(<TasksPage />) },
+					{ path: 'timer', element: page(<TimerPage />) },
+					{ path: 'notes', element: page(<NotesPage />) },
+					{ path: 'stats', element: page(<StatsPage />) },
+					{ path: 'settings', element: page(<SettingsPage />) },
+					{ path: 'subjects/:id', element: page(<SubjectPage />) },
+					{ path: 'achievements', element: page(<AchievementsPage />) },
+					{ path: '*', element: <NotFound /> },
+				],
+			},
 		],
 	},
 ]);
