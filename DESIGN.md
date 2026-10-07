@@ -321,7 +321,7 @@
   - 採 WAI-ARIA radio group：roving tabindex、方向鍵、Home／End。
   - 項目 h-9，觸控裝置 40px。
 - **Avatar**（Sprint 4，PRO-1）：
-  - 圓形。有照片時顯示照片（`object-cover`，邊緣 ink 10% 的 1px 細線）；沒有照片、或照片載入失敗（例如離線）時，顯示暱稱的第一個字素（`firstGrapheme`，emoji、組合字不切半；拉丁字母轉大寫），accent 底、on-accent 字，跟著主題色。
+  - 圓形。有照片時顯示照片（`object-cover`，邊緣 ink 10% 的 1px 細線）；沒有照片、或照片載入失敗（例如離線）時，顯示暱稱的第一個字素（`firstGrapheme`，emoji、組合字不切半；拉丁字母轉大寫），accent 底、on-accent 字，跟著主題色。載入失敗後，連回網路（`online` 事件）時會再試一次，側欄的頭像不會一直停在首字。
   - 照片載入中是 subtle 底，不先閃一下首字；失敗才換成首字，src 換了會重新載入。
   - 尺寸：sm 32（側欄）、md 40（手機選單）、lg 72（個人檔案）、xl 96（編輯對話框的預覽）。首字 600。
   - 無障礙：旁邊已經有暱稱文字時是裝飾（`aria-hidden`、`alt=""`）；單獨出現時給 `label`（`role="img"`）。
@@ -398,12 +398,13 @@
     - 轉好的 JPEG 超過後端上限（`AVATAR_MAX_BYTES`，1MB）時先降低品質重試，仍太大就在選照片時提示「照片太大（上限 1MB），請換一張照片」，不送出（不等後端回 413）。選檔的格式清單用共用的 `AVATAR_TYPES`。
     - 預覽跟著變更走：新選的照片、移除後的首字（首字跟著輸入中的暱稱）。下方說明用 `aria-live` 念出狀態：「JPEG、PNG 或 WebP，會置中裁成正方形」「新照片會在儲存後套用」「儲存後會移除照片，改用暱稱的第一個字」。照片讀不出來時是 danger 文字＋圖示（`role="alert"`）。
   - 暱稱：`Field`＋`Input`（`autoComplete="nickname"`、最多 30 字），空白或太長在送出前檢查，錯誤在欄位旁、焦點回到欄位。
-  - 儲存：先處理照片（上傳或移除），成功才存暱稱。成功與失敗的提示都由各自的 hook 用 toast 顯示（「已更新頭像」「已移除頭像」「已更新個人資料」、後端的錯誤訊息），對話框不重複；照片失敗時什麼都沒存、對話框留著（新選的照片與輸入的暱稱都還在）；照片成功但暱稱失敗時，照片已經換好，再按「儲存」只會存暱稱。沒有變更時「儲存」停用。
-  - 離線時不送出：直接 toast「目前離線，連上網路後再儲存」。TanStack Query 離線時會把 mutation 暫停、連線後才補送，不擋的話按鈕會一直轉圈，連回網路後還會補存使用者已經放棄的變更（帳號與安全卡的時區同樣處理）。
+  - 儲存：先處理照片（上傳或移除），成功才存暱稱。成功的提示由各自的 hook 用 toast 顯示（「已更新照片」「已移除照片」「已更新個人資料」）。失敗時除了 hook 的 toast，對話框裡也有一行 `role="alert"` 的訊息（對話框是 modal，toast 在對話框外面，螢幕報讀器不一定念得到）：照片失敗時什麼都沒存、對話框留著（新選的照片與輸入的暱稱都還在）；照片成功但暱稱失敗時，訊息會說明照片已經換好，再按「儲存」只會存暱稱。沒有變更時「儲存」停用。
+  - 儲存途中關掉對話框（取消、Esc、點背景、手機往下拖）就放棄這一輪：已經送出的請求收不回來，但後面的步驟不再執行（照片還在上傳時按取消，暱稱不會被存），重新打開也不會卡在儲存中。流程是 `lib/profile-save.ts` 的純函式 `saveProfile`，每個等待結束後都確認「這一輪還算數」（`isCurrent`）。
+  - 離線時不送出：直接 toast「目前離線，連上網路後再儲存」。TanStack Query 離線時會把 mutation 暫停、連線後才補送，不擋的話按鈕會一直轉圈，連回網路後還會補存使用者已經放棄的變更（帳號與安全卡的時區同樣處理）。照片存好之後、送出暱稱之前會再檢查一次：這時才斷線，對話框裡會說明照片已經存好、暱稱還沒儲存。
 - **帳號與安全卡**（`components/settings/AccountCard.tsx`，取代原本的「個人資料」與「變更密碼」兩張卡）：
   - 三段用分隔線分開：Email（`<dl>`，唯讀文字，不用停用的輸入框；附「登入時使用，目前無法變更」）、時區、密碼。
   - 時區：Select＋「儲存」（secondary，改了才能按；不在選單變動時自動儲存，因為鍵盤上下鍵會直接改值）。選項附上 GMT 偏移（「Asia/Taipei（GMT+8）」，零偏移寫 GMT+0），說明「用來判斷「今天」與統計每天的學習時間」。
-  - 密碼：平常只有一列（「密碼」＋「變更後，其他裝置會登出」＋「變更密碼」按鈕，`aria-expanded`、ChevronDown 轉 180°），按了才在下面展開表單（漸進揭露，不用對話框）。
+  - 密碼：平常只有一列（「密碼」＋「變更後，其他裝置會登出」＋「變更密碼」按鈕，`aria-expanded`、ChevronDown 轉 180°），按了才在下面展開表單（漸進揭露，不用對話框）。送出中不能取消或收起（結果要有地方顯示）。
     - 表單：目前密碼、新密碼（至少 8 個字元）、確認新密碼，`autoComplete` 正確，另有隱藏的 username（Email）讓密碼管理工具知道是哪個帳號。錯誤在欄位旁、送出時焦點到第一個錯誤；目前密碼不對（後端 400）標在「目前密碼」，其他失敗在按鈕上方。
     - 「取消」ghost、「更新密碼」secondary；成功時 toast「密碼已更新，其他裝置已登出」、收起、焦點回到「變更密碼」。滑鼠操作時展開後焦點進「目前密碼」，觸控裝置不自動 focus。
 - **共用小元件**（Sprint 1 由設計師提供）：
@@ -420,7 +421,7 @@
   - 用 page 色底，靠空白分組。
   - 目前頁面：accent-soft 底、字重 600、較粗的圖示。
   - 第一個可聚焦元素是「跳到主要內容」連結；Logo 下方是像輸入框的「搜尋」鈕（右側 Kbd 提示 ⌘K／Ctrl K，`aria-keyshortcuts`）。
-  - **帳號列**（Sprint 4，PRO-1，左下角）：Avatar sm＋暱稱（14／600 ink）＋Email（13px ink-3，太長時截斷，`title` 是完整的 Email），整列是連到 `/settings` 的連結（個人檔案在設定頁最上面），hover 時 subtle 底，48px 高。名稱念成「小安，demo@example.com，查看個人檔案」；頭像是裝飾。已經在設定頁時再點會捲回最上面。下面一列是「登出」，維持一眼看得到，不藏進選單。
+  - **帳號列**（Sprint 4，PRO-1，左下角）：Avatar sm＋暱稱（14／600 ink）＋Email（13px ink-3，太長時截斷，`title` 是完整的 Email），整列是連到 `/settings` 的連結（個人檔案在設定頁最上面），hover 時 subtle 底，約 56px 高（兩行文字加上下各 8px 的內距）。名稱念成「小安，demo@example.com，查看個人檔案」；頭像是裝飾。已經在設定頁時再點會捲回最上面。下面一列是「登出」，維持一眼看得到，不藏進選單。
 - **手機底部導覽**：
   - 實心底，12px 標籤。
   - 目前頁面在圖示後面加上膠囊底。
@@ -479,7 +480,7 @@
 - **載入失敗**：`ErrorNote` 傳 `onRetry`（通常是 query 的 `refetch`），讓使用者不必重新整理頁面。
 - **例外**（只有這幾個）：
   - 外觀設定的深淺色預覽可以有邊框：它是畫面的縮圖，不算卡片裡的卡片。
-  - raw 的 `white`／`black` 只允許出現在選色器的把手（`ColorPicker.tsx`：把手必須在任何顏色上都看得見）。照片燈箱的背景用 `bg-scrim`，不用 `black`。
+  - raw 的 `white`／`black` 只允許出現在選色器的把手（`ColorPicker.tsx`：把手必須在任何顏色上都看得見）。照片燈箱的背景用 `bg-scrim`，不用 `black`。另一個例外是 `lib/profile-image.ts` 轉檔用的 canvas 底色 `#ffffff`：那是 JPEG 影像的底色（透明的地方鋪白），不是介面的顏色。
   - 指令面板的輸入框用 `outline-none`，改以輸入列的下緣線變 accent 表示焦點。其他輸入框都用 `Input`／`SearchInput` 的邊框加光環。
   - 整格或整張卡可點（標題按鈕的 `::after` 蓋滿容器）一律用 `StretchedButton`，不自己寫。非自己寫不可時：
     - 按鈕本身的焦點框用 `focus-visible:outline-0`（寬度歸零）關掉，全站統一這個寫法，不用 `outline-none`。
@@ -568,7 +569,7 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 
 `firstGrapheme` 沒有搬家：它本來就在中性的 `lib/polish-format.ts`（沒有 React），`ui.tsx` 與 `components/subjects.tsx` 都從那裡 import，`ui.tsx` 不必反過來 import `subjects.tsx`。
 
-個人檔案的純邏輯（都有單元測試）：`lib/profile-format.ts`（`joinedLabel`、`studyTotal`、`sessionsNote`、`streakNote`、`masteredNote`、`formatCount`、`badgeCapacity`、`emailParts`、`timezoneOptions`、`timezoneLabel`）、`lib/profile-crop.ts`（`squareCrop`、`AVATAR_MAX_EDGE`、`AvatarImageError`、`withinAvatarLimit`、`AVATAR_TOO_LARGE`）、`lib/profile-photo.ts`（照片的變更 `PhotoDraft`）。瀏覽器端的照片處理是 `lib/profile-image.ts` 的 `prepareAvatar(file)`。資料用 `lib/queries.ts` 的 `useProfileSummary`、`useUploadAvatar`、`useDeleteAvatar` 與 `lib/api.ts` 的 `avatarUrl(user)`（s4/profile-api），型別是 `src/shared/api-types.ts` 的 `ProfileSummary`。頭像網址一律用 `avatarUrl(user)` 組：`?v=` 等於目前的 `avatarUpdatedAt` 時後端才讓瀏覽器快取一年。
+個人檔案的純邏輯（都有單元測試）：`lib/profile-format.ts`（`joinedLabel`、`studyTotal`、`sessionsNote`、`streakNote`、`masteredNote`、`formatCount`、`badgeCapacity`、`emailParts`、`timezoneOptions`、`timezoneLabel`）、`lib/profile-crop.ts`（`squareCrop`、`AVATAR_MAX_EDGE`、`AvatarImageError`、`withinAvatarLimit`、`AVATAR_TOO_LARGE`）、`lib/profile-photo.ts`（照片的變更 `PhotoDraft`、`draftPreview`、`removeDraft`、`photoNote`）、`lib/profile-save.ts`（儲存流程 `saveProfile`、`saveFailureMessage`）。瀏覽器端的照片處理是 `lib/profile-image.ts` 的 `prepareAvatar(file)`，測試用假的 `createImageBitmap` 與 canvas（`test/profile-ui-prepare.spec.ts`）。資料用 `lib/queries.ts` 的 `useProfileSummary`、`useUploadAvatar`、`useDeleteAvatar` 與 `lib/api.ts` 的 `avatarUrl(user)`（s4/profile-api），型別是 `src/shared/api-types.ts` 的 `ProfileSummary`。頭像網址一律用 `avatarUrl(user)` 組：`?v=` 等於目前的 `avatarUpdatedAt` 時後端才讓瀏覽器快取一年。
 
 **頁面端遷移（給 s3/polish，照這張表換）**
 
@@ -634,7 +635,6 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 - **個人檔案（Sprint 4，PRO-1）**：
   - 成就格的徽章沒有滑鼠提示（`title`）：整格是連結，`::after` 蓋在徽章上面。名稱給螢幕報讀器，看得到的人點進成就頁看。
   - 時區儲存成功的 toast 是共用 hook 的「已更新個人資料」（`useUpdateProfile`），不是「已更新時區」。
-  - 用語：介面寫「照片」（使用者的說法：上傳照片、更換照片、移除照片），頭像 hook 的 toast 寫「已更新頭像」「已移除頭像」。意思一樣，但不是同一個詞。
-  - 同時改照片與暱稱時會跳兩則成功的 toast（頭像、個人資料各一則），由各自的 hook 顯示。
+  - 同時改照片與暱稱時會跳兩則成功的 toast（照片、個人資料各一則），由各自的 hook 顯示。
   - 照片只在瀏覽器裡處理：比 512px 小的照片不放大；GIF 只取第一格；瀏覽器解不開的格式（例如 Chrome 的 HEIC）會請使用者改用 JPEG、PNG 或 WebP。
   - 頭像的 `<img>` 由瀏覽器快取，Service Worker 不快取 `/api/*`：離線且沒有快取時顯示首字。
