@@ -2,7 +2,7 @@ import { CircleAlert, Eye, Pencil } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
 import type { NoteItem } from '../../../shared/api-types';
 import { NOTE_TAGS_MAX, NOTE_TITLE_MAX, REVIEW_INTERVALS, noteSchema } from '../../../shared/schemas';
-import { compressImage } from '../../lib/image';
+import { compressImage } from '../../lib/attachment-image';
 import { defaultScheduleReview, emptyNoteForm, formToNoteInput, noteEditorTitle, noteToForm, type NoteForm } from '../../lib/notes-form';
 import { usePendingPhotos } from '../../lib/pending-photos';
 import { useCreateNote, useDeleteAttachment, useNote, useUpdateNote, useUploadAttachment } from '../../lib/queries';
