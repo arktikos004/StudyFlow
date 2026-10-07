@@ -120,7 +120,8 @@ function AchievementRow({ achievement: a, hasDailyGoal, timeZone }: { achievemen
 			</div>
 			<div className="col-start-2 sm:col-start-3">
 				{a.unlocked ? (
-					<div className="flex flex-col items-start gap-1 sm:items-end">
+					// 手機：日期接在 badge 右邊（不多佔一行）；sm 以上在右欄，badge 下面靠右
+					<div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-end">
 						<Badge tone="success" icon={<CircleCheck />}>
 							已解鎖
 						</Badge>
