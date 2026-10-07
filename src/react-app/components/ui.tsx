@@ -745,15 +745,22 @@ export function Dialog({
 	const [coarse] = useState(isCoarsePointer);
 	const downOnBackdrop = useRef(false);
 	const drag = useRef<{ y: number; dy: number; t: number } | null>(null);
+	// 呼叫端用 open=false 關閉時，el.close() 會再觸發一次原生的 close 事件：這個回音不再通知 onClose，
+	// onClose 才是「每次關閉只呼叫一次」（也不會落到緊接著打開的下一個確認對話框上，把它自動取消）
+	const closingFromProp = useRef(false);
 
 	useLayoutEffect(() => {
 		const el = ref.current;
 		if (!el) return;
 		if (open && !el.open) {
+			closingFromProp.current = false;
 			el.showModal();
 			if (coarse) el.focus();
 		}
-		if (!open && el.open) el.close();
+		if (!open && el.open) {
+			closingFromProp.current = true;
+			el.close();
+		}
 	}, [open, coarse]);
 
 	const onHandleDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -785,7 +792,10 @@ export function Dialog({
 			ref={ref}
 			aria-labelledby={titleId}
 			tabIndex={-1}
-			onClose={onClose}
+			onClose={() => {
+				if (closingFromProp.current) closingFromProp.current = false;
+				else onClose();
+			}}
 			onCancel={(e) => {
 				e.preventDefault();
 				onClose();
@@ -866,11 +876,22 @@ export type ConfirmOptions = {
  * 非破壞性的確認：confirm({ title: '要一併完成任務嗎？', confirmText: '完成任務', tone: 'primary' })。
  */
 export function useConfirm(defaults: { tone?: ConfirmTone } = {}) {
-	const [state, setState] = useState<(ConfirmOptions & { resolve: (v: boolean) => void }) | null>(null);
+	const [state, setState] = useState<ConfirmOptions | null>(null);
+	const answer = useRef<((v: boolean) => void) | null>(null);
 
-	const confirm = useCallback((opts: ConfirmOptions) => new Promise<boolean>((resolve) => setState({ ...opts, resolve })), []);
+	const confirm = useCallback(
+		(opts: ConfirmOptions) =>
+			new Promise<boolean>((resolve) => {
+				// 前一個還沒回答就被新的取代：當成取消，不讓呼叫端永遠等不到結果
+				answer.current?.(false);
+				answer.current = resolve;
+				setState(opts);
+			}),
+		[],
+	);
 	const close = (v: boolean) => {
-		state?.resolve(v);
+		answer.current?.(v);
+		answer.current = null;
 		setState(null);
 	};
 
