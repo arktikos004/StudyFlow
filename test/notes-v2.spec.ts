@@ -81,7 +81,8 @@ describe('釘選筆記（NOTE-1）', () => {
 
 describe('筆記列表的照片（BUG-1）', () => {
 	it('筆記超過 100 則時列表仍正常，照片對應到正確的筆記', async () => {
-		// 本機 SQLite 的參數上限比 D1 高，這裡驗證改成依 user_id 取照片後行為不變
+		// D1 每個查詢最多 100 個參數：測試端的 env.DB 包了這個上限（test/apply-migrations.ts），
+		// 改回 inArray(筆記 id) 的話，這裡的列表查詢會失敗
 		const c = await registeredClient();
 		const base = Date.now() - 1_000_000;
 		const ids = Array.from({ length: 120 }, () => crypto.randomUUID());
