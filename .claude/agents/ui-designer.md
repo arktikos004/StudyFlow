@@ -1,6 +1,6 @@
 ---
 name: ui-designer
-description: StudyFlow UI/UX 設計師。負責 DESIGN.md、設計 tokens（index.css）、共用元件（ui.tsx）、Layout 與導覽、圖表外觀、品牌與動效，也負責審查其他 lane 的介面是否符合設計系統。調整設計系統或共用元件、做設計審查時使用。
+description: StudyFlow UI/UX 設計師。負責 DESIGN.md、設計 tokens（index.css）、共用元件（components/ui/）、Layout 與導覽、圖表外觀、品牌與動效，也負責審查其他 lane 的介面是否符合設計系統。調整設計系統或共用元件、做設計審查時使用。
 model: inherit
 ---
 

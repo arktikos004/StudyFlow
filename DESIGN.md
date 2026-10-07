@@ -160,7 +160,7 @@
 ## 3. 科目色
 
 - **儲存**：使用者選的原始 `#rrggbb`。
-- **顯示**：一律透過 `subjectTone(hex, dark)`（`src/shared/color.ts`），回傳 `{ mark, tint, ring, onMark }`：
+- **顯示**：一律透過 `subjectTone(hex, dark)`（`src/shared/color/`），回傳 `{ mark, tint, ring, onMark }`：
   - 淺色的 mark：OKLCH 的 L 夾在 0.43–0.77，C ≥ 0.10，色相不變。
   - 深色的 mark：
     - 推薦色用既有的 DARK_STEPS。
@@ -208,7 +208,7 @@
   - 共同的數字：推薦 8 色在深色用 DARK_STEPS，不受色帶影響，驗證器淺色（surface #fdfcfa）與深色都 PASS（CVD 最差 9.1／8.4、一般視覺最差 19.6／19.3）；最亮端（琥珀 #c98500，L 0.670）的 onMark 是 6.23；chip 的 ink／tint 在所有候選下都 ≥ 10.8。
   - 「更多顏色」每一列（10 色相並排）在淺色與深色、任何色帶下都過不了驗證器的相鄰檢查（例如紫↔藍 deutan ΔE 0.2–0.4）：色格是選色器，不是固定順序的圖表色盤，所以由選色器的提醒負責，和色帶無關。
   - 不採用建議值的原因：上緣超過 0.67 就離開 dataviz 的深色色帶（深色表面上太亮的 mark 會比文字還搶眼）；上緣固定 0.67 時，下緣最多只能放到約 0.51（再低 mark 對 card 就低於 3:1），同色相相鄰色調的 ΔE 平均只從 3.7 變成 4.7，30 對裡仍有 26 對低於「幾乎一樣」的 5，改善有限。
-  - 真的要讓深色的 4 個色調分得開，需要改深色的換算方式（例如色調之間固定 ΔL，或「深」色調改降 chroma），不是調整線性色帶的端點；這屬於 `src/shared/color.ts`，留給之後負責色彩的 lane。
+  - 真的要讓深色的 4 個色調分得開，需要改深色的換算方式（例如色調之間固定 ΔL，或「深」色調改降 chroma），不是調整線性色帶的端點；這屬於 `src/shared/color/`，留給之後負責色彩的 lane。
   - 「幾乎一樣」的提醒維持深色 ΔE < 5：在現行色帶下會把同色相相鄰色調標成「深色模式下幾乎一樣」，這正是要提醒的事。
 
 ## 4. 字型與排版
@@ -492,9 +492,9 @@
 
 ### 元件 API（Sprint 1 定案，給 Sprint 2 各 lane）
 
-元件的預設樣式放在 `index.css` 的 `@layer components`（`.sf-btn`、`.sf-field`、`.sf-dialog`），頁面傳入的 `className` 工具類一定蓋得過（例如 `className="h-12 text-base"`、`text-danger`）。頁面不要直接寫 `.sf-*`，請用元件。
+元件的預設樣式放在 `index.css` 的 `@layer components`（`.sf-btn`、`.sf-field`、`.sf-dialog`），頁面傳入的 `className` 工具類一定蓋得過（例如 `className="h-12 text-base"`、`text-danger`）。其他元件（`EmptyState`、`Card`、`Badge`…）的預設樣式是直接寫的工具類，`className` 只能「加上」樣式，要蓋掉同一個屬性的預設值不一定有效（兩個工具類誰贏取決於 Tailwind 產生的順序）；需要不同外觀時請加 prop，不要靠 `className` 覆寫。頁面不要直接寫 `.sf-*`，請用元件。
 
-**`components/ui.tsx`**
+**`components/ui/`**（依職責分檔：Button、fields、layout、states、Dialog、useConfirm、progress…；一律從 `components/ui` 的 index import，ui/ 裡的檔案彼此用具名路徑，避免循環 import）
 
 | 元件 | Props（新 prop 都是可選的） | 說明 |
 |---|---|---|
@@ -520,9 +520,9 @@
 | `NumDisplay` | `children`、`unit`、`size: 'xl'｜'lg'（預設）｜'md'｜'sm'` | 數字字型、等寬數字；xl 為計時大字；型別 `NumSize` |
 | `Countdown` | `seconds`、`size`（'xl'） | `role="timer"`，mm:ss 或 h:mm:ss，半窄字寬 |
 
-**`components/charts.tsx`**：`StatStrip({ items: StatItem[] })`，`StatItem = { key?, label, value, sub?, icon? }`（一張卡片用分隔線分格、手機 2 欄、sm 以上最多 4 格、數值 28／600）。`Heatmap` 內建「表格／圖表」切換與 `role="img"` 摘要。`StatTile`、`Legend`、`SubjectBars`、`MiniDailyBars`、`DailyStackedBars`、`WeeklyTaskBars`、`SeriesDef` 的 API 不變（`StatTile` 只為相容保留，新頁面改用 `StatStrip`）。**Sprint 3：`StatTile` 已經沒有任何呼叫端**（全 repo grep 只剩定義本身），`charts.tsx` 的擁有者可以在之後的清理刪掉；s3/design 不改 `charts.tsx`，所以先保留。
+**`components/charts.tsx`**：`StatStrip({ items: StatItem[] })`，`StatItem = { key?, label, value, sub?, icon? }`（一張卡片用分隔線分格、手機 2 欄、sm 以上最多 4 格、數值 28／600）。`Heatmap` 內建「表格／圖表」切換與 `role="img"` 摘要。`Legend`、`SubjectBars`、`MiniDailyBars`、`DailyStackedBars`、`WeeklyTaskBars`、`SeriesDef` 的 API 不變（舊的 `StatTile` 已刪除，數字格一律用 `StatStrip`）。`StatTile` 已在 Sprint 5 的清理中刪除。
 
-**Sprint 2 新增到 `components/ui.tsx`（s2/shell，只新增、既有 API 不變）**
+**Sprint 2 新增到 `components/ui/`（s2/shell，只新增、既有 API 不變）**
 
 | 元件 | Props | 說明 |
 |---|---|---|
@@ -535,7 +535,7 @@
 | `TableToggle` | `on`、`onToggle` | 圖表／表格切換（`aria-pressed`），和 charts.tsx 的同名元件相同，不必為了它載入圖表函式庫 |
 | `gridKeyTarget(e, index, count, grid)` | 函式 | 格狀 radiogroup 的方向鍵目標（左右循環、上下同欄、Home／End），欄數讀 CSS grid 實際排出的欄 |
 
-**Sprint 3 新增到 `components/ui.tsx`（s3/design，只新增 export 與可選的 prop，既有 API 不變）**
+**Sprint 3 新增到 `components/ui/`（s3/design，只新增 export 與可選的 prop，既有 API 不變）**
 
 既有元件的新 prop：
 
@@ -561,14 +561,14 @@
 
 tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-section`、`mt-section`）、`--scrim`／`--on-scrim`（`bg-scrim`、`backdrop:bg-scrim`、`text-on-scrim`）。
 
-**Sprint 4 新增到 `components/ui.tsx`（s4/profile-ui，PRO-1；只新增 export，既有 API 不變）**
+**Sprint 4 新增到 `components/ui/`（s4/profile-ui，PRO-1；只新增 export，既有 API 不變）**
 
 | 名稱 | Props | 說明 |
 |---|---|---|
 | `Avatar` | `name`（暱稱，必填）、`src?: string \| null`（照片網址，例如 `avatarUrl(user)`、預覽的 `blob:`）、`size?: AvatarSize`（預設 'md'）、`label?: string`、`className?` | 圓形頭像。有照片顯示照片；沒有或載入失敗時顯示暱稱的第一個字素（accent 底、on-accent 字）。旁邊有暱稱時不給 `label`（`aria-hidden`）；單獨出現時給 `label`（`role="img"`） |
 | `AvatarSize` | 型別：`'sm' \| 'md' \| 'lg' \| 'xl'` | 32／40／72／96px |
 
-`firstGrapheme` 沒有搬家：它本來就在中性的 `lib/format.ts`（沒有 React），`ui.tsx` 與 `components/subjects.tsx` 都從那裡 import，`ui.tsx` 不必反過來 import `subjects.tsx`。
+`firstGrapheme` 沒有搬家：它本來就在中性的 `lib/format.ts`（沒有 React），`components/ui/` 與 `components/subjects.tsx` 都從那裡 import，`components/ui/` 不必反過來 import `subjects.tsx`。
 
 個人檔案的純邏輯（都有單元測試）：`lib/profile-format.ts`（`joinedLabel`、`studyTotal`、`sessionsNote`、`streakNote`、`masteredNote`、`formatCount`、`badgeCapacity`、`emailParts`、`timezoneOptions`、`timezoneLabel`）、`lib/profile-crop.ts`（`squareCrop`、`AVATAR_MAX_EDGE`、`AvatarImageError`、`withinAvatarLimit`、`AVATAR_TOO_LARGE`）、`lib/profile-photo.ts`（照片的變更 `PhotoDraft`、`draftPreview`、`removeDraft`、`photoNote`）、`lib/profile-save.ts`（儲存流程 `saveProfile`、`saveFailureMessage`）。瀏覽器端的照片處理是 `lib/profile-image.ts` 的 `prepareAvatar(file)`，測試用假的 `createImageBitmap` 與 canvas（`test/profile-image.spec.ts`）。資料用 `lib/queries.ts` 的 `useProfileSummary`、`useUploadAvatar`、`useDeleteAvatar` 與 `lib/api.ts` 的 `avatarUrl(user)`（s4/profile-api），型別是 `src/shared/api-types.ts` 的 `ProfileSummary`。頭像網址一律用 `avatarUrl(user)` 組：`?v=` 等於目前的 `avatarUpdatedAt` 時後端才讓瀏覽器快取一年。
 
@@ -579,7 +579,7 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 | `pages/Dashboard.tsx` 自己寫的 `<header>`（日期＋問候＋兩個 lg 按鈕） | `<PageHeader eyebrow={<time dateTime={data.today}>…</time>} title={…} actionsClassName="w-full sm:w-auto" actions={…} />`；下方的 `mt-6 md:mt-8` 拿掉，主體用 `PageStack`／`gap-section` |
 | 各頁的 `space-y-5`、`space-y-6`、`gap-5`、`gap-6`、`mt-6 md:mt-8`、`mt-8`（區塊之間） | `PageStack`（直向）、`gap-section`（格線） |
 | `icon={<Clock className="size-[18px] text-ink-3" aria-hidden />}`（CardHeader） | `icon={Clock}` |
-| `pages/Notes.tsx` 的 `Section` 標題、`components/tasks/TaskList.tsx` 的分組 h2、`components/notes/content.tsx` 的 `Block` h3、`components/notes/review.tsx`「還不熟的題目」h3 | `SectionLabel`（TaskList：`size="sm" tone={overdue→'danger', today→'warning', done→'success'} icon={…} count={n}`；Block：`as="h3" icon={…}`，正確答案的綠勾用元素傳 `icon={<CircleCheck className="text-success" aria-hidden />}`） |
+| `components/notes/list.tsx` 的「已釘選」「其他」分段標題、`components/tasks/TaskList.tsx` 的分組 h2、`components/notes/content.tsx` 的 `Block` h3、`components/notes/review/summary.tsx`「還不熟的題目」h3 | `SectionLabel`（TaskList：`size="sm" tone={overdue→'danger', today→'warning', done→'success'} icon={…} count={n}`；Block：`as="h3" icon={…}`，正確答案的綠勾用元素傳 `icon={<CircleCheck className="text-success" aria-hidden />}`） |
 | `components/notes/pin.tsx` 的 `PinToggle` 內部 | `ToggleButton`（icon 版：`variant="icon" icon={Pin} aria-label={\`釘選「${title}」\`} title=… data-pin-id=…`；text 版：`icon={Pin}`＋「釘選」）。PinToggle 的外部 API 可以保留 |
 | `components/notes/content.tsx` 的 `ThumbAction` | `<MiniIconButton label=… onClick=… className="absolute top-1 right-1" />` |
 | `components/notes/content.tsx:57` 燈箱的 `backdrop:bg-black/85` | `backdrop:bg-scrim` |
@@ -623,7 +623,7 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 - **只加 `data-accent` 的元素不會重算 heat-***：熱度圖色階跟著 `<html>` 的主題色。
 - **熱度圖最淺一階**：heat-1 對 card 約 1.3:1。依 dataviz 對 sequential 色階的規則（最淺一階代表接近 0，可以貼近表面）保留，並以表格檢視、格子的 title 提示與 `role="img"` 摘要補足。
 - **墨綠主題色與 success 相近**（ΔE 7.7／9.2）：計時環的專注（accent）與休息（success）靠文字標籤區分。
-- **深色的 DARK_BAND**（Sprint 3 評估完，維持 0.55–0.67，數字見 §3）：同色相的 4 個色調在深色只差 ΔE 2.9–5.0，選色器會提醒「深色模式下幾乎一樣」。要改善得改深色的換算方式（`src/shared/color.ts`），不是調整色帶端點。
+- **深色的 DARK_BAND**（Sprint 3 評估完，維持 0.55–0.67，數字見 §3）：同色相的 4 個色調在深色只差 ΔE 2.9–5.0，選色器會提醒「深色模式下幾乎一樣」。要改善得改深色的換算方式（`src/shared/color/`），不是調整色帶端點。
 - **第三方**：
   - sonner 的關閉鈕外觀仍是 20px（套件內建），點擊範圍用 `::after` 擴大到 44px（會蓋到 toast 左上角約 25px 見方，那裡沒有其他可以點的東西）；toast 的動作鈕在觸控裝置用 `::after` 擴大到 44px 高。
   - PWA 啟動畫面：manifest 的 `background_color`、`theme_color` 都是淺色的 page（#f7f6f2），和 `--page` 一致；manifest 沒有標準的深色欄位，所以深色模式的啟動畫面仍是淺色，進入 App 後 `theme-color` meta 會換成深色的 page。

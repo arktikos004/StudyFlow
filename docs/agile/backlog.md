@@ -390,7 +390,7 @@ Lane 欄的格式是「負責的 lane（相依的 lane）」。
 **留給下一版**
 - **手動驗收後續**：依 Google 日曆的結果決定 README 對 .ics 提醒的說法；若不生效，註明改用 Apple 日曆、Outlook 或手動加通知。
 - **測試缺口**（專案沒有 jsdom）：`useTaskPatch` 的樂觀更新與回滾（目前只測純函式）、考前衝刺不呼叫 `/review`、今天到期的題目在開始時固定、單科頁「剛完成」列的 mutation 事件接線（`lib/polish-queries.ts`）。PO 驗收時補充：NOTE-2 的「衝刺不影響排程」與 TMR-3 的白噪音也沒有前端自動化測試。
-- **死碼**：`lib/format.ts` 的 `dDay()` 沒有呼叫端（format.ts 凍結中）；`lib/notes-exams.ts` 的 `countdownState` 標成 `@deprecated`，只剩 `test/notes-ui-exams.spec.ts` 在用。
+- ~~**死碼**：`lib/format.ts` 的 `dDay()` 沒有呼叫端（format.ts 凍結中）；`lib/notes-exams.ts` 的 `countdownState` 標成 `@deprecated`，只剩 `test/notes-ui-exams.spec.ts` 在用。~~（Sprint 5 刪除）
 - **共用元件**：`CountdownTile` 收進 `ui.tsx`；`ShowAllToggle` 加「收起」的寫法；`SectionLabel` 的 `count` 加可見單位。
 - **DARK_BAND**：改深色的換算方式（`src/shared/color.ts`）。
 - **後端改善**：`DashboardResponse` 加 `nextExam`、`POST /study-sessions` 冪等、儲存讀書目標時的提示文字。
@@ -441,3 +441,68 @@ Lane 欄的格式是「負責的 lane（相依的 lane）」。
 **需要使用者手動驗收**
 - 手機實機上傳：iOS Safari 的相機與相簿、HEIC 照片的提示、直拍的照片有沒有轉正。
 - 螢幕報讀器會不會念出對話框裡的失敗訊息。
+
+## Sprint 5 code review（s5/clean-code）
+
+五個區（後端與共用、lib、共用元件與外殼、頁面、測試）各由一個只讀的 reviewer 審查，修正都在 `s5/clean-code`。
+
+**修好的 bug**（各自一個 fix commit，附測試或無頭 Chrome 實測）
+- 共用電腦換帳號時，前一個人的計時與還沒送出的學習紀錄會串到下一個人的帳號：計時與待上傳紀錄改成依使用者分開存。
+- 登出請求失敗（離線、伺服器錯誤）時畫面假裝已經登出、cookie 其實還有效：改成提示並留在原頁。
+- 頁面出錯或程式檔下載失敗（部署後的舊分頁）時只有 React Router 的預設畫面：加上錯誤畫面與重新載入。
+- 新增、刪除後 30 秒內再搜同一個字，搜尋結果是舊的。
+- 考試、任務刪除失敗時對話框照樣關閉；考試表單送出前沒清掉舊的驗證錯誤。
+- 筆記照片解碼沒有後備（舊版 Safari 每張都失敗），頭像有。
+- 任務的完成核取方塊按 Enter 也會切換（WAI-ARIA 只用空白鍵）。
+- 對話框的 onClose 每次關閉會被呼叫兩次；連續兩個確認時，第一個的回音會把第二個自動取消。
+- 只改暱稱也讓全部資料重新取得；科目對照表每次 render 重建。
+- 編輯任務時，考試清單還沒載入就把連結的考試標成「已結束」。
+- 不存在的日期（2 月 31 日）被接受；部分驗證訊息是英文。
+- 刪除筆記失敗時詳細內容照樣關閉；單科頁的「開始專注」沿用上次的模式（可能是碼錶）。
+- 測試：BUG-1（D1 每個查詢最多 100 個參數）的回歸測試在本機不可能失敗，改成測試環境套用這個上限；學習紀錄與考試列表的日期區間補上測試。
+
+**留給使用者決定**（會改變行為、畫面或需要設計判斷）
+- 同時送「已掌握」與「加入複習排程」時，筆記仍留著下次複習日（後端 `routes/notes.ts`）。
+- 同名科目與註冊的併發：實測只會回 201／409，沒有重現 500，是否還要加保護。
+- 過期的 session 與登入失敗紀錄沒有清理：需要 Cron Trigger 加 index 的 migration。
+- 科目超過 200 個時，重新排序一定失敗（排序 API 的上限）。
+- 各路由「先檢查 404 還是 400」的順序不一致。
+- 單科總覽的進度列、數字格和其他頁面的共用元件長得不一樣（要設計師決定統一成哪一種）。
+- 月曆格子的「N 項任務到期」包含已完成的，頁首摘要不包含：要用哪一種。
+- 行內錯誤（圖示加紅字）有 7 種寫法：建議設計一個 `InlineError`。
+- 已完成任務先顯示幾項：清單是 20、看板是 10，是否有意。
+- 篩選列的科目選單寬度三頁不一致；`EmptyState` 包卡片、兩欄版面、篩選列可以做成共用元件。
+- 計時頁與月曆的學習紀錄列，報讀文字（aria-label）不一致。
+- 複習時記錄失敗會同時出現 toast 與行內提示（題目被刪除時還有第三則）。
+- 考試、任務表單的驗證錯誤只在最下面顯示一則，沒有標在欄位上（其他表單已經用 `useFieldErrors`）。
+- PWA 有新版本時會直接重新載入頁面（可能在編輯中）：改成提示「有新版本」或延後到離開頁面時。
+- 統計頁兩個空狀態的 `className="px-0"` 蓋不掉元件預設的內距，實際多縮排一層：要加 `flush` 樣式還是維持現狀。
+- DESIGN.md 預留但沒有人用的元件選項（Field inline、Checkbox indeterminate、Card inset、Segmented stretch、Avatar label 等）：保留或刪除。
+- 每一頁的瀏覽器標題都是「StudyFlow 學習管理」：依頁面顯示（WCAG 2.4.2），計時中以計時優先。
+- 筆記頁為了知道「有沒有任何筆記」會多抓一份完整清單：需要 `/api/summary` 提供總數。
+
+**Sprint 6 候選：結構整理**（不影響行為，可以分批做）
+- lib：
+  - `lib/timer.ts` 拆成狀態、佇列、通知、引擎四個檔，`timer-core.ts` 的送出協定與通知文字分出去；`useNow` 與倒數的計時 hook 合併。
+  - localStorage 加 `useSyncExternalStore` 的樣板（計時、白噪音、主題）收成一個 `createLocalStore`。
+  - 分鐘的格式化有三份（`formatMinutes`、`formatStudyMinutes`、`task-format` 的私有版本）；相對日期（今天／昨天）有兩份。
+  - 死碼：`formatTime`、`relativeDay`、`formatClock`、`isNoisePlaying`、`ACCENTS[].preview`，以及只在檔內使用卻 export 的型別與常數。
+  - 前後端各寫一份的契約值：統計區間 7／30／90、複習結果 remembered／forgot、補登的時鐘誤差；`/api` 前綴、音量上限、staleTime。
+  - 檔案歸屬：考試倒數的 `eventStartMs` 搬到 `countdown.ts`、任務列表的網址狀態搬出 `task-queries.ts`、`usePinNote` 併回 `queries.ts`、時區選單搬到 `timezone.ts`。
+  - `useTaskResults` 改用 mutation 的 meta 判斷任務的儲存與刪除，不靠回應的形狀猜。
+  - 其他：任務分組的四層三元、倒數的回傳型別、`dueInfo` 與 `cramQueue` 的旗標參數、排序時多餘的索引、成就 id 前綴規則有三份、深連結的網址產生端、`firstGrapheme` 每次都建 `Intl.Segmenter`。
+- 共用元件與外殼：
+  - `Layout.tsx`（533 行）拆成 `components/layout/`，指令面板的延遲載入收成 `PaletteHost`；登出鈕改用 size prop，不從外面用 `[&_svg]` 改圖示大小。
+  - `CommandPalette.tsx`（461 行）、`ColorPicker.tsx`（567 行，窄版推薦色的上下鍵與畫面不符）拆檔。
+  - 語意色的軟底組合有十幾處、危險提示條有四份：`SOFT_TONE` 與 `Notice`。圖示 prop 的三種做法、數字格的三份統一。
+  - `Field` 的舊寫法 `(id) =>` 還有 16 處，改完刪掉自動補 aria 的分支；`CountdownTile` 拆成磚與膠囊；`TaskItem.tsx` 搬進 `components/tasks/`；`forms.tsx` 改成 `forms/index.ts`。
+- 頁面：
+  - 月曆頁（游標用 reducer、資料 hook、`CalendarCard`）、任務頁（`useVisibleTasks`、空狀態）、`TaskBoard`、`TimeGrid`、登入頁（`components/auth/`）拆分。
+  - 資料表（統計、總覽、熱度圖）共用 `DataTable`；「標籤加數字加進度列」共用 `LabeledProgress`；`useToday()` 讓其他頁跨午夜也換日。
+  - 對話框狀態、多個查詢的錯誤提示、「只顯示前 N 項」的樣板做成 hook；圖示格子的方向鍵 `useRadioGrid`；成就的 `Medal` 共用。
+  - 其餘的巢狀三元、旗標參數、魔術數字、名稱與過時註解。
+- 測試：
+  - 直接寫 SQL 造資料的片段（9 份）收成 `test/seed.ts`；上傳表單、學習紀錄、取回成就與摘要的 helper；`TaskItem` 的 factory 與偽亂數。
+  - 一個 it 測太多事（ICS 匯出、個人檔案摘要、跨使用者隔離）拆開；`.every(...)` 改成失敗時看得到是哪一筆；連續天數等弱斷言改成精確值。
+  - 受保護路由的「未登入 401」用一張表一次檢查；剩下用 `today('Asia/Taipei')` 的測試改用 `noonClient`。
+
