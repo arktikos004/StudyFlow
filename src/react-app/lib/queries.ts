@@ -2,22 +2,6 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import type {
-	changePasswordSchema,
-	eventSchema,
-	loginSchema,
-	eventUpdateSchema,
-	noteSchema,
-	noteUpdateSchema,
-	registerSchema,
-	studySessionSchema,
-	studySessionUpdateSchema,
-	subjectSchema,
-	subjectUpdateSchema,
-	taskSchema,
-	taskUpdateSchema,
-	updateProfileSchema,
-} from '../../shared/schemas';
-import type {
 	AchievementsResponse,
 	DashboardResponse,
 	EventItem,
@@ -33,6 +17,22 @@ import type {
 	SummaryResponse,
 	TaskItem,
 } from '../../shared/api-types';
+import type {
+	changePasswordSchema,
+	eventSchema,
+	eventUpdateSchema,
+	loginSchema,
+	NoteInput,
+	noteUpdateSchema,
+	registerSchema,
+	SessionInput,
+	studySessionUpdateSchema,
+	subjectSchema,
+	subjectUpdateSchema,
+	taskSchema,
+	taskUpdateSchema,
+	updateProfileSchema,
+} from '../../shared/schemas';
 import { api, ApiError, isAbortError, qs, type RequestOptions } from './api';
 
 // ---- 查詢 ----
@@ -296,7 +296,8 @@ export const useUpdateTask = () =>
 	useApiMutation(({ id, ...v }: TaskUpdateInput) => api.patch<{ task: TaskItem }>(`/tasks/${id}`, v), TASK_KEYS);
 export const useDeleteTask = () => useApiMutation((id: string) => api.del(`/tasks/${id}`), TASK_KEYS, '已刪除任務');
 
-export type SessionInput = z.input<typeof studySessionSchema>;
+// 送出的形狀定義在 shared/schemas.ts（不依賴瀏覽器的 lib 純函式也要用），這裡轉出給元件
+export type { NoteInput, SessionInput };
 /** 只送要改的欄位；沒給 durationSec 但改了起訖時間時，後端會依起訖時間重新計算 */
 export type SessionUpdateInput = z.input<typeof studySessionUpdateSchema> & { id: string };
 /**
@@ -323,7 +324,6 @@ export const useUpdateSession = () =>
 	);
 export const useDeleteSession = () => useApiMutation((id: string) => api.del(`/study-sessions/${id}`), SESSION_KEYS, '已刪除紀錄');
 
-export type NoteInput = z.input<typeof noteSchema>;
 /** 只送要改的欄位；{ id, pinned } 只改釘選，不會更新「最後更新」時間 */
 export type NoteUpdateInput = z.input<typeof noteUpdateSchema> & { id: string };
 // 筆記與錯題會影響待複習數、錯題統計、單科總覽、「掌握錯題」成就與個人檔案的掌握錯題數

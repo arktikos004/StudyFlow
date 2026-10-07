@@ -209,19 +209,24 @@ const withSessionChecks = (schema: typeof studySessionBase) =>
 		.refine((s) => s.endedAt <= Date.now() + CLOCK_SKEW_TOLERANCE_MS, { message: '不能記錄未來的時間', path: ['endedAt'] });
 
 export const studySessionSchema = withSessionChecks(studySessionBase);
+/** 新增學習紀錄送出的內容（計時器的待上傳佇列也存這個形狀） */
+export type SessionInput = z.input<typeof studySessionSchema>;
 /** PATCH 只驗證個別欄位；跨欄位規則由後端和原紀錄合併後，用 studySessionSchema 檢查 */
 export const studySessionUpdateSchema = studySessionBase.partial();
 
 export const NOTE_KINDS = ['note', 'mistake'] as const;
+/** 筆記標題最多幾個字、最多幾個標籤（編輯視窗的 maxLength 與提示也用這兩個） */
+export const NOTE_TITLE_MAX = 200;
+export const NOTE_TAGS_MAX = 10;
 const noteFields = {
 	kind: z.enum(NOTE_KINDS),
-	title: z.string().trim().min(1, '請輸入標題').max(200, '標題最多 200 個字'),
+	title: z.string().trim().min(1, '請輸入標題').max(NOTE_TITLE_MAX, `標題最多 ${NOTE_TITLE_MAX} 個字`),
 	content: optionalText(20000),
 	question: optionalText(5000),
 	wrongAnswer: optionalText(5000),
 	correctAnswer: optionalText(5000),
 	reason: optionalText(5000),
-	tags: z.array(z.string().trim().min(1).max(20)).max(10, '最多 10 個標籤'),
+	tags: z.array(z.string().trim().min(1).max(20)).max(NOTE_TAGS_MAX, `最多 ${NOTE_TAGS_MAX} 個標籤`),
 	subjectId: id.nullish(),
 };
 export const noteSchema = z.object({
@@ -230,6 +235,8 @@ export const noteSchema = z.object({
 	// 錯題預設加入複習排程，一般筆記可選擇加入
 	scheduleReview: z.boolean().optional(),
 });
+/** 新增筆記送出的內容 */
+export type NoteInput = z.input<typeof noteSchema>;
 // 和 taskUpdateSchema 一樣逐欄列出：partial() 會套用 tags 的預設值（空陣列），只改標題就會清掉標籤。
 export const noteUpdateSchema = z.object({
 	title: noteFields.title.optional(),

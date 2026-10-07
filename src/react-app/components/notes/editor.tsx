@@ -1,88 +1,54 @@
-import { Camera, CircleAlert, Eye, Pencil } from 'lucide-react';
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { CircleAlert, Eye, Pencil } from 'lucide-react';
+import { useId, useState, type FormEvent } from 'react';
 import type { NoteItem } from '../../../shared/api-types';
-import { ATTACHMENT_MAX_PER_NOTE, REVIEW_INTERVALS, noteSchema } from '../../../shared/schemas';
+import { NOTE_TAGS_MAX, NOTE_TITLE_MAX, REVIEW_INTERVALS, noteSchema } from '../../../shared/schemas';
 import { compressImage } from '../../lib/image';
-import { useCreateNote, useDeleteAttachment, useNote, useUpdateNote, useUploadAttachment, type NoteInput } from '../../lib/queries';
+import { defaultScheduleReview, emptyNoteForm, formToNoteInput, noteEditorTitle, noteToForm, type NoteForm } from '../../lib/notes-form';
+import { usePendingPhotos } from '../../lib/pending-photos';
+import { useCreateNote, useDeleteAttachment, useNote, useUpdateNote, useUploadAttachment } from '../../lib/queries';
+import { DialogFooter } from '../forms/shared';
 import { SubjectSelect } from '../subjects';
-import { Button, Checkbox, cn, Dialog, Field, Input, MiniIconButton, Segmented, Textarea, useConfirm, type ConfirmOptions } from '../ui';
+import { Button, Checkbox, cn, Dialog, Field, Input, Segmented, Textarea, useConfirm, type ConfirmOptions } from '../ui';
 import { MarkdownView, PhotoGrid } from './content';
+import { PendingPhotoGrid, PhotoPicker } from './photos';
 
-/** 選照片：新筆記先暫存在本機，儲存筆記後再上傳 */
-function PhotoPicker({ count, onPick, disabled }: { count: number; onPick: (files: File[]) => void; disabled?: boolean }) {
-	const input = useRef<HTMLInputElement>(null);
-	const remaining = ATTACHMENT_MAX_PER_NOTE - count;
+type NoteKind = NoteItem['kind'];
+
+/** 錯題的題目、答案與原因：標籤加多行文字框 */
+function TextareaField({
+	label,
+	value,
+	onChange,
+	placeholder,
+	className,
+}: {
+	label: string;
+	value: string;
+	onChange: (value: string) => void;
+	placeholder?: string;
+	className?: string;
+}) {
 	return (
-		<>
-			<input
-				ref={input}
-				type="file"
-				accept="image/*"
-				multiple
-				hidden
-				onChange={(e) => {
-					onPick(Array.from(e.target.files ?? []).slice(0, remaining));
-					e.target.value = '';
-				}}
-			/>
-			<Button size="sm" onClick={() => input.current?.click()} disabled={disabled || remaining <= 0}>
-				<Camera className="size-4" aria-hidden />
-				加入照片
-				<span className="font-num text-ink-3 tabular-nums">
-					{count}/{ATTACHMENT_MAX_PER_NOTE}
-				</span>
-			</Button>
-		</>
+		<Field label={label}>
+			{(id, aria) => (
+				<Textarea
+					id={id}
+					{...aria}
+					className={className}
+					value={value}
+					onChange={(e) => onChange(e.target.value)}
+					placeholder={placeholder}
+				/>
+			)}
+		</Field>
 	);
-}
-
-type NoteForm = {
-	kind: 'note' | 'mistake';
-	title: string;
-	subjectId: string | null;
-	tags: string;
-	content: string;
-	question: string;
-	wrongAnswer: string;
-	correctAnswer: string;
-	reason: string;
-	scheduleReview: boolean;
-};
-
-const emptyForm = (kind: 'note' | 'mistake', subjectId: string | null): NoteForm => ({
-	kind,
-	title: '',
-	subjectId,
-	tags: '',
-	content: '',
-	question: '',
-	wrongAnswer: '',
-	correctAnswer: '',
-	reason: '',
-	scheduleReview: kind === 'mistake',
-});
-
-const orNull = (v: string) => (v.trim() ? v.trim() : null);
-
-function fromNote(note: NoteItem): NoteForm {
-	return {
-		kind: note.kind,
-		title: note.title,
-		subjectId: note.subjectId,
-		tags: note.tags.join(', '),
-		content: note.content ?? '',
-		question: note.question ?? '',
-		wrongAnswer: note.wrongAnswer ?? '',
-		correctAnswer: note.correctAnswer ?? '',
-		reason: note.reason ?? '',
-		scheduleReview: !!note.nextReviewDate,
-	};
 }
 
 const sectionLabel = 'text-sm font-semibold text-ink-2';
 
 // 對話框內容只在打開時掛載：每次打開都是全新的表單狀態
 function NoteEditorForm({
+	formId,
 	note,
 	defaultKind,
 	defaultSubjectId,
@@ -90,8 +56,9 @@ function NoteEditorForm({
 	setSaving,
 	confirm,
 }: {
+	formId: string;
 	note?: NoteItem;
-	defaultKind: 'note' | 'mistake';
+	defaultKind: NoteKind;
 	defaultSubjectId: string | null;
 	onDone: () => void;
 	setSaving: (v: boolean) => void;
@@ -106,19 +73,12 @@ function NoteEditorForm({
 	const [savedId, setSavedId] = useState(note?.id);
 	// 用最新資料顯示已上傳的照片（編輯中刪除照片會立即反映）
 	const { data: fresh } = useNote(savedId);
-	const [form, setForm] = useState<NoteForm>(() => (note ? fromNote(note) : emptyForm(defaultKind, defaultSubjectId)));
-	const [pending, setPending] = useState<{ file: File; url: string }[]>([]);
+	const [form, setForm] = useState<NoteForm>(() => (note ? noteToForm(note) : emptyNoteForm(defaultKind, defaultSubjectId)));
+	const photos = usePendingPhotos();
 	const [preview, setPreview] = useState(false);
 	const [error, setError] = useState<string>();
 	const scheduleHint = useId();
 	const contentLabel = useId();
-
-	// 關閉時釋放照片預覽用的暫存網址
-	const objectUrls = useRef<string[]>([]);
-	useEffect(() => {
-		const urls = objectUrls.current;
-		return () => urls.forEach((u) => URL.revokeObjectURL(u));
-	}, []);
 
 	const set = <K extends keyof NoteForm>(k: K, v: NoteForm[K]) => setForm((f) => ({ ...f, [k]: v }));
 	const existing = fresh?.attachments ?? note?.attachments ?? [];
@@ -126,25 +86,7 @@ function NoteEditorForm({
 	const onSubmit = async (e: FormEvent) => {
 		e.preventDefault();
 		setError(undefined);
-		const input: NoteInput = {
-			kind: form.kind,
-			title: form.title,
-			subjectId: form.subjectId,
-			tags: [
-				...new Set(
-					form.tags
-						.split(/[,，、\s]+/)
-						.map((t) => t.trim())
-						.filter(Boolean),
-				),
-			],
-			content: orNull(form.content),
-			question: form.kind === 'mistake' ? orNull(form.question) : null,
-			wrongAnswer: form.kind === 'mistake' ? orNull(form.wrongAnswer) : null,
-			correctAnswer: form.kind === 'mistake' ? orNull(form.correctAnswer) : null,
-			reason: form.kind === 'mistake' ? orNull(form.reason) : null,
-			scheduleReview: form.scheduleReview,
-		};
+		const input = formToNoteInput(form);
 		const parsed = noteSchema.safeParse(input);
 		if (!parsed.success) return setError(parsed.error.issues[0].message);
 
@@ -156,11 +98,10 @@ function NoteEditorForm({
 				id = (await create.mutateAsync(input)).note.id;
 				setSavedId(id);
 			}
-			for (const p of pending) {
-				const blob = await compressImage(p.file);
+			for (const photo of photos.pending) {
+				const blob = await compressImage(photo.file);
 				await upload.mutateAsync({ noteId: id, file: blob });
-				URL.revokeObjectURL(p.url);
-				setPending((list) => list.filter((x) => x !== p));
+				photos.remove(photo);
 			}
 			onDone();
 		} catch (err) {
@@ -173,13 +114,13 @@ function NoteEditorForm({
 	const isMistake = form.kind === 'mistake';
 
 	return (
-		<form id="note-form" onSubmit={onSubmit} className="space-y-4" noValidate>
+		<form id={formId} onSubmit={onSubmit} className="space-y-4" noValidate>
 			{/* 新增後（例如照片上傳失敗再按儲存）會改走更新，更新不能改類型：已經存過就不能再切換 */}
 			{!note && !savedId && (
 				<Segmented
 					label="類型"
 					value={form.kind}
-					onChange={(kind) => setForm((f) => ({ ...f, kind, scheduleReview: kind === 'mistake' }))}
+					onChange={(kind) => setForm((f) => ({ ...f, kind, scheduleReview: defaultScheduleReview(kind) }))}
 					options={[
 						{ value: 'mistake', label: '錯題' },
 						{ value: 'note', label: '筆記' },
@@ -195,7 +136,7 @@ function NoteEditorForm({
 							value={form.title}
 							onChange={(e) => set('title', e.target.value)}
 							placeholder={isMistake ? '例如：期中考第 5 題 遞迴式求解' : '例如：第 3 章 排程演算法重點'}
-							maxLength={200}
+							maxLength={NOTE_TITLE_MAX}
 							autoFocus
 						/>
 					)}
@@ -203,7 +144,7 @@ function NoteEditorForm({
 				<Field label="科目">
 					{(id, aria) => <SubjectSelect id={id} {...aria} value={form.subjectId} onChange={(v) => set('subjectId', v)} />}
 				</Field>
-				<Field label="標籤" hint="用逗號或空白分隔，最多 10 個">
+				<Field label="標籤" hint={`用逗號或空白分隔，最多 ${NOTE_TAGS_MAX} 個`}>
 					{(id, aria) => (
 						<Input id={id} {...aria} value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="例如：遞迴, 期中考" />
 					)}
@@ -212,53 +153,23 @@ function NoteEditorForm({
 
 			{isMistake && (
 				<>
-					<Field label="題目">
-						{(id, aria) => (
-							<Textarea
-								id={id}
-								{...aria}
-								value={form.question}
-								onChange={(e) => set('question', e.target.value)}
-								placeholder="把題目抄下來，或直接拍照上傳"
-							/>
-						)}
-					</Field>
+					<TextareaField
+						label="題目"
+						value={form.question}
+						onChange={(v) => set('question', v)}
+						placeholder="把題目抄下來，或直接拍照上傳"
+					/>
 					<div className="grid gap-4 sm:grid-cols-2">
-						<Field label="我的錯誤答案">
-							{(id, aria) => (
-								<Textarea
-									id={id}
-									{...aria}
-									className="min-h-20"
-									value={form.wrongAnswer}
-									onChange={(e) => set('wrongAnswer', e.target.value)}
-								/>
-							)}
-						</Field>
-						<Field label="正確答案">
-							{(id, aria) => (
-								<Textarea
-									id={id}
-									{...aria}
-									className="min-h-20"
-									value={form.correctAnswer}
-									onChange={(e) => set('correctAnswer', e.target.value)}
-								/>
-							)}
-						</Field>
+						<TextareaField label="我的錯誤答案" className="min-h-20" value={form.wrongAnswer} onChange={(v) => set('wrongAnswer', v)} />
+						<TextareaField label="正確答案" className="min-h-20" value={form.correctAnswer} onChange={(v) => set('correctAnswer', v)} />
 					</div>
-					<Field label="錯誤原因">
-						{(id, aria) => (
-							<Textarea
-								id={id}
-								{...aria}
-								className="min-h-20"
-								value={form.reason}
-								onChange={(e) => set('reason', e.target.value)}
-								placeholder="觀念不清？粗心？計算錯誤？寫下來下次才不會再錯"
-							/>
-						)}
-					</Field>
+					<TextareaField
+						label="錯誤原因"
+						className="min-h-20"
+						value={form.reason}
+						onChange={(v) => set('reason', v)}
+						placeholder="觀念不清？粗心？計算錯誤？寫下來下次才不會再錯"
+					/>
 				</>
 			)}
 
@@ -290,19 +201,7 @@ function NoteEditorForm({
 			<div className="space-y-2">
 				<div className="flex items-center justify-between gap-2">
 					<span className={sectionLabel}>照片</span>
-					<PhotoPicker
-						count={existing.length + pending.length}
-						onPick={(files) =>
-							setPending((p) => [
-								...p,
-								...files.map((file) => {
-									const url = URL.createObjectURL(file);
-									objectUrls.current.push(url);
-									return { file, url };
-								}),
-							])
-						}
-					/>
+					<PhotoPicker count={existing.length + photos.pending.length} onPick={photos.add} />
 				</div>
 				<PhotoGrid
 					attachments={existing}
@@ -316,26 +215,7 @@ function NoteEditorForm({
 						if (ok) removeAttachment.mutate(a.id);
 					}}
 				/>
-				{pending.length > 0 && (
-					<ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-						{pending.map((p, i) => (
-							<li key={p.url} className="relative aspect-square">
-								<div className="size-full overflow-hidden rounded-lg border border-dashed border-accent">
-									<img src={p.url} alt="" className="size-full object-cover" />
-								</div>
-								<span className="absolute bottom-1 left-1 rounded-sm bg-card/90 px-1.5 text-caption text-ink-2">儲存後上傳</span>
-								<MiniIconButton
-									label={`移除第 ${i + 1} 張待上傳的照片`}
-									onClick={() => {
-										URL.revokeObjectURL(p.url);
-										setPending((list) => list.filter((x) => x !== p));
-									}}
-									className="absolute top-1 right-1"
-								/>
-							</li>
-						))}
-					</ul>
-				)}
+				<PendingPhotoGrid photos={photos.pending} onRemove={photos.remove} />
 			</div>
 
 			<div>
@@ -370,32 +250,25 @@ export function NoteEditor({
 	open: boolean;
 	onClose: () => void;
 	note?: NoteItem;
-	defaultKind?: 'note' | 'mistake';
+	defaultKind?: NoteKind;
 	/** 新增時預先選好的科目（例如目前篩選的科目） */
 	defaultSubjectId?: string | null;
 }) {
 	const [saving, setSaving] = useState(false);
 	const [confirm, confirmDialog] = useConfirm();
-	// 新增時可以在表單裡切換錯題／筆記，所以標題不寫死類型
-	const title = note ? (note.kind === 'mistake' ? '編輯錯題' : '編輯筆記') : '新增錯題或筆記';
+	const formId = useId();
 	return (
 		<>
 			<Dialog
 				open={open}
 				onClose={onClose}
 				wide
-				title={title}
-				footer={
-					<>
-						<Button onClick={onClose}>取消</Button>
-						<Button variant="primary" type="submit" form="note-form" loading={saving}>
-							儲存
-						</Button>
-					</>
-				}
+				title={noteEditorTitle(note)}
+				footer={<DialogFooter formId={formId} saving={saving} onClose={onClose} />}
 			>
 				<NoteEditorForm
 					key={note?.id ?? defaultKind}
+					formId={formId}
 					note={note}
 					defaultKind={defaultKind}
 					defaultSubjectId={defaultSubjectId}
