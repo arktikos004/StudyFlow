@@ -1,5 +1,15 @@
 import { useState, type ReactNode } from 'react';
-import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from 'recharts';
+import {
+	Bar,
+	BarChart,
+	CartesianGrid,
+	ReferenceLine,
+	ResponsiveContainer,
+	Tooltip,
+	XAxis,
+	YAxis,
+	type TooltipContentProps,
+} from 'recharts';
 import { formatDate, formatMinutes, formatMinutesShort, formatMonthDay, weekdayLabel } from '../lib/format';
 import { cn, TableToggle } from './ui';
 
@@ -396,7 +406,9 @@ export function Heatmap({ data, today }: { data: { date: string; minutes: number
 											</td>
 										);
 									})}
-									<td className={cn(td, 'font-semibold')}>{Math.round(w.filter((d) => d.date <= today).reduce((s, d) => s + d.minutes, 0)) || '—'}</td>
+									<td className={cn(td, 'font-semibold')}>
+										{Math.round(w.filter((d) => d.date <= today).reduce((s, d) => s + d.minutes, 0)) || '—'}
+									</td>
 								</tr>
 							))}
 						</tbody>

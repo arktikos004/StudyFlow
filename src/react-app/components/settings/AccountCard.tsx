@@ -33,7 +33,14 @@ function TimezoneForm({ user }: { user: PublicUser }) {
 			<Field label="時區" hint="用來判斷「今天」與統計每天的學習時間">
 				{(id, aria) => (
 					<div className="flex gap-2">
-						<Select id={id} {...aria} name="timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} className="min-w-0 flex-1">
+						<Select
+							id={id}
+							{...aria}
+							name="timezone"
+							value={timezone}
+							onChange={(e) => setTimezone(e.target.value)}
+							className="min-w-0 flex-1"
+						>
 							{timezoneOptions(user.timezone).map((z) => (
 								<option key={z} value={z}>
 									{timezoneLabel(z)}
@@ -196,7 +203,10 @@ function PasswordSection({ email }: { email: string }) {
 				>
 					變更密碼
 					<ChevronDown
-						className={cn('size-4 text-ink-3 transition-transform duration-180 ease-out motion-reduce:transition-none', open && 'rotate-180')}
+						className={cn(
+							'size-4 text-ink-3 transition-transform duration-180 ease-out motion-reduce:transition-none',
+							open && 'rotate-180',
+						)}
 						aria-hidden
 					/>
 				</Button>

@@ -390,4 +390,5 @@ export const useUploadAvatar = () =>
 	});
 
 /** 移除頭像：mutate({ signal? })；之後 avatarUpdatedAt 是 null，畫面改用暱稱首字 */
-export const useDeleteAvatar = () => useAvatarMutation(({ signal }: RequestOptions) => api.del<{ user: PublicUser }>('/auth/avatar', { signal }));
+export const useDeleteAvatar = () =>
+	useAvatarMutation(({ signal }: RequestOptions) => api.del<{ user: PublicUser }>('/auth/avatar', { signal }));

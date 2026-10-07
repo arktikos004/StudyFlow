@@ -186,6 +186,8 @@ export async function recordUnlockChanges(db: DB, userId: string, before: Readon
 			.onConflictDoNothing();
 	}
 	if (revoked.length) {
-		await db.delete(achievementUnlocks).where(and(eq(achievementUnlocks.userId, userId), inArray(achievementUnlocks.achievementId, revoked)));
+		await db
+			.delete(achievementUnlocks)
+			.where(and(eq(achievementUnlocks.userId, userId), inArray(achievementUnlocks.achievementId, revoked)));
 	}
 }

@@ -38,7 +38,9 @@ export const searchRoutes = new Hono<AppEnv>().use(requireAuth).get('/', validat
 		db
 			.select({ id: notes.id, title: notes.title, kind: notes.kind, subjectId: notes.subjectId })
 			.from(notes)
-			.where(and(eq(notes.userId, user.id), or(containsText(notes.title, q), containsText(notes.content, q), containsText(notes.question, q))))
+			.where(
+				and(eq(notes.userId, user.id), or(containsText(notes.title, q), containsText(notes.content, q), containsText(notes.question, q))),
+			)
 			.orderBy(desc(notes.pinned), desc(notes.updatedAt))
 			.limit(LIMIT),
 		db

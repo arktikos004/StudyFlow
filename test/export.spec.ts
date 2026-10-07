@@ -51,11 +51,12 @@ describe('JSON 備份（DATA-1）', () => {
 		const c = await registeredClient('小明');
 		const subject = (await c.post('/api/subjects', { name: '資料結構', color: '#2a78d6', icon: 'code' })).data.subject;
 		const event = (await c.post('/api/events', { kind: 'exam', title: '期中考', date: '2026-11-03', subjectId: subject.id })).data.event;
-		const task = (await c.post('/api/tasks', { title: '複習', subjectId: subject.id, checklist: [{ id: 'a', title: '第一章', done: true }] })).data
-			.task;
+		const task = (
+			await c.post('/api/tasks', { title: '複習', subjectId: subject.id, checklist: [{ id: 'a', title: '第一章', done: true }] })
+		).data.task;
 		const now = Date.now();
-		const session = (await c.post('/api/study-sessions', { mode: 'pomodoro', startedAt: now - 30 * 60_000, endedAt: now - 5 * 60_000 })).data
-			.session;
+		const session = (await c.post('/api/study-sessions', { mode: 'pomodoro', startedAt: now - 30 * 60_000, endedAt: now - 5 * 60_000 }))
+			.data.session;
 		const note = (await c.post('/api/notes', { kind: 'mistake', title: '錯題', tags: ['遞迴'] })).data.note;
 		const form = new FormData();
 		form.append('file', new File([PNG_1X1], 'q.png', { type: 'image/png' }));
@@ -77,7 +78,9 @@ describe('JSON 備份（DATA-1）', () => {
 		expect(b.tasks).toMatchObject([{ id: task.id, checklist: [{ id: 'a', title: '第一章', done: true }] }]);
 		expect(b.studySessions).toMatchObject([{ id: session.id, mode: 'pomodoro', durationSec: 25 * 60 }]);
 		expect(b.notes).toMatchObject([{ id: note.id, tags: ['遞迴'] }]);
-		expect(b.attachments).toEqual([{ id: att.id, noteId: note.id, contentType: 'image/png', size: PNG_1X1.byteLength, createdAt: att.createdAt }]);
+		expect(b.attachments).toEqual([
+			{ id: att.id, noteId: note.id, contentType: 'image/png', size: PNG_1X1.byteLength, createdAt: att.createdAt },
+		]);
 
 		const raw = JSON.stringify(b);
 		expect(raw).not.toMatch(/password|pbkdf2|r2Key|r2_key|expiresAt/i);
@@ -93,7 +96,14 @@ describe('CSV 匯出（DATA-1）', () => {
 		const task = (await c.post('/api/tasks', { title: '+惡意任務' })).data.task;
 		// 2026-01-15 01:00Z = 東京 10:00
 		const s1 = Date.UTC(2026, 0, 15, 1, 0);
-		await c.post('/api/study-sessions', { mode: 'manual', startedAt: s1, endedAt: s1 + 90 * 60_000, subjectId: subject.id, taskId: task.id, note: '-1 分' });
+		await c.post('/api/study-sessions', {
+			mode: 'manual',
+			startedAt: s1,
+			endedAt: s1 + 90 * 60_000,
+			subjectId: subject.id,
+			taskId: task.id,
+			note: '-1 分',
+		});
 		// 2026-01-16 15:30Z = 東京 1/17 00:30
 		const s2 = Date.UTC(2026, 0, 16, 15, 30);
 		await c.post('/api/study-sessions', {
@@ -144,7 +154,20 @@ describe('CSV 匯出（DATA-1）', () => {
 		const { text } = await download(c, '/api/export/tasks.csv');
 		expect(text.startsWith('﻿')).toBe(true);
 		const rows = parseCsv(text.slice(1));
-		expect(rows[0]).toEqual(['標題', '科目', '狀態', '優先度', '期限', '預估分鐘', '已投入分鐘', '子項目完成', '子項目總數', '說明', '建立時間', '完成時間']);
+		expect(rows[0]).toEqual([
+			'標題',
+			'科目',
+			'狀態',
+			'優先度',
+			'期限',
+			'預估分鐘',
+			'已投入分鐘',
+			'子項目完成',
+			'子項目總數',
+			'說明',
+			'建立時間',
+			'完成時間',
+		]);
 		const taipei = (ms: number) =>
 			new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Taipei', dateStyle: 'short', timeStyle: 'short' }).format(ms);
 		expect(rows[1]).toEqual([
@@ -197,7 +220,9 @@ describe('行事曆匯出（CAL-2）', () => {
 
 		const blocks = vevents(text);
 		expect(blocks).toHaveLength(3); // 預設不含任務
-		const [examBlock, allDayBlock, deadlineBlock] = [exam, allDay, deadline].map((e) => blocks.find((b) => b.includes(`UID:${e.id}@studyflow\r\n`))!);
+		const [examBlock, allDayBlock, deadlineBlock] = [exam, allDay, deadline].map((e) =>
+			blocks.find((b) => b.includes(`UID:${e.id}@studyflow\r\n`))!,
+		);
 
 		expect(examBlock).toMatch(/DTSTAMP:\d{8}T\d{6}Z\r\n/);
 		expect(examBlock).toContain('DTSTART:20261103T011000Z\r\n'); // 台北 09:10 = UTC 01:10
@@ -226,7 +251,9 @@ describe('行事曆匯出（CAL-2）', () => {
 		expect((await download(c, '/api/export/calendar.ics?tasks=0')).text).not.toContain(task.id);
 
 		// 同一筆資料每次匯出的 UID 相同
-		expect(vevents((await download(c, '/api/export/calendar.ics')).text).map((b) => b.split('\r\n')[0])).toEqual(blocks.map((b) => b.split('\r\n')[0]));
+		expect(vevents((await download(c, '/api/export/calendar.ics')).text).map((b) => b.split('\r\n')[0])).toEqual(
+			blocks.map((b) => b.split('\r\n')[0]),
+		);
 
 		const bad = await c.get('/api/export/calendar.ics?tasks=yes');
 		expect(bad.status).toBe(400);
@@ -257,7 +284,8 @@ describe('匯出的跨使用者隔離', () => {
 		expect((await bob.post('/api/tasks', { title: '偷掛科目', subjectId: secret.id })).status).toBe(400);
 		const now = Date.now();
 		expect(
-			(await bob.post('/api/study-sessions', { mode: 'manual', startedAt: now - 600_000, endedAt: now - 60_000, taskId: aliceTask.id })).status,
+			(await bob.post('/api/study-sessions', { mode: 'manual', startedAt: now - 600_000, endedAt: now - 60_000, taskId: aliceTask.id }))
+				.status,
 		).toBe(400);
 
 		const bobFiles = [

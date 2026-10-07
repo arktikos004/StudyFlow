@@ -19,7 +19,9 @@ async function summary(c: Client): Promise<ProfileSummary> {
 
 /** 資料庫裡的解鎖紀錄（依成就 id 排序） */
 async function unlockRows(userId: string) {
-	const { results } = await env.DB.prepare('SELECT achievement_id AS id, unlocked_at AS at FROM achievement_unlocks WHERE user_id = ? ORDER BY achievement_id')
+	const { results } = await env.DB.prepare(
+		'SELECT achievement_id AS id, unlocked_at AS at FROM achievement_unlocks WHERE user_id = ? ORDER BY achievement_id',
+	)
 		.bind(userId)
 		.all<{ id: string; at: number }>();
 	return results;
@@ -28,7 +30,9 @@ async function unlockRows(userId: string) {
 /** 直接寫進 D1 的學習紀錄：不經過 API，就像開始記錄解鎖時間之前就有的資料 */
 async function insertSessionDirectly(c: NoonClient, date: string, minutes: number) {
 	const startedAt = startOfLocalDay(date, c.tz) + 9 * 3_600_000;
-	await env.DB.prepare("INSERT INTO study_sessions (id, user_id, mode, started_at, ended_at, duration_sec, created_at) VALUES (?, ?, 'manual', ?, ?, ?, ?)")
+	await env.DB.prepare(
+		"INSERT INTO study_sessions (id, user_id, mode, started_at, ended_at, duration_sec, created_at) VALUES (?, ?, 'manual', ?, ?, ?, ?)",
+	)
 		.bind(crypto.randomUUID(), c.user.id, startedAt, startedAt + minutes * 60_000, minutes * 60, Date.now())
 		.run();
 }
@@ -107,7 +111,9 @@ describe('成就的解鎖時間（PRO-2）', () => {
 		// 10 小時的補登：解鎖「起步 10 小時」
 		await at(base + 60_000, () => logSession(c, addDays(c.today, -1), 8, 600));
 		// 掌握第 10 題錯題（9 題直接寫入資料庫）：解鎖「錯題剋星」
-		const insert = env.DB.prepare("INSERT INTO notes (id, user_id, kind, title, mastered, created_at, updated_at) VALUES (?, ?, 'mistake', ?, 1, ?, ?)");
+		const insert = env.DB.prepare(
+			"INSERT INTO notes (id, user_id, kind, title, mastered, created_at, updated_at) VALUES (?, ?, 'mistake', ?, 1, ?, ?)",
+		);
 		await env.DB.batch(Array.from({ length: 9 }, (_, i) => insert.bind(crypto.randomUUID(), c.user.id, `錯題 ${i}`, base, base)));
 		const tenth = (await c.post('/api/notes', { kind: 'mistake', title: '第十題' })).data.note;
 		await at(base + 120_000, () => c.patch(`/api/notes/${tenth.id}`, { mastered: true }));
@@ -171,7 +177,9 @@ describe('解鎖紀錄的隔離與失敗的寫入', () => {
 		await logSession(alice, alice.today, 9, 30);
 		const [row] = await unlockRows(alice.user.id);
 
-		expect((await alice.get('/api/export/backup.json')).data.achievementUnlocks).toEqual([{ achievementId: 'first-session', unlockedAt: row.at }]);
+		expect((await alice.get('/api/export/backup.json')).data.achievementUnlocks).toEqual([
+			{ achievementId: 'first-session', unlockedAt: row.at },
+		]);
 		expect((await bob.get('/api/export/backup.json')).data.achievementUnlocks).toEqual([]);
 	});
 });

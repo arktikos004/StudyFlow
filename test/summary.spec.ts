@@ -34,8 +34,9 @@ describe('頁首摘要 /api/summary', () => {
 		await c.post('/api/events', { kind: 'deadline', title: '今天截止（不是考試）', date: t });
 		await c.post('/api/events', { kind: 'exam', title: '下週考試', date: addDays(t, 7) });
 		await c.post('/api/events', { kind: 'exam', title: '後天晚上考', date: addDays(t, 2), time: '19:00' });
-		const next = (await c.post('/api/events', { kind: 'exam', title: '後天下午考', date: addDays(t, 2), time: '14:00', subjectId: subject.id }))
-			.data.event;
+		const next = (
+			await c.post('/api/events', { kind: 'exam', title: '後天下午考', date: addDays(t, 2), time: '14:00', subjectId: subject.id })
+		).data.event;
 
 		const res = await c.get('/api/summary');
 		expect(res.status).toBe(200);
@@ -58,7 +59,13 @@ describe('頁首摘要 /api/summary', () => {
 			nextExam: null,
 		});
 		const exam = (await c.post('/api/events', { kind: 'exam', title: '今天的小考', date: c.today })).data.event;
-		expect((await c.get('/api/summary')).data.nextExam).toEqual({ id: exam.id, title: '今天的小考', date: c.today, time: null, subjectId: null });
+		expect((await c.get('/api/summary')).data.nextExam).toEqual({
+			id: exam.id,
+			title: '今天的小考',
+			date: c.today,
+			time: null,
+			subjectId: null,
+		});
 	});
 });
 
@@ -83,8 +90,8 @@ describe('總覽：考試準備進度（DASH-1）', () => {
 		const alice = await noonClient('Alice');
 		const bob = await registeredClient('Bob');
 		const subject = (await alice.post('/api/subjects', { name: '演算法', color: '#2a78d6' })).data.subject;
-		const exam = (await alice.post('/api/events', { kind: 'exam', title: '期中考', date: addDays(alice.today, 3), subjectId: subject.id })).data
-			.event;
+		const exam = (await alice.post('/api/events', { kind: 'exam', title: '期中考', date: addDays(alice.today, 3), subjectId: subject.id }))
+			.data.event;
 		const own = (await alice.post('/api/tasks', { title: '自己的準備', eventId: exam.id })).data.task;
 		await alice.patch(`/api/tasks/${own.id}`, { status: 'done' });
 

@@ -54,7 +54,11 @@ export const cn = (...args: ClassValue[]) => clsx(args);
  */
 export type IconProp = LucideIcon | ReactNode;
 
-const COMPONENT_TYPES: ReadonlySet<unknown> = new Set([Symbol.for('react.forward_ref'), Symbol.for('react.memo'), Symbol.for('react.lazy')]);
+const COMPONENT_TYPES: ReadonlySet<unknown> = new Set([
+	Symbol.for('react.forward_ref'),
+	Symbol.for('react.memo'),
+	Symbol.for('react.lazy'),
+]);
 
 /** 傳進來的是「元件」而不是元素嗎？lucide 的圖示是 forwardRef 物件（不是函式），所以兩種都要認 */
 function isIconComponent(icon: IconProp): icon is LucideIcon {
@@ -345,7 +349,12 @@ export function PageStack({ as: As = 'div', className, ...props }: HTMLAttribute
 }
 
 export type SectionLabelTone = 'neutral' | 'danger' | 'warning' | 'success';
-const LABEL_TONE: Record<SectionLabelTone, string | false> = { neutral: false, danger: 'text-danger', warning: 'text-warning', success: 'text-success' };
+const LABEL_TONE: Record<SectionLabelTone, string | false> = {
+	neutral: false,
+	danger: 'text-danger',
+	warning: 'text-warning',
+	success: 'text-success',
+};
 
 /**
  * 小標：卡片外的分組標題（「已釘選 2」「已逾期 1」）或卡片內的欄位小標（「題目」「正確答案」）。600、ink-2。
@@ -397,7 +406,17 @@ export function SectionLabel({
 export type BadgeTone = 'neutral' | 'accent' | 'danger' | 'success' | 'warning' | 'outline';
 
 /** 高 20px、12px 字、圓角 sm。狀態一律圖示加文字（icon 或 children 裡的 svg 會自動縮成 12px）；標籤用 outline。 */
-export function Badge({ children, tone = 'neutral', icon, className }: { children: ReactNode; tone?: BadgeTone; icon?: ReactNode; className?: string }) {
+export function Badge({
+	children,
+	tone = 'neutral',
+	icon,
+	className,
+}: {
+	children: ReactNode;
+	tone?: BadgeTone;
+	icon?: ReactNode;
+	className?: string;
+}) {
 	return (
 		<span
 			className={cn(
@@ -566,7 +585,10 @@ export function PageLoader() {
 export function ErrorNote({ error, onRetry, retrying }: { error: unknown; onRetry?: () => void; retrying?: boolean }) {
 	return (
 		<div
-			className={cn('flex flex-wrap gap-x-3 gap-y-2 rounded-lg bg-danger-soft px-4 text-sm text-danger', onRetry ? 'items-center py-2' : 'items-start py-3')}
+			className={cn(
+				'flex flex-wrap gap-x-3 gap-y-2 rounded-lg bg-danger-soft px-4 text-sm text-danger',
+				onRetry ? 'items-center py-2' : 'items-start py-3',
+			)}
 			role="alert"
 		>
 			<span className="flex min-w-0 flex-[1_1_12rem] items-start gap-2">
@@ -804,7 +826,9 @@ export function Dialog({
 							<X className="size-5" />
 						</Button>
 					</div>
-					<div className={cn('flex-1 overflow-y-auto overscroll-contain px-5 py-4', !footer && 'pb-[max(1rem,env(safe-area-inset-bottom))]')}>
+					<div
+						className={cn('flex-1 overflow-y-auto overscroll-contain px-5 py-4', !footer && 'pb-[max(1rem,env(safe-area-inset-bottom))]')}
+					>
 						{children}
 					</div>
 					{footer && (
@@ -927,7 +951,10 @@ export function ProgressBar(props: ProgressProps & { size?: 'sm' | 'md' }) {
 			style={color ? { background: tintTrack(color) } : undefined}
 		>
 			<div
-				className={cn('size-full rounded-full transition-transform duration-180 ease-out motion-reduce:transition-none', !color && FILL[tone])}
+				className={cn(
+					'size-full rounded-full transition-transform duration-180 ease-out motion-reduce:transition-none',
+					!color && FILL[tone],
+				)}
 				style={{ transform: `translateX(${(ratio - 1) * 100}%)`, ...(color ? { background: color } : {}) }}
 			/>
 		</div>
@@ -945,7 +972,11 @@ export function ProgressRing(props: ProgressProps & { size?: number; stroke?: nu
 	const r = (size - stroke) / 2;
 	const c = 2 * Math.PI * r;
 	return (
-		<div {...progressAria(props)} className={cn('relative inline-grid shrink-0 place-items-center', className)} style={{ width: size, height: size }}>
+		<div
+			{...progressAria(props)}
+			className={cn('relative inline-grid shrink-0 place-items-center', className)}
+			style={{ width: size, height: size }}
+		>
 			<svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 size-full -rotate-90" aria-hidden>
 				<circle
 					cx={size / 2}
@@ -1124,7 +1155,16 @@ export function Switch({
 	);
 }
 
-export function Checkbox({ checked, onChange, label, disabled, id, className, indeterminate, ...aria }: ToggleProps & { indeterminate?: boolean }) {
+export function Checkbox({
+	checked,
+	onChange,
+	label,
+	disabled,
+	id,
+	className,
+	indeterminate,
+	...aria
+}: ToggleProps & { indeterminate?: boolean }) {
 	const on = checked || indeterminate;
 	return (
 		<button
@@ -1208,7 +1248,17 @@ const NUM_SIZE = {
 export type NumSize = keyof typeof NUM_SIZE;
 
 /** 數字（Archivo、等寬數字）。xl：計時 clamp(3.5rem,15vw,5.5rem)；lg：統計、倒數 28px。unit 用文字字型、較小。 */
-export function NumDisplay({ children, unit, size = 'lg', className }: { children: ReactNode; unit?: ReactNode; size?: NumSize; className?: string }) {
+export function NumDisplay({
+	children,
+	unit,
+	size = 'lg',
+	className,
+}: {
+	children: ReactNode;
+	unit?: ReactNode;
+	size?: NumSize;
+	className?: string;
+}) {
 	return (
 		<span className={cn('inline-flex items-baseline gap-1 font-num tabular-nums lining-nums', className)}>
 			<span className={NUM_SIZE[size]}>{children}</span>
@@ -1237,7 +1287,12 @@ function minuteParts(min: number): { value: number; unit: string }[] {
 	if (m < 60) return [{ value: m, unit: '分鐘' }];
 	const h = Math.floor(m / 60);
 	const rest = m % 60;
-	return rest ? [{ value: h, unit: '小時' }, { value: rest, unit: '分' }] : [{ value: h, unit: '小時' }];
+	return rest
+		? [
+				{ value: h, unit: '小時' },
+				{ value: rest, unit: '分' },
+			]
+		: [{ value: h, unit: '小時' }];
 }
 
 /** 分鐘數：數字沿用外層的數字字型，單位用 Unit（例如放在 StatStrip 的數值裡：1 小時 20 分） */

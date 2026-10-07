@@ -415,7 +415,9 @@ describe('個人檔案摘要（PRO-1）', () => {
 		expect(s.achievements.total).toBe(list.length);
 		expect(s.achievements.unlocked).toBe(unlocked.length);
 		// 徽章和成就頁的已解鎖成就一致，解鎖時間也相同
-		expect([...s.achievements.badges].sort(byId)).toEqual(unlocked.map(({ id, title, icon, unlockedAt }) => ({ id, title, icon, unlockedAt })).sort(byId));
+		expect([...s.achievements.badges].sort(byId)).toEqual(
+			unlocked.map(({ id, title, icon, unlockedAt }) => ({ id, title, icon, unlockedAt })).sort(byId),
+		);
 		const progress = Object.fromEntries(list.map((a) => [a.id, a.progress]));
 		expect(progress).toMatchObject({
 			'first-session': 1,

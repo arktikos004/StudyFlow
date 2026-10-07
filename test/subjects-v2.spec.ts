@@ -110,8 +110,8 @@ describe('單科總覽（SUB-3）', () => {
 		const math = await makeSubject(c, '微積分', { weeklyGoalMinutes: 120, icon: 'sigma' });
 		const eng = await makeSubject(c, '英文');
 
-		const exam = (await c.post('/api/events', { kind: 'exam', title: '期中考', date: addDays(t, 7), time: '09:00', subjectId: math.id })).data
-			.event;
+		const exam = (await c.post('/api/events', { kind: 'exam', title: '期中考', date: addDays(t, 7), time: '09:00', subjectId: math.id }))
+			.data.event;
 		await c.post('/api/events', { kind: 'deadline', title: 'HW1', date: t, subjectId: math.id });
 		await c.post('/api/events', { kind: 'exam', title: '小考', date: addDays(t, -1), subjectId: math.id }); // 已經過了
 		await c.post('/api/events', { kind: 'exam', title: '英文考', date: addDays(t, 3), subjectId: eng.id }); // 別科

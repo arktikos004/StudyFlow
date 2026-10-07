@@ -870,7 +870,9 @@
 }
 /* sonner 內建的焦點框是黑色半透明，深色模式下看不見：改用 accent */
 :root [data-sonner-toaster] [data-sonner-toast]:focus-visible {
-	box-shadow: var(--elevation-md), 0 0 0 2px var(--accent);
+	box-shadow:
+		var(--elevation-md),
+		0 0 0 2px var(--accent);
 }
 :root [data-sonner-toaster] [data-sonner-toast][data-styled='true'] :is([data-button], [data-close-button]):focus-visible {
 	box-shadow: 0 0 0 2px var(--accent);

@@ -63,7 +63,8 @@ export const studySessionRoutes = new Hono<AppEnv>()
 		const span = endedAt - startedAt;
 		const timesChanged = startedAt !== current.startedAt || endedAt !== current.endedAt;
 		// 沒給秒數但改了起訖時間：依新的起訖時間重新計算（起訖顛倒時留給檢查回報錯誤）
-		const durationSec = input.durationSec ?? (!timesChanged ? current.durationSec : span > 0 ? Math.max(1, Math.round(span / 1000)) : undefined);
+		const durationSec =
+			input.durationSec ?? (!timesChanged ? current.durationSec : span > 0 ? Math.max(1, Math.round(span / 1000)) : undefined);
 
 		// 和原紀錄合併成整筆，套用和新增時同一組規則
 		const merged = studySessionSchema.safeParse({

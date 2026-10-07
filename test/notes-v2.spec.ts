@@ -96,7 +96,12 @@ describe('筆記列表的照片（BUG-1）', () => {
 		const list: { id: string; attachments: { id: string; noteId: string }[] }[] = res.data.notes;
 		expect(list).toHaveLength(120);
 		const byId = new Map(list.map((n) => [n.id, n]));
-		expect(byId.get(ids[0])!.attachments.map((a) => a.id).sort()).toEqual(first.map((a) => a.id).sort());
+		expect(
+			byId
+				.get(ids[0])!
+				.attachments.map((a) => a.id)
+				.sort(),
+		).toEqual(first.map((a) => a.id).sort());
 		expect(byId.get(ids[119])!.attachments).toMatchObject([{ id: last.id, noteId: ids[119] }]);
 		expect(list.filter((n) => n.attachments.length === 0)).toHaveLength(118);
 
@@ -144,6 +149,8 @@ describe('筆記的跨使用者隔離', () => {
 		expect(bad.data.error).toBe('找不到指定的科目');
 
 		expect((await bob.get('/api/notes')).data.notes).toMatchObject([{ id: bobNote.id, pinned: false, attachments: [] }]);
-		expect((await alice.get('/api/notes')).data.notes).toMatchObject([{ id: aliceNote.id, pinned: false, attachments: [{ id: aliceAtt.id }] }]);
+		expect((await alice.get('/api/notes')).data.notes).toMatchObject([
+			{ id: aliceNote.id, pinned: false, attachments: [{ id: aliceAtt.id }] },
+		]);
 	});
 });

@@ -100,7 +100,13 @@ export function CountdownTile({
 		);
 
 	return (
-		<div className={cn('flex min-w-20 shrink-0 flex-col items-center justify-center rounded-lg px-3 py-2.5 text-center', TONE[s.tone], className)}>
+		<div
+			className={cn(
+				'flex min-w-20 shrink-0 flex-col items-center justify-center rounded-lg px-3 py-2.5 text-center',
+				TONE[s.tone],
+				className,
+			)}
+		>
 			{s.secondsLeft !== null ? (
 				<Countdown seconds={s.secondsLeft} size="md" />
 			) : typeof s.value === 'number' ? (

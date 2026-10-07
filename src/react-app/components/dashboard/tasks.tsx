@@ -69,18 +69,33 @@ export function TodayTasksCard({
 						<li key={t.id} className="flex items-center gap-3 px-2 py-1.5">
 							<TaskCheckbox task={t} />
 							<button type="button" className="group min-w-0 flex-1 rounded-md py-1.5 text-left" onClick={() => onOpen(t)}>
-								<span className="block truncate text-dense text-ink decoration-line-strong underline-offset-4 group-hover:underline">{t.title}</span>
+								<span className="block truncate text-dense text-ink decoration-line-strong underline-offset-4 group-hover:underline">
+									{t.title}
+								</span>
 								<span className="mt-1 flex flex-wrap items-center gap-1.5">
 									<SubjectTag subjectId={t.subjectId} />
 									<TaskBadges task={t} today={today} />
 								</span>
 							</button>
 							{t.id === focusingTaskId ? (
-								<Button size="icon" variant="soft" onClick={() => onFocus(t)} aria-label={`回到計時：${t.title}`} title="正在專注，回到計時">
+								<Button
+									size="icon"
+									variant="soft"
+									onClick={() => onFocus(t)}
+									aria-label={`回到計時：${t.title}`}
+									title="正在專注，回到計時"
+								>
 									<Timer className="size-[18px]" aria-hidden />
 								</Button>
 							) : (
-								<Button size="icon" variant="ghost" className="text-accent-ink" onClick={() => onFocus(t)} aria-label={`開始專注：${t.title}`} title="開始專注">
+								<Button
+									size="icon"
+									variant="ghost"
+									className="text-accent-ink"
+									onClick={() => onFocus(t)}
+									aria-label={`開始專注：${t.title}`}
+									title="開始專注"
+								>
 									<Play className="size-[18px]" aria-hidden />
 								</Button>
 							)}

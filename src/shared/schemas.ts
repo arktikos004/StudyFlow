@@ -34,7 +34,12 @@ export const GOAL_LIMITS = {
 /** 目標分鐘數：整數、在範圍內；null 代表清除目標 */
 const goalMinutes = (label: string, { min, max }: { min: number; max: number }) => {
 	const range = `${label}需介於 ${min}–${max} 分鐘`;
-	return z.number({ error: `${label}請輸入數字` }).int(`${label}必須是整數`).min(min, range).max(max, range).nullish();
+	return z
+		.number({ error: `${label}請輸入數字` })
+		.int(`${label}必須是整數`)
+		.min(min, range)
+		.max(max, range)
+		.nullish();
 };
 
 export const updateProfileSchema = z.object({

@@ -35,7 +35,10 @@ export function foldLine(line: string): string {
 
 /** epoch 毫秒 → UTC 的 DATE-TIME，例如 20261010T011000Z */
 export function formatUtc(epochMs: number): string {
-	return new Date(epochMs).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+	return new Date(epochMs)
+		.toISOString()
+		.replace(/[-:]/g, '')
+		.replace(/\.\d{3}/, '');
 }
 
 /** 'YYYY-MM-DD' → DATE，例如 20261010 */
@@ -81,7 +84,13 @@ export function buildCalendar(events: IcsEvent[], { name, now }: { name: string;
 		if (e.description) lines.push(`DESCRIPTION:${escapeText(e.description)}`);
 		if (e.categories) lines.push(`CATEGORIES:${escapeText(e.categories)}`);
 		if (e.alarm) {
-			lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escapeText(e.alarm.description)}`, `TRIGGER:${e.alarm.trigger}`, 'END:VALARM');
+			lines.push(
+				'BEGIN:VALARM',
+				'ACTION:DISPLAY',
+				`DESCRIPTION:${escapeText(e.alarm.description)}`,
+				`TRIGGER:${e.alarm.trigger}`,
+				'END:VALARM',
+			);
 		}
 		lines.push('END:VEVENT');
 	}

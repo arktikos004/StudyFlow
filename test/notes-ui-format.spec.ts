@@ -3,7 +3,9 @@ import { dayLabel, noteSnippet, stripMarkdown } from '../src/react-app/lib/notes
 
 describe('筆記卡的摘要', () => {
 	it('Markdown 轉成一行純文字', () => {
-		expect(stripMarkdown('# 第 3 章\n- **重點一**\n- `code` 與 [連結](https://x.y)\n> 引用\n1. 第一步')).toBe('第 3 章 重點一 code 與 連結 引用 第一步');
+		expect(stripMarkdown('# 第 3 章\n- **重點一**\n- `code` 與 [連結](https://x.y)\n> 引用\n1. 第一步')).toBe(
+			'第 3 章 重點一 code 與 連結 引用 第一步',
+		);
 		expect(stripMarkdown('```js\nconst a = 1;\n```')).toBe('const a = 1;');
 		expect(stripMarkdown('| a | b |\n|---|---|\n| 1 | 2 |')).toBe('a b 1 2');
 		expect(stripMarkdown('O(n-1) 和 snake_case 保留，*斜體*去掉')).toBe('O(n-1) 和 snake_case 保留，斜體去掉');
@@ -23,7 +25,9 @@ describe('筆記卡的摘要', () => {
 		// 關鍵字在開頭附近：不截前面
 		expect(noteSnippet({ kind: 'note', question: null, reason: null, content: '一開始就有遞迴' }, '遞迴')).toBe('一開始就有遞迴');
 		// 英文不分大小寫
-		expect(noteSnippet({ kind: 'note', question: null, reason: null, content: `${'x '.repeat(40)}Dijkstra` }, 'dijkstra')).toContain('Dijkstra');
+		expect(noteSnippet({ kind: 'note', question: null, reason: null, content: `${'x '.repeat(40)}Dijkstra` }, 'dijkstra')).toContain(
+			'Dijkstra',
+		);
 		// 只有標題符合：用預設摘要
 		expect(noteSnippet({ kind: 'mistake', question: '題目', reason: null, content: null }, '標題')).toBe('題目');
 	});

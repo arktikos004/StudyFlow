@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { PhotoDraft } from '../src/react-app/lib/profile-photo';
-import { photoWasSaved, saveFailureMessage, saveProfile, saveSuccessMessage, type SaveDeps, type SaveResult } from '../src/react-app/lib/profile-save';
+import {
+	photoWasSaved,
+	saveFailureMessage,
+	saveProfile,
+	saveSuccessMessage,
+	type SaveDeps,
+	type SaveResult,
+} from '../src/react-app/lib/profile-save';
 
 const blob = new Blob(['jpeg'], { type: 'image/jpeg' });
 const SET: PhotoDraft = { kind: 'set', blob, url: 'blob:preview' };
@@ -199,8 +206,12 @@ describe('對話框裡的失敗訊息（saveFailureMessage）', () => {
 
 	it('離線：什麼都沒送，或照片已經存好只剩暱稱', () => {
 		expect(message({ status: 'offline', photoDone: false }, SET, '新暱稱')).toBe('目前離線，連上網路後再儲存');
-		expect(message({ status: 'offline', photoDone: true }, SET, '新暱稱')).toBe('照片已經更新，但目前離線，暱稱還沒儲存。連上網路後再按一次「儲存」');
-		expect(message({ status: 'offline', photoDone: true }, REMOVE, '新暱稱')).toBe('照片已經移除，但目前離線，暱稱還沒儲存。連上網路後再按一次「儲存」');
+		expect(message({ status: 'offline', photoDone: true }, SET, '新暱稱')).toBe(
+			'照片已經更新，但目前離線，暱稱還沒儲存。連上網路後再按一次「儲存」',
+		);
+		expect(message({ status: 'offline', photoDone: true }, REMOVE, '新暱稱')).toBe(
+			'照片已經移除，但目前離線，暱稱還沒儲存。連上網路後再按一次「儲存」',
+		);
 	});
 
 	it('照片失敗：附上後端的原因；暱稱也在等的話一起說', () => {
@@ -212,8 +223,12 @@ describe('對話框裡的失敗訊息（saveFailureMessage）', () => {
 
 	it('暱稱失敗：照片已經存好時說清楚是部分成功', () => {
 		const error = new Error('無法連線到伺服器，請稍後再試');
-		expect(message({ status: 'name-failed', error, photoDone: true }, SET, '新暱稱')).toBe('照片已經更新，但暱稱沒有儲存：無法連線到伺服器，請稍後再試');
-		expect(message({ status: 'name-failed', error, photoDone: true }, REMOVE, '新暱稱')).toBe('照片已經移除，但暱稱沒有儲存：無法連線到伺服器，請稍後再試');
+		expect(message({ status: 'name-failed', error, photoDone: true }, SET, '新暱稱')).toBe(
+			'照片已經更新，但暱稱沒有儲存：無法連線到伺服器，請稍後再試',
+		);
+		expect(message({ status: 'name-failed', error, photoDone: true }, REMOVE, '新暱稱')).toBe(
+			'照片已經移除，但暱稱沒有儲存：無法連線到伺服器，請稍後再試',
+		);
 		expect(message({ status: 'name-failed', error, photoDone: false }, KEEP, '新暱稱')).toBe('暱稱沒有儲存：無法連線到伺服器，請稍後再試');
 	});
 

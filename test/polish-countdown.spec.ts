@@ -36,20 +36,51 @@ describe('countdown 的文案', () => {
 
 	it('大磚：數字＋「天後」；今天、明天、已結束用文字', () => {
 		expect(countdown({ kind: 'exam', date: '2026-10-12' }, today, morning, tz)).toMatchObject({ value: 6, label: '天後', tone: 'normal' });
-		expect(countdown({ kind: 'exam', date: '2026-10-06' }, today, morning, tz)).toMatchObject({ value: '今天', label: '考試日', tone: 'urgent' });
-		expect(countdown({ kind: 'deadline', date: '2026-10-06' }, today, morning, tz)).toMatchObject({ value: '今天', label: '截止日', tone: 'soon' });
-		expect(countdown({ kind: 'deadline', date: '2026-10-07' }, today, morning, tz)).toMatchObject({ value: '明天', label: '截止', tone: 'soon' });
-		expect(countdown({ kind: 'exam', date: '2026-10-07', time: '13:00' }, today, morning, tz)).toMatchObject({ value: '明天', label: '13:00' });
-		expect(countdown({ kind: 'exam', date: '2026-10-02' }, today, morning, tz)).toMatchObject({ value: '已結束', label: null, tone: 'past' });
+		expect(countdown({ kind: 'exam', date: '2026-10-06' }, today, morning, tz)).toMatchObject({
+			value: '今天',
+			label: '考試日',
+			tone: 'urgent',
+		});
+		expect(countdown({ kind: 'deadline', date: '2026-10-06' }, today, morning, tz)).toMatchObject({
+			value: '今天',
+			label: '截止日',
+			tone: 'soon',
+		});
+		expect(countdown({ kind: 'deadline', date: '2026-10-07' }, today, morning, tz)).toMatchObject({
+			value: '明天',
+			label: '截止',
+			tone: 'soon',
+		});
+		expect(countdown({ kind: 'exam', date: '2026-10-07', time: '13:00' }, today, morning, tz)).toMatchObject({
+			value: '明天',
+			label: '13:00',
+		});
+		expect(countdown({ kind: 'exam', date: '2026-10-02' }, today, morning, tz)).toMatchObject({
+			value: '已結束',
+			label: null,
+			tone: 'past',
+		});
 	});
 
 	it('24 小時內而且有時間：即時倒數（後開始、後截止），開始後是「已開始」「已截止」', () => {
-		expect(countdown({ kind: 'exam', date: today, time: '09:00' }, today, morning, tz)).toMatchObject({ secondsLeft: 3600, label: '後開始' });
-		expect(countdown({ kind: 'deadline', date: '2026-10-07', time: '07:00' }, today, morning, tz)).toMatchObject({ secondsLeft: 23 * 3600, label: '後截止' });
+		expect(countdown({ kind: 'exam', date: today, time: '09:00' }, today, morning, tz)).toMatchObject({
+			secondsLeft: 3600,
+			label: '後開始',
+		});
+		expect(countdown({ kind: 'deadline', date: '2026-10-07', time: '07:00' }, today, morning, tz)).toMatchObject({
+			secondsLeft: 23 * 3600,
+			label: '後截止',
+		});
 		// 明天比現在晚超過 24 小時：不倒數，顯示「明天」
 		expect(countdown({ kind: 'exam', date: '2026-10-07', time: '09:00' }, today, morning, tz).secondsLeft).toBeNull();
-		expect(countdown({ kind: 'exam', date: today, time: '07:00' }, today, morning, tz)).toMatchObject({ secondsLeft: null, label: '已開始' });
-		expect(countdown({ kind: 'deadline', date: today, time: '07:00' }, today, morning, tz)).toMatchObject({ secondsLeft: null, label: '已截止' });
+		expect(countdown({ kind: 'exam', date: today, time: '07:00' }, today, morning, tz)).toMatchObject({
+			secondsLeft: null,
+			label: '已開始',
+		});
+		expect(countdown({ kind: 'deadline', date: today, time: '07:00' }, today, morning, tz)).toMatchObject({
+			secondsLeft: null,
+			label: '已截止',
+		});
 	});
 
 	it('時間依使用者時區：同一個瞬間，台北已經過了開始時間，紐約還沒', () => {

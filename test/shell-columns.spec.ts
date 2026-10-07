@@ -18,9 +18,43 @@ describe('成就頁：兩欄各自堆疊', () => {
 	});
 
 	it('切在兩欄高度最接近的位置；一樣接近時左欄多一些', () => {
-		expect(ids(splitColumns([{ id: 'a', n: 2 }, { id: 'b', n: 2 }, { id: 'c', n: 2 }, { id: 'd', n: 2 }], byLen))).toEqual(['ab', 'cd']);
-		expect(ids(splitColumns([{ id: 'a', n: 2 }, { id: 'b', n: 2 }, { id: 'c', n: 2 }], byLen))).toEqual(['ab', 'c']);
-		expect(ids(splitColumns([{ id: 'a', n: 1 }, { id: 'b', n: 1 }, { id: 'c', n: 6 }], byLen))).toEqual(['ab', 'c']);
+		expect(
+			ids(
+				splitColumns(
+					[
+						{ id: 'a', n: 2 },
+						{ id: 'b', n: 2 },
+						{ id: 'c', n: 2 },
+						{ id: 'd', n: 2 },
+					],
+					byLen,
+				),
+			),
+		).toEqual(['ab', 'cd']);
+		expect(
+			ids(
+				splitColumns(
+					[
+						{ id: 'a', n: 2 },
+						{ id: 'b', n: 2 },
+						{ id: 'c', n: 2 },
+					],
+					byLen,
+				),
+			),
+		).toEqual(['ab', 'c']);
+		expect(
+			ids(
+				splitColumns(
+					[
+						{ id: 'a', n: 1 },
+						{ id: 'b', n: 1 },
+						{ id: 'c', n: 6 },
+					],
+					byLen,
+				),
+			),
+		).toEqual(['ab', 'c']);
 	});
 
 	it('少於兩個時全部放左欄', () => {

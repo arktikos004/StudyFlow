@@ -78,7 +78,10 @@ export function SubjectIconTile({
 	return (
 		<span
 			aria-hidden
-			className={cn('grid size-10 shrink-0 place-items-center rounded-lg text-[1.1875rem] leading-none font-bold [&_svg]:size-5', className)}
+			className={cn(
+				'grid size-10 shrink-0 place-items-center rounded-lg text-[1.1875rem] leading-none font-bold [&_svg]:size-5',
+				className,
+			)}
 			style={{ background: tone.mark, color: tone.onMark }}
 		>
 			{subjectIcon(icon) ? <TagIcon icon={icon} /> : firstGrapheme(name)}

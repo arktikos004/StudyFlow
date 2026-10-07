@@ -40,7 +40,8 @@ async function subjectNames(db: DB, userId: string) {
 }
 
 /** 科目名稱與備註合在一起，當作日曆的說明 */
-const icsDescription = (subject: string | undefined, text: string | null) => [subject && `科目：${subject}`, text].filter(Boolean).join('\n') || null;
+const icsDescription = (subject: string | undefined, text: string | null) =>
+	[subject && `科目：${subject}`, text].filter(Boolean).join('\n') || null;
 
 export const exportRoutes = new Hono<AppEnv>()
 	.use(requireAuth)

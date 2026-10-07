@@ -104,13 +104,19 @@ describe('編輯學習紀錄（TMR-2）', () => {
 		const s = await logSession(c, c.today, 9, 30, { subjectId: math.id, taskId: taskA.id });
 
 		const spent = async () =>
-			Object.fromEntries((await c.get('/api/tasks')).data.tasks.map((t: { title: string; spentMinutes: number }) => [t.title, t.spentMinutes]));
+			Object.fromEntries(
+				(await c.get('/api/tasks')).data.tasks.map((t: { title: string; spentMinutes: number }) => [t.title, t.spentMinutes]),
+			);
 		expect(await spent()).toEqual({ '任務 A': 30, '任務 B': 0 });
 
 		await c.patch(`/api/study-sessions/${s.id}`, { taskId: taskB.id, endedAt: s.endedAt + 15 * 60_000 });
 		expect(await spent()).toEqual({ '任務 A': 0, '任務 B': 45 });
 		expect((await c.get('/api/dashboard')).data.todayMinutes).toBe(45);
-		expect((await c.get('/api/stats?days=7')).data.daily.at(-1)).toMatchObject({ date: c.today, minutes: 45, bySubject: { [math.id]: 45 } });
+		expect((await c.get('/api/stats?days=7')).data.daily.at(-1)).toMatchObject({
+			date: c.today,
+			minutes: 45,
+			bySubject: { [math.id]: 45 },
+		});
 	});
 });
 

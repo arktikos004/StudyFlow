@@ -10,7 +10,12 @@ export function stripMarkdown(text: string): string {
 		text
 			.split('\n')
 			// 程式碼區塊的 ``` 行、表格分隔線、水平線
-			.filter((line) => !/^\s*(```|~~~)/.test(line) && !/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(line) && !/^\s*([*_-])(\s*\1){2,}\s*$/.test(line))
+			.filter(
+				(line) =>
+					!/^\s*(```|~~~)/.test(line) &&
+					!/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(line) &&
+					!/^\s*([*_-])(\s*\1){2,}\s*$/.test(line),
+			)
 			.map((line) =>
 				line
 					.replace(/^\s{0,3}#{1,6}\s+/, '')

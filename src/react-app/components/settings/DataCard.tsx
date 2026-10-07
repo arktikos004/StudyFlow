@@ -61,7 +61,12 @@ export function DataCard() {
 					/>
 				</li>
 				<li>
-					<ExportLink file="sessions.csv" icon={<FileSpreadsheet />} title="下載學習紀錄" description="CSV，可用 Excel 或 Google 試算表開啟" />
+					<ExportLink
+						file="sessions.csv"
+						icon={<FileSpreadsheet />}
+						title="下載學習紀錄"
+						description="CSV，可用 Excel 或 Google 試算表開啟"
+					/>
 				</li>
 				<li>
 					<ExportLink file="tasks.csv" icon={<ListChecks />} title="下載任務清單" description="CSV，含期限、優先度、預估與已投入時間" />
