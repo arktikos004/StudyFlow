@@ -1,6 +1,8 @@
 // 計時器的純邏輯（不碰 localStorage、DOM、React），lib/timer.ts 與測試共用。
 // 狀態以「開始時間戳」計算經過時間，所以任何時刻都能從狀態與現在時間推算出正確的結果。
 
+import { HOUR_MS, MINUTE_MS } from '../../shared/time';
+
 export type TimerMode = 'pomodoro' | 'stopwatch';
 export type TimerPhase = 'idle' | 'focus' | 'break';
 export type BreakKind = 'short' | 'long';
@@ -53,11 +55,11 @@ export const LIMITS = {
 export type NumericOption = keyof typeof LIMITS;
 
 /** 休息結束後超過這麼久才偵測到（電腦睡眠、分頁關閉），就不自動開始下一輪 */
-export const LATE_MS = 60_000;
+export const LATE_MS = MINUTE_MS;
 /** 不到 1 分鐘的計時不記錄 */
-export const MIN_RECORD_MS = 60_000;
+export const MIN_RECORD_MS = MINUTE_MS;
 /** 結束時間最多可以比現在晚這麼多（和後端 studySessionSchema 的「不能記錄未來的時間」一致，容許時鐘誤差） */
-export const FUTURE_TOLERANCE_MS = 5 * 60_000;
+export const FUTURE_TOLERANCE_MS = 5 * MINUTE_MS;
 
 export function defaultState(today: string): TimerState {
 	return {
@@ -154,15 +156,32 @@ export function elapsedMs(s: TimerState, now = Date.now()) {
 	return Math.max(0, s.accumulatedMs + (s.running && s.segmentStart ? now - s.segmentStart : 0));
 }
 
+/** 目前休息（或下一次休息）的分鐘數 */
+export const breakMinutes = (s: TimerState, kind: BreakKind = s.breakKind) => (kind === 'long' ? s.longBreakMin : s.breakMin);
+
 /** 這個階段的目標毫秒數；碼錶沒有目標（null）。閒置時是下一輪專注的長度。 */
 export function targetMs(s: TimerState): number | null {
 	if (s.mode === 'stopwatch') return null;
-	if (s.phase === 'break') return (s.breakKind === 'long' ? s.longBreakMin : s.breakMin) * 60_000;
-	return s.focusMin * 60_000;
+	return (s.phase === 'break' ? breakMinutes(s) : s.focusMin) * MINUTE_MS;
 }
 
-/** 目前休息（或下一次休息）的分鐘數 */
-export const breakMinutes = (s: TimerState, kind: BreakKind = s.breakKind) => (kind === 'long' ? s.longBreakMin : s.breakMin);
+/** 計時器此刻的讀數（timerReading） */
+export type TimerReading = {
+	/** 這個階段已經經過的毫秒數；閒置時是 0 */
+	elapsed: number;
+	/** 畫面上的時間：番茄鐘倒數剩下的，碼錶正數經過的 */
+	shown: number;
+	/** 這一輪的進度（0～1）；碼錶沒有目標，每小時繞一圈 */
+	progress: number;
+};
+
+/** 計時頁的計時環、頁首的膠囊與手機導覽的進度環共用，三處顯示的時間才會一致 */
+export function timerReading(s: TimerState, now: number): TimerReading {
+	const elapsed = s.phase === 'idle' ? 0 : elapsedMs(s, now);
+	const target = targetMs(s);
+	if (target === null) return { elapsed, shown: elapsed, progress: (elapsed % HOUR_MS) / HOUR_MS };
+	return { elapsed, shown: Math.max(0, target - elapsed), progress: elapsed / target };
+}
 
 /** 計時器送出的學習紀錄（和 queries.ts 的 SessionInput 相容） */
 export type SessionRecord = {

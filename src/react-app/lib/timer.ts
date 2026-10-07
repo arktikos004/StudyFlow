@@ -30,14 +30,17 @@ export {
 	elapsedMs,
 	LATE_MS,
 	LIMITS,
+	MIN_RECORD_MS,
 	optionError,
 	roundInfo,
 	targetMs,
+	timerReading,
 	type BreakKind,
 	type NumericOption,
 	type TimerMode,
 	type TimerOptions,
 	type TimerPhase,
+	type TimerReading,
 	type TimerState,
 } from './timer-core';
 

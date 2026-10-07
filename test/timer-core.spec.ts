@@ -13,6 +13,7 @@ import {
 	roundInfo,
 	sendRecord,
 	targetMs,
+	timerReading,
 	type QueuedRecord,
 	type TimerState,
 } from '../src/react-app/lib/timer-core';
@@ -244,6 +245,29 @@ describe('第 k／N 輪（roundInfo）', () => {
 		expect(roundInfo({ ...defaultState(yesterday), cycles: 3 }, TODAY)).toEqual({ done: 0, round: 1, of: 4, filled: 0 });
 		const breakOverMidnight: TimerState = { ...defaultState(yesterday), phase: 'break', running: true, cycles: 3 };
 		expect(roundInfo(breakOverMidnight, TODAY)).toMatchObject({ done: 0, round: 3, filled: 3 });
+	});
+});
+
+describe('計時器此刻的讀數（timerReading）', () => {
+	it('番茄鐘倒數剩下的時間，進度是已經過的比例；閒置時顯示下一輪專注的長度', () => {
+		expect(timerReading(defaultState(TODAY), T0)).toEqual({ elapsed: 0, shown: 25 * MIN, progress: 0 });
+		expect(timerReading(focusing(T0 - 10 * MIN), T0)).toEqual({ elapsed: 10 * MIN, shown: 15 * MIN, progress: 0.4 });
+		const resting: TimerState = { ...focusing(T0 - 2 * MIN), phase: 'break', breakKind: 'short' };
+		expect(timerReading(resting, T0)).toEqual({ elapsed: 2 * MIN, shown: 3 * MIN, progress: 0.4 });
+	});
+
+	it('超過目標時間（還沒切換階段）時倒數停在 0', () => {
+		expect(timerReading(focusing(T0 - 26 * MIN), T0).shown).toBe(0);
+	});
+
+	it('碼錶正數經過的時間，環每小時繞一圈', () => {
+		const stopwatch: TimerState = { ...focusing(T0 - 90 * MIN), mode: 'stopwatch' };
+		expect(timerReading(stopwatch, T0)).toEqual({ elapsed: 90 * MIN, shown: 90 * MIN, progress: 0.5 });
+	});
+
+	it('暫停時停在累積的時間', () => {
+		const paused: TimerState = { ...focusing(T0), running: false, segmentStart: null, accumulatedMs: 7 * MIN };
+		expect(timerReading(paused, T0 + 60 * MIN).elapsed).toBe(7 * MIN);
 	});
 });
 

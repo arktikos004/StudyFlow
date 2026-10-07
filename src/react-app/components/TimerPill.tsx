@@ -2,7 +2,7 @@ import { Timer as TimerIcon, type LucideIcon } from 'lucide-react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { formatDuration } from '../lib/format';
-import { elapsedMs, targetMs, useNow, useTimerState } from '../lib/timer';
+import { timerReading, useNow, useTimerState } from '../lib/timer';
 import { cn, ProgressRing } from './ui';
 
 /** 計時中時在頁首顯示剩餘時間，點一下回到計時頁 */
@@ -12,9 +12,7 @@ export function TimerPill() {
 	const navigate = useNavigate();
 	const active = s.phase !== 'idle';
 
-	const target = targetMs(s);
-	const el = elapsedMs(s, now);
-	const shown = target ? Math.max(0, target - el) : el;
+	const { shown } = timerReading(s, now);
 	const isBreak = s.phase === 'break';
 	const label = isBreak ? (s.breakKind === 'long' ? '長休息' : '休息') : '專注';
 	// 休息不能暫停；沒在跑的休息是「自動開始休息」關閉時，等使用者按開始
@@ -47,10 +45,7 @@ export function TimerNavIcon({ icon: Icon, active }: { icon: LucideIcon; active:
 	const now = useNow(s.running);
 	const stroke = active ? 2.25 : 1.75;
 	if (s.phase === 'idle') return <Icon className="size-[22px]" strokeWidth={stroke} aria-hidden />;
-	const target = targetMs(s);
-	const el = elapsedMs(s, now);
-	// 碼錶沒有目標時間：每小時繞一圈
-	const progress = target ? el / target : (el % 3_600_000) / 3_600_000;
+	const { progress } = timerReading(s, now);
 	return (
 		<span aria-hidden>
 			<ProgressRing
