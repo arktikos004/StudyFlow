@@ -139,6 +139,17 @@ npm run dev                # http://localhost:5173
 - **自動部署**：Cloudflare Workers Builds 連結本 GitHub repo，push 到 `main` 後自動建置部署
 - **手動部署**：`npm run deploy`
 
+### 上線步驟（順序不能反）
+
+1. `npm run check`：型別檢查、建置、部署預演。
+2. `npm run db:migrate:remote`：先把還沒套用的 migration 套用到正式資料庫（`npx wrangler d1 migrations list studyflow-db --remote` 可以先看有哪些）。migration 只新增欄位與資料表，舊版的 Worker 照常運作。
+3. `npm run deploy`（或 push 到 `main`）：部署新版 Worker。新版會讀新的欄位，所以一定要在 migration 之後；順序反了，所有已登入的 API 都會回 500。
+
+出問題時：
+
+- **退回上一版 Worker**：`npx wrangler rollback`。migration 都只新增，舊版 Worker 也能用新的資料庫。
+- **還原資料**：D1 的 Time Travel 一直開著（免費方案保留 7 天、付費 30 天）。上線前先記下 `npx wrangler d1 time-travel info studyflow-db` 的 bookmark；`npx wrangler d1 time-travel restore studyflow-db --bookmark=<bookmark>` 會覆蓋整個資料庫，只在資料真的壞掉時使用。
+
 第一次建立環境時使用的指令（已完成）：
 
 ```bash
