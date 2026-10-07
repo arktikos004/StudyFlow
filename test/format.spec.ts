@@ -25,7 +25,8 @@ describe('firstGrapheme', () => {
 	});
 
 	it('不支援 Intl.Segmenter 時退回以碼位切：代理對不會被切開', () => {
-		vi.stubGlobal('Intl', { ...Intl, Segmenter: undefined });
+		// Intl 的成員不可列舉，展開運算子複製不到；用原型繼承保留其他成員，只拿掉 Segmenter
+		vi.stubGlobal('Intl', Object.create(Intl, { Segmenter: { value: undefined } }));
 		expect(firstGrapheme('𠮷野家')).toBe('𠮷');
 		expect(firstGrapheme('資料結構')).toBe('資');
 		expect(firstGrapheme('😀 英文')).toBe('😀');
