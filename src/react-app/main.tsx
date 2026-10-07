@@ -1,17 +1,18 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { lazy, StrictMode, Suspense, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createBrowserRouter, Link } from 'react-router';
+import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
-import { Toaster } from 'sonner';
 import { registerSW } from 'virtual:pwa-register';
 import { Layout } from './components/Layout';
 import { GuestOnly, RequireAuth } from './components/RequireAuth';
 import { AppError, PageError } from './components/RouteError';
+import { ThemedToaster } from './components/ThemedToaster';
+import { PageLoader } from './components/ui';
 import { ApiError } from './lib/api';
 import { ME_KEY } from './lib/queries';
-import { initTheme, useIsDark } from './lib/theme';
-import { PageLoader } from './components/ui';
+import { initTheme } from './lib/theme';
+import { NotFound } from './pages/NotFound';
 // 數字字型 Archivo（自架，CSP 為 font-src 'self'）：standard = 字重 + 字寬兩個軸
 import '@fontsource-variable/archivo/standard.css';
 import './index.css';
@@ -52,18 +53,6 @@ const queryClient = new QueryClient({
 	},
 });
 
-function NotFound() {
-	return (
-		<div className="py-16 text-center">
-			<p className="text-5xl font-bold text-ink-3">404</p>
-			<p className="mt-3 text-ink-2">找不到這個頁面</p>
-			<Link to="/" className="mt-4 inline-block text-accent-ink hover:underline">
-				回到總覽
-			</Link>
-		</div>
-	);
-}
-
 const router = createBrowserRouter([
 	{
 		path: '/login',
@@ -103,20 +92,6 @@ const router = createBrowserRouter([
 		],
 	},
 ]);
-
-/** 不用 richColors：底色、文字、圖示顏色都由 index.css 以 tokens 設定（深色模式對比也足夠） */
-function ThemedToaster() {
-	const dark = useIsDark();
-	return (
-		<Toaster
-			position="top-center"
-			theme={dark ? 'dark' : 'light'}
-			closeButton
-			// 手機（含加到主畫面的 PWA）避開瀏海與狀態列
-			mobileOffset={{ top: 'calc(env(safe-area-inset-top) + 12px)' }}
-		/>
-	);
-}
 
 createRoot(document.getElementById('root')!).render(
 	<StrictMode>
