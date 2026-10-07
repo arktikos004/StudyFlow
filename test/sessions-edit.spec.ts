@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { addDays } from '../src/shared/dates';
 import { logSession, noonClient, registeredClient, type Client } from './helpers';
 
 /** 一小時前結束、長度 30 分鐘的紀錄 */
@@ -157,5 +158,28 @@ describe('學習紀錄編輯的跨使用者隔離', () => {
 		expect((await alice.get('/api/study-sessions')).data.sessions[0].note).toBeNull();
 		expect((await bob.get('/api/study-sessions')).data.sessions[0]).toMatchObject({ subjectId: null, taskId: null });
 		expect((await alice.get('/api/tasks')).data.tasks[0].spentMinutes).toBe(0);
+	});
+});
+
+describe('學習紀錄列表的日期區間', () => {
+	it('沒有指定時列出最近 7 天（含今天），第 8 天以前的不列，新的在前', async () => {
+		const c = await noonClient();
+		const today = await logSession(c, c.today, 8, 30);
+		const sixDaysAgo = await logSession(c, addDays(c.today, -6), 8, 30);
+		await logSession(c, addDays(c.today, -7), 8, 30);
+		const res = await c.get('/api/study-sessions');
+		expect(res.data.sessions.map((s: { id: string }) => s.id)).toEqual([today.id, sixDaysAgo.id]);
+	});
+
+	it('from／to 含頭尾，依使用者時區的日期：from 當天 00:00 與 to 當天 23:00 開始的都算', async () => {
+		const c = await noonClient();
+		const from = addDays(c.today, -10);
+		const to = addDays(c.today, -8);
+		const first = await logSession(c, from, 0, 30);
+		const last = await logSession(c, to, 23, 30);
+		await logSession(c, addDays(from, -1), 23, 30);
+		await logSession(c, addDays(to, 1), 0, 30);
+		const res = await c.get(`/api/study-sessions?from=${from}&to=${to}`);
+		expect(res.data.sessions.map((s: { id: string }) => s.id)).toEqual([last.id, first.id]);
 	});
 });

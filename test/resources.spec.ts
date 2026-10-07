@@ -107,7 +107,7 @@ describe('考試與任務', () => {
 });
 
 describe('學習紀錄', () => {
-	it('新增後可依日期查詢，並拒絕不合理的時間', async () => {
+	it('新增後出現在列表，並拒絕不合理的時間', async () => {
 		const c = await registeredClient();
 		const endedAt = Date.now() - 60_000;
 		const startedAt = endedAt - 25 * 60_000;
