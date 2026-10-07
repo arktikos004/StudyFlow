@@ -3,10 +3,10 @@ import { HTTPException } from 'hono/http-exception';
 import { AVATAR_MAX_BYTES } from '../../shared/schemas';
 import { removeAvatar, replaceAvatar } from '../lib/avatar';
 import { imageResponse } from '../lib/image';
+import { publicUser } from '../lib/users';
 import { requireAuth } from '../middleware/auth';
 import { imageUploadLimit, readImageUpload } from '../middleware/upload';
 import type { AppEnv } from '../types';
-import { publicUser } from './auth';
 
 /** 目前這一版的頭像（網址帶著最新的 ?v=）內容不會再變，讓瀏覽器快取一年 */
 const CACHE_CURRENT_VERSION = 'private, max-age=31536000, immutable';

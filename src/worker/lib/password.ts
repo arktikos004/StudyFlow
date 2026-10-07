@@ -28,8 +28,16 @@ export async function verifyPassword(password: string, stored: string): Promise<
 	return crypto.subtle.timingSafeEqual(actual, expected);
 }
 
-// 帳號不存在時也跑一次雜湊，讓「帳號不存在」和「密碼錯誤」的回應時間一致
 const DUMMY_HASH = `pbkdf2_sha256$${ITERATIONS}$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`;
-export async function fakeVerify(password: string): Promise<void> {
-	await verifyPassword(password, DUMMY_HASH);
+
+/**
+ * 登入時驗證密碼。帳號不存在（沒有雜湊可以比對）時也跑一次同樣成本的雜湊再回 false，
+ * 讓「帳號不存在」和「密碼錯誤」的回應時間一致，不能用時間差探測哪些 Email 註冊過。
+ */
+export async function verifyLoginPassword(password: string, storedHash: string | undefined): Promise<boolean> {
+	if (storedHash === undefined) {
+		await verifyPassword(password, DUMMY_HASH);
+		return false;
+	}
+	return verifyPassword(password, storedHash);
 }

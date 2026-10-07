@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DAY_MS, MINUTE_MS } from './time';
 
 // 前後端共用的輸入驗證：後端用來擋錯誤資料，前端用來顯示同樣的錯誤訊息
 
@@ -171,7 +172,9 @@ export const taskUpdateSchema = z.object({
 	checklist: checklist.optional(),
 });
 
-const MAX_SESSION_MS = 24 * 60 * 60 * 1000;
+const MAX_SESSION_MS = DAY_MS;
+/** 裝置的時鐘可能比伺服器快一點：結束時間最多可以比現在晚這麼多 */
+const CLOCK_SKEW_TOLERANCE_MS = 5 * MINUTE_MS;
 export const STUDY_MODES = ['pomodoro', 'stopwatch', 'manual'] as const;
 /** 學習紀錄的欄位（不含跨欄位檢查）；Zod 4 不能對加了 refine 的 schema 呼叫 .partial()，所以分開 */
 export const studySessionBase = z.object({
@@ -194,7 +197,7 @@ const withSessionChecks = (schema: typeof studySessionBase) =>
 			message: '學習秒數不可超過起訖時間',
 			path: ['durationSec'],
 		})
-		.refine((s) => s.endedAt <= Date.now() + 5 * 60 * 1000, { message: '不能記錄未來的時間', path: ['endedAt'] });
+		.refine((s) => s.endedAt <= Date.now() + CLOCK_SKEW_TOLERANCE_MS, { message: '不能記錄未來的時間', path: ['endedAt'] });
 
 export const studySessionSchema = withSessionChecks(studySessionBase);
 /** PATCH 只驗證個別欄位；跨欄位規則由後端和原紀錄合併後，用 studySessionSchema 檢查 */

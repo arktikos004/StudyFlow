@@ -37,7 +37,8 @@ export const users = sqliteTable('users', {
 	avatarUpdatedAt: integer('avatar_updated_at'),
 });
 
-export const sessions = sqliteTable(
+/** 登入狀態。資料表叫 sessions；程式裡叫 authSessions，和學習紀錄（studySessions）區分 */
+export const authSessions = sqliteTable(
 	'sessions',
 	{
 		// session token 的 SHA-256；資料庫外洩也無法直接拿來登入

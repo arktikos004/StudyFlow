@@ -1,47 +1,30 @@
-import { and, eq, ne } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { changePasswordSchema, loginSchema, registerSchema, updateProfileSchema } from '../../shared/schemas';
-import { sessions, users, type User } from '../db/schema';
+import { users } from '../db/schema';
+import { createSession, destroyOtherSessions, destroySession } from '../lib/auth-session';
 import { hasValues } from '../lib/db';
-import { fakeVerify, hashPassword, verifyPassword } from '../lib/password';
+import { hashPassword, verifyLoginPassword, verifyPassword } from '../lib/password';
 import * as rateLimit from '../lib/rate-limit';
-import { clearSessionCookie, createSession, getSessionToken, setSessionCookie } from '../lib/session';
-import { validate } from '../middleware/validate';
-import { sha256Hex } from '../lib/encoding';
+import { publicUser } from '../lib/users';
 import { recordAchievementUnlocks } from '../middleware/achievement-unlocks';
-import { requireAuth } from '../middleware/auth';
-import type { PublicUser } from '../../shared/api-types';
+import { clearSessionCookie, getSessionToken, requireAuth, setSessionCookie } from '../middleware/auth';
+import { validate } from '../middleware/validate';
 import type { AppEnv } from '../types';
 
-const WINDOW_15M = 15 * 60 * 1000;
-const WINDOW_1H = 60 * 60 * 1000;
+/** 拿不到來源 IP 的請求（本機開發、測試）共用同一個計數 */
+const UNKNOWN_IP = 'unknown';
 
-/** 回傳給前端（與 JSON 備份）的使用者資料：逐欄列出，不含密碼雜湊與頭像的 R2 key */
-export function publicUser(u: User): PublicUser {
-	return {
-		id: u.id,
-		email: u.email,
-		displayName: u.displayName,
-		timezone: u.timezone,
-		createdAt: u.createdAt,
-		dailyGoalMinutes: u.dailyGoalMinutes,
-		weeklyGoalMinutes: u.weeklyGoalMinutes,
-		avatarUpdatedAt: u.avatarUpdatedAt,
-	};
-}
-
-function clientIp(req: Request) {
-	return req.headers.get('cf-connecting-ip') ?? 'unknown';
-}
+const clientIp = (req: Request) => req.headers.get('cf-connecting-ip') ?? UNKNOWN_IP;
 
 export const authRoutes = new Hono<AppEnv>()
 	.post('/register', validate('json', registerSchema), async (c) => {
 		const db = c.var.db;
 		const { email, password, displayName } = c.req.valid('json');
-		const ipKey = `register:ip:${clientIp(c.req.raw)}`;
-		await rateLimit.assertNotLimited(db, ipKey, 10, WINDOW_1H);
-		await rateLimit.hit(db, ipKey, WINDOW_1H);
+		const ip = clientIp(c.req.raw);
+		await rateLimit.assertNotLimited(db, rateLimit.REGISTER_BY_IP, ip);
+		await rateLimit.hit(db, rateLimit.REGISTER_BY_IP, ip);
 
 		const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).get();
 		if (existing) throw new HTTPException(409, { message: '此 Email 已經註冊過了' });
@@ -58,27 +41,26 @@ export const authRoutes = new Hono<AppEnv>()
 	.post('/login', validate('json', loginSchema), async (c) => {
 		const db = c.var.db;
 		const { email, password } = c.req.valid('json');
-		const emailKey = `login:email:${email}`;
-		const ipKey = `login:ip:${clientIp(c.req.raw)}`;
-		await rateLimit.assertNotLimited(db, emailKey, 10, WINDOW_15M);
-		await rateLimit.assertNotLimited(db, ipKey, 50, WINDOW_15M);
+		const ip = clientIp(c.req.raw);
+		await rateLimit.assertNotLimited(db, rateLimit.LOGIN_BY_EMAIL, email);
+		await rateLimit.assertNotLimited(db, rateLimit.LOGIN_BY_IP, ip);
 
 		const user = await db.select().from(users).where(eq(users.email, email)).get();
-		const ok = user ? await verifyPassword(password, user.passwordHash) : (await fakeVerify(password), false);
-		if (!user || !ok) {
-			await rateLimit.hit(db, emailKey, WINDOW_15M);
-			await rateLimit.hit(db, ipKey, WINDOW_15M);
+		const passwordOk = await verifyLoginPassword(password, user?.passwordHash);
+		if (!user || !passwordOk) {
+			await rateLimit.hit(db, rateLimit.LOGIN_BY_EMAIL, email);
+			await rateLimit.hit(db, rateLimit.LOGIN_BY_IP, ip);
 			throw new HTTPException(401, { message: 'Email 或密碼錯誤' });
 		}
 
-		await rateLimit.reset(db, emailKey);
+		await rateLimit.reset(db, rateLimit.LOGIN_BY_EMAIL, email);
 		const session = await createSession(db, user.id);
 		setSessionCookie(c, session.token, session.expiresAt);
 		return c.json({ user: publicUser(user) });
 	})
 	.post('/logout', async (c) => {
 		const token = getSessionToken(c);
-		if (token) await c.var.db.delete(sessions).where(eq(sessions.id, await sha256Hex(token)));
+		if (token) await destroySession(c.var.db, token);
 		clearSessionCookie(c);
 		return c.json({ ok: true });
 	})
@@ -102,7 +84,6 @@ export const authRoutes = new Hono<AppEnv>()
 			.update(users)
 			.set({ passwordHash: await hashPassword(newPassword) })
 			.where(eq(users.id, c.var.user.id));
-		// 改密碼後登出其他裝置
-		await db.delete(sessions).where(and(eq(sessions.userId, c.var.user.id), ne(sessions.id, c.var.sessionId)));
+		await destroyOtherSessions(db, c.var.user.id, c.var.sessionId);
 		return c.json({ ok: true });
 	});

@@ -2,16 +2,17 @@ import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { Hono, type Context } from 'hono';
 import { addDays, localDateTime, today, zonedTime } from '../../shared/dates';
 import { calendarExportQuerySchema } from '../../shared/schemas';
+import { HOUR_MS } from '../../shared/time';
 import { achievementUnlocks, attachments, events, notes, studySessions, subjects, tasks } from '../db/schema';
 import type { DB } from '../lib/db';
 import { toCsv } from '../lib/csv';
 import { buildCalendar, type IcsEvent } from '../lib/ics';
 import { round1 } from '../lib/stats';
 import { taskItemFields } from '../lib/tasks';
+import { publicUser } from '../lib/users';
 import { validate } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
 import type { AppEnv } from '../types';
-import { publicUser } from './auth';
 
 // 匯出只查本人的資料：每張表查一次（WHERE user_id = ?），不用 inArray，名稱對照在記憶體裡做
 
@@ -20,8 +21,6 @@ const MODE_LABEL = { pomodoro: '番茄鐘', stopwatch: '碼錶', manual: '手動
 const STATUS_LABEL = { todo: '待辦', doing: '進行中', done: '已完成' } as const;
 const PRIORITY_LABEL = { high: '高', medium: '中', low: '低' } as const;
 const KIND_LABEL = { exam: '考試', deadline: '截止日' } as const;
-
-const HOUR_MS = 3_600_000;
 
 /** RFC 5987：encodeURIComponent 不會編碼 ' ( ) *，但 filename* 裡不允許 */
 const rfc5987 = (s: string) => encodeURIComponent(s).replace(/['()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`);

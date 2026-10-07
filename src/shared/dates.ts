@@ -1,3 +1,5 @@
+import { DAY_MS, MINUTE_MS } from './time';
+
 // 以 'YYYY-MM-DD' 字串表示的「日曆日期」工具，前後端共用。
 // 日期運算一律在 UTC 正午進行，避免夏令時間或時區造成跨日誤差。
 
@@ -91,7 +93,7 @@ export function addDays(date: string, days: number): string {
 }
 
 export function diffDays(from: string, to: string): number {
-	return Math.round((toUtcNoon(to).getTime() - toUtcNoon(from).getTime()) / 86_400_000);
+	return Math.round((toUtcNoon(to).getTime() - toUtcNoon(from).getTime()) / DAY_MS);
 }
 
 /** 該日期所在週的週一 */
@@ -106,8 +108,6 @@ export function dateRange(from: string, to: string): string[] {
 	return out;
 }
 
-const DAY_MS = 86_400_000;
-
 /** 某個瞬間在該時區的牆上時間，換成「當作 UTC 的毫秒」（精確到分鐘） */
 function wallClock(epochMs: number, timeZone: string) {
 	const p = localParts(epochMs, timeZone);
@@ -115,7 +115,7 @@ function wallClock(epochMs: number, timeZone: string) {
 }
 
 /** 某個瞬間該時區的 UTC 偏移（毫秒）＝牆上時間 − UTC */
-const offsetAt = (epochMs: number, timeZone: string) => wallClock(epochMs, timeZone) - Math.floor(epochMs / 60_000) * 60_000;
+const offsetAt = (epochMs: number, timeZone: string) => wallClock(epochMs, timeZone) - Math.floor(epochMs / MINUTE_MS) * MINUTE_MS;
 
 /**
  * 某時區當地的 'YYYY-MM-DD' 加上 'HH:mm' 所對應的 epoch 毫秒。
