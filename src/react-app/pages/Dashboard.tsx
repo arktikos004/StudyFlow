@@ -13,7 +13,8 @@ import { EventDialog, TaskDialog, type TaskDefaults } from '../components/forms'
 import { Button, ButtonLink, Card, Duration, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack, Unit } from '../components/ui';
 import { daysIntoWeek, greetingFor } from '../lib/dashboard-format';
 import { formatDate, formatMinutes } from '../lib/format';
-import { useDashboard, useSubjects, useUser } from '../lib/queries';
+import { useDashboard, useSubjects } from '../lib/queries';
+import { useUser } from '../lib/account-queries';
 import { useTimerState } from '../lib/timer';
 
 /** 任務對話框：編輯既有任務，或帶預設值新增（例如某場考試的準備任務） */

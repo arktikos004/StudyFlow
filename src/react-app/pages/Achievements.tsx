@@ -15,7 +15,8 @@ import {
 	ProgressBar,
 	TextLink,
 } from '../components/ui';
-import { useAchievements, useUser } from '../lib/queries';
+import { useAchievements } from '../lib/queries';
+import { useUser } from '../lib/account-queries';
 import { achievementUnit, formatProgress, groupAchievements, nextMilestone, splitColumns, unlockedDate } from '../lib/achievement-display';
 import { AchievementIcon } from '../lib/achievement-icons';
 

@@ -14,7 +14,8 @@ import { useDebounced } from '../lib/debounce';
 import { useDeepLink } from '../lib/deep-link';
 import { notesSummary } from '../lib/notes-format';
 import { useNotesParams } from '../lib/notes-params';
-import { useNote, useNotes, useSubjects, useSummary, useUser, type NoteFilters } from '../lib/queries';
+import { useNote, useNotes, useSubjects, useSummary, type NoteFilters } from '../lib/queries';
+import { useUser } from '../lib/account-queries';
 
 export function NotesPage() {
 	const user = useUser();

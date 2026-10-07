@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import type { PublicUser } from '../../../shared/api-types';
 import { registerSchema } from '../../../shared/schemas';
-import { useDeleteAvatar, useUpdateProfile, useUploadAvatar } from '../../lib/queries';
+import { useDeleteAvatar, useUpdateProfile, useUploadAvatar } from '../../lib/account-queries';
 import { KEEP_PHOTO, type PhotoDraft } from '../../lib/profile-photo';
 import {
 	photoWasSaved,

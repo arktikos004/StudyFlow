@@ -14,7 +14,8 @@ import { SubjectIconTile } from '../components/subjects';
 import { Badge, Button, ButtonLink, Card, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack } from '../components/ui';
 import { isNotFound } from '../lib/api';
 import { formatMinutes } from '../lib/format';
-import { useSubjectOverview, useSubjects, useUser } from '../lib/queries';
+import { useSubjectOverview, useSubjects } from '../lib/queries';
+import { useUser } from '../lib/account-queries';
 import { useSubjectTone } from '../lib/subject-color';
 
 // 單科總覽（SUB-3）：/subjects/:id，資料用一次 API（useSubjectOverview）取得。

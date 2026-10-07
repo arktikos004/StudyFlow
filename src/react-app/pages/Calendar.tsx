@@ -24,7 +24,8 @@ import { useMinuteClock } from '../lib/clock';
 import { isDateParam, useDeepLink, useOpenDeepLink } from '../lib/deep-link';
 import { formatDateForToday, formatMinutes, formatMonthDay, formatRange } from '../lib/format';
 import { useMediaQuery } from '../lib/media-query';
-import { useEvents, useStudySessions, useSubjectMap, useTasks, useUser } from '../lib/queries';
+import { useEvents, useStudySessions, useSubjectMap, useTasks } from '../lib/queries';
+import { useUser } from '../lib/account-queries';
 import { useSubjectTone } from '../lib/subject-color';
 
 type View = 'month' | 'week';

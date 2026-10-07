@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation, useSearchParams } from 'react-router';
 import { safeNextPath } from '../lib/next-path';
-import { useMe } from '../lib/queries';
+import { useMe } from '../lib/account-queries';
 import { ErrorNote, PageLoader } from './ui';
 
 export function RequireAuth({ children }: { children: ReactNode }) {

@@ -14,7 +14,8 @@ import { useMinuteClock } from '../lib/clock';
 import { useDeepLink, useOpenDeepLink } from '../lib/deep-link';
 import { eventsSummary } from '../lib/events-format';
 import { formatDateForToday } from '../lib/format';
-import { useEvents, useSubjectMap, useSubjects, useUser } from '../lib/queries';
+import { useEvents, useSubjectMap, useSubjects } from '../lib/queries';
+import { useUser } from '../lib/account-queries';
 
 function EventCard({
 	event,

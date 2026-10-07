@@ -8,7 +8,7 @@ import { LogoMark } from '../components/Logo';
 import { SubjectChip } from '../components/subjects';
 import { Button, cn, Field, Input } from '../components/ui';
 import { fieldErrors, useFieldErrors } from '../lib/form-errors';
-import { useLogin, useRegister } from '../lib/queries';
+import { useLogin, useRegister } from '../lib/account-queries';
 import { useIsDark } from '../lib/theme';
 
 /** 品牌欄的筆記頁預覽（裝飾）：三列筆記，科目用推薦色的螢光筆 chip 標出 */

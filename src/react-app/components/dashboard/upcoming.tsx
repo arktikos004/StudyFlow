@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import type { EventItem } from '../../../shared/api-types';
 import { formatDate } from '../../lib/format';
 import { EVENT_KIND_LABEL } from '../../../shared/labels';
-import { useUser } from '../../lib/queries';
+import { useUser } from '../../lib/account-queries';
 import { CountdownTile } from '../countdown';
 import { SubjectTag } from '../subjects';
 import { Button, Card, CardHeader, EmptyState } from '../ui';

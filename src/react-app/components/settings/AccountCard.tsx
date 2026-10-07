@@ -7,7 +7,7 @@ import { changePasswordSchema } from '../../../shared/schemas';
 import { ApiError } from '../../lib/api';
 import { fieldErrors, useFieldErrors } from '../../lib/form-errors';
 import { timezoneLabel, timezoneOptions } from '../../lib/profile-format';
-import { useChangePassword, useUpdateProfile, useUser } from '../../lib/queries';
+import { useChangePassword, useUpdateProfile, useUser } from '../../lib/account-queries';
 import { Button, Card, CardHeader, cn, Field, Input, Select } from '../ui';
 import { EmailText } from './ProfileEmail';
 

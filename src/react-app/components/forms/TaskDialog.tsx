@@ -4,7 +4,8 @@ import type { ChecklistItem, EventItem, Task, TaskItem } from '../../../shared/a
 import { today } from '../../../shared/dates';
 import { taskSchema } from '../../../shared/schemas';
 import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL } from '../../../shared/labels';
-import { useCreateTask, useDeleteTask, useEvents, useUpdateTask, useUser, type TaskInput } from '../../lib/queries';
+import { useCreateTask, useDeleteTask, useEvents, useUpdateTask, type TaskInput } from '../../lib/queries';
+import { useUser } from '../../lib/account-queries';
 import { formatTaskTime, spentOf } from '../../lib/task-format';
 import { SubjectSelect } from '../subjects';
 import { ChecklistEditor } from '../tasks/ChecklistEditor';
