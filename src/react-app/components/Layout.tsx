@@ -12,9 +12,9 @@ import {
 	useSyncExternalStore,
 	type ReactNode,
 } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router';
+import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router';
 import { toast } from 'sonner';
-import { api } from '../lib/api';
+import { api, avatarUrl } from '../lib/api';
 import { useAchievements, useSummary, useUser } from '../lib/queries';
 import { diffUnlocked, parseSeen, seenKey } from '../lib/shell-achievements';
 import { achievementIcon } from '../lib/shell-icons';
@@ -24,7 +24,7 @@ import { useTimerEngine } from '../lib/timer';
 import { Logo } from './Logo';
 import { MOBILE_MAIN, NAV, NAV_GROUPS, type NavItem } from './nav';
 import { TimerNavIcon, TimerPill } from './TimerPill';
-import { Button, cn, Dialog, Kbd } from './ui';
+import { Avatar, Button, cn, Dialog, Kbd, type AvatarSize } from './ui';
 
 // 指令面板會用到科目元件與 zod（搜尋字數上限），分開打包：第一次打開時才下載，閒置時先預載
 type PaletteModule = typeof import('./CommandPalette');
@@ -266,6 +266,66 @@ function TabItem({
 	);
 }
 
+/**
+ * 帳號列（PRO-1）：頭像＋暱稱＋Email 整列是一個連結，到設定頁（個人檔案就在最上面）。
+ * 頭像是裝飾（旁邊就有暱稱）；名稱念成「小安，demo@example.com，查看個人檔案」。
+ * 已經在設定頁時再點一次會捲回最上面（同一個網址不會換頁，Layout 的換頁捲動不會觸發）。
+ */
+function AccountLink({
+	size,
+	onNavigate,
+	chevron,
+	className,
+}: {
+	size: AvatarSize;
+	/** 點了之後要做的事（手機「更多」選單：關閉選單） */
+	onNavigate?: () => void;
+	chevron?: boolean;
+	className?: string;
+}) {
+	const user = useUser();
+	const { pathname } = useLocation();
+	return (
+		<Link
+			to="/settings"
+			onClick={() => {
+				onNavigate?.();
+				if (pathname === '/settings') window.scrollTo(0, 0);
+			}}
+			className={cn('flex min-w-0 items-center gap-3 rounded-lg transition-colors duration-120 ease-out hover:bg-subtle', className)}
+		>
+			<Avatar name={user.displayName} src={avatarUrl(user)} size={size} />
+			<span className="min-w-0 flex-1">
+				<span className={cn('block truncate font-semibold text-ink', size === 'sm' ? 'text-sm' : 'text-dense')}>{user.displayName}</span>
+				<span className="sr-only">，</span>
+				{/* 側欄窄，長的 Email 會截斷：title 讓滑鼠使用者看得到完整的（螢幕報讀器念連結名稱，本來就是完整的） */}
+				<span title={user.email} className="block truncate text-meta text-ink-3">
+					{user.email}
+				</span>
+				<span className="sr-only">，查看個人檔案</span>
+			</span>
+			{chevron && <ChevronRight className="size-4 shrink-0 text-ink-3" aria-hidden />}
+		</Link>
+	);
+}
+
+/** 登出：一列文字按鈕（側欄與手機「更多」選單共用外觀），一眼就看得到，不藏進其他選單 */
+function LogoutButton({ onClick, className }: { onClick: () => void; className?: string }) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className={cn(
+				'flex w-full items-center gap-3 rounded-lg px-3 text-dense text-ink-2 transition-colors duration-120 ease-out hover:bg-subtle hover:text-ink',
+				className,
+			)}
+		>
+			<LogOut className="size-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+			登出
+		</button>
+	);
+}
+
 const tabClass = (active: boolean) =>
 	cn(
 		'flex h-16 w-full flex-col items-center justify-center gap-1 text-xs transition-colors duration-180 ease-out',
@@ -276,7 +336,6 @@ export function Layout() {
 	useTimerEngine();
 	useScrollTopOnNavigate();
 	useAchievementToasts();
-	const user = useUser();
 	const logout = useLogout();
 	const online = useOnline();
 	const location = useLocation();
@@ -359,19 +418,9 @@ export function Layout() {
 						</ul>
 					))}
 				</nav>
-				<div className="px-3 pt-2 pb-4">
-					<div className="px-3 pb-2">
-						<div className="truncate text-sm font-semibold">{user.displayName}</div>
-						<div className="truncate text-meta text-ink-3">{user.email}</div>
-					</div>
-					<button
-						type="button"
-						onClick={logout}
-						className="flex h-10 w-full items-center gap-3 rounded-lg px-3 text-dense text-ink-2 transition-colors duration-120 ease-out hover:bg-subtle hover:text-ink pointer-coarse:h-11"
-					>
-						<LogOut className="size-[18px]" strokeWidth={1.75} aria-hidden />
-						登出
-					</button>
+				<div className="space-y-0.5 px-3 pt-2 pb-4">
+					<AccountLink size="sm" className="px-2 py-2" />
+					<LogoutButton onClick={logout} className="h-10 pointer-coarse:h-11" />
 				</div>
 			</aside>
 
@@ -436,7 +485,8 @@ export function Layout() {
 			</nav>
 
 			<Dialog open={moreOpen} onClose={() => setMoreOpen(false)} title="更多功能">
-				<ul className="-mx-2 space-y-0.5">
+				<AccountLink size="md" chevron onNavigate={() => setMoreOpen(false)} className="-mx-2 px-3 py-2.5" />
+				<ul className="-mx-2 mt-2 space-y-0.5 border-t border-line pt-2">
 					{moreItems.map((n) => (
 						<li key={n.to}>
 							<NavLink
@@ -465,15 +515,9 @@ export function Layout() {
 						</li>
 					))}
 				</ul>
-				<div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-4">
-					<div className="min-w-0">
-						<div className="truncate text-sm font-semibold">{user.displayName}</div>
-						<div className="truncate text-meta text-ink-3">{user.email}</div>
-					</div>
-					<Button variant="ghost" onClick={logout}>
-						<LogOut className="size-4" aria-hidden />
-						登出
-					</Button>
+				<div className="-mx-2 mt-2 border-t border-line pt-2">
+					{/* 圖示和上面的選單項目一樣 20px，文字才對齊 */}
+					<LogoutButton onClick={logout} className="h-12 [&_svg]:size-5" />
 				</div>
 			</Dialog>
 
