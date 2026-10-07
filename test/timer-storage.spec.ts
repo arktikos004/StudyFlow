@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionInput } from '../src/shared/schemas';
 import { adoptLegacyTimerData, queueKey, readQueue, timerKey, writeQueue, type KeyValueStorage } from '../src/react-app/lib/timer-storage';
+import { MINUTE_MS } from '../src/shared/time';
 
 // 計時狀態與待上傳紀錄依使用者分開存：共用電腦換帳號時不會串到別人的帳號
 
@@ -14,7 +15,12 @@ function memoryStorage(initial: Record<string, string> = {}): KeyValueStorage & 
 	};
 }
 
-const record = (startedAt: number): SessionInput => ({ mode: 'pomodoro', startedAt, endedAt: startedAt + 25 * 60_000, durationSec: 1500 });
+const record = (startedAt: number): SessionInput => ({
+	mode: 'pomodoro',
+	startedAt,
+	endedAt: startedAt + 25 * MINUTE_MS,
+	durationSec: 1500,
+});
 
 describe('待上傳紀錄依使用者分開', () => {
 	it('A 的佇列不會出現在 B 的佇列', () => {

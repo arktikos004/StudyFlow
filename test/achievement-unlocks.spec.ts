@@ -4,6 +4,7 @@ import type { Achievement, ProfileSummary } from '../src/shared/api-types';
 import { addDays, startOfLocalDay } from '../src/shared/dates';
 import { recentBadges } from '../src/worker/lib/achievements';
 import { logSession, noonClient, type Client, type NoonClient } from './helpers';
+import { HOUR_MS, MINUTE_MS } from '../src/shared/time';
 
 async function achievements(c: Client): Promise<Record<string, Achievement>> {
 	const res = await c.get('/api/achievements');
@@ -29,11 +30,11 @@ async function unlockRows(userId: string) {
 
 /** 直接寫進 D1 的學習紀錄：不經過 API，就像開始記錄解鎖時間之前就有的資料 */
 async function insertSessionDirectly(c: NoonClient, date: string, minutes: number) {
-	const startedAt = startOfLocalDay(date, c.tz) + 9 * 3_600_000;
+	const startedAt = startOfLocalDay(date, c.tz) + 9 * HOUR_MS;
 	await env.DB.prepare(
 		"INSERT INTO study_sessions (id, user_id, mode, started_at, ended_at, duration_sec, created_at) VALUES (?, ?, 'manual', ?, ?, ?, ?)",
 	)
-		.bind(crypto.randomUUID(), c.user.id, startedAt, startedAt + minutes * 60_000, minutes * 60, Date.now())
+		.bind(crypto.randomUUID(), c.user.id, startedAt, startedAt + minutes * MINUTE_MS, minutes * 60, Date.now())
 		.run();
 }
 
@@ -78,8 +79,8 @@ describe('成就的解鎖時間（PRO-2）', () => {
 	it('徽章被收回時刪掉紀錄；之後再解鎖得到新的時間', async () => {
 		const c = await noonClient();
 		const base = Date.now();
-		const session = await at(base + 60_000, () => logSession(c, c.today, 8, 30));
-		expect((await achievements(c))['first-session'].unlockedAt).toBe(base + 60_000);
+		const session = await at(base + MINUTE_MS, () => logSession(c, c.today, 8, 30));
+		expect((await achievements(c))['first-session'].unlockedAt).toBe(base + MINUTE_MS);
 
 		expect((await c.del(`/api/study-sessions/${session.id}`)).status).toBe(200);
 		expect((await achievements(c))['first-session']).toMatchObject({ unlocked: false, unlockedAt: null });
@@ -94,7 +95,7 @@ describe('成就的解鎖時間（PRO-2）', () => {
 		for (let i = 0; i < 7; i++) await logSession(c, addDays(c.today, -6 + i), 8, 30);
 		expect((await achievements(c))['goal-streak-7']).toMatchObject({ unlocked: false, unlockedAt: null });
 
-		const now = Date.now() + 60_000;
+		const now = Date.now() + MINUTE_MS;
 		expect((await at(now, () => c.patch('/api/auth/me', { dailyGoalMinutes: 30 }))).status).toBe(200);
 		expect((await achievements(c))['goal-streak-7']).toMatchObject({ unlocked: true, unlockedAt: now });
 
@@ -111,8 +112,8 @@ describe('成就的解鎖時間（PRO-2）', () => {
 		const last = (await c.post('/api/tasks', { title: '第 50 個' })).data.task;
 		expect((await achievements(c))['tasks-50']).toMatchObject({ unlocked: false, unlockedAt: null });
 
-		await at(base + 60_000, () => c.patch(`/api/tasks/${last.id}`, { status: 'done' }));
-		expect((await achievements(c))['tasks-50']).toMatchObject({ unlocked: true, unlockedAt: base + 60_000 });
+		await at(base + MINUTE_MS, () => c.patch(`/api/tasks/${last.id}`, { status: 'done' }));
+		expect((await achievements(c))['tasks-50']).toMatchObject({ unlocked: true, unlockedAt: base + MINUTE_MS });
 		// 任務的寫入只比對任務的成就：沒有學習紀錄，其他成就不受影響
 		expect((await unlockRows(c.user.id)).map((r) => r.id)).toEqual(['tasks-50']);
 
@@ -127,7 +128,7 @@ describe('成就的解鎖時間（PRO-2）', () => {
 		await insertSessionDirectly(c, addDays(c.today, -3), 10);
 		const base = Date.now();
 		// 10 小時的補登：解鎖「起步 10 小時」
-		await at(base + 60_000, () => logSession(c, addDays(c.today, -1), 8, 600));
+		await at(base + MINUTE_MS, () => logSession(c, addDays(c.today, -1), 8, 600));
 		// 掌握第 10 題錯題（9 題直接寫入資料庫）：解鎖「錯題剋星」
 		const insert = env.DB.prepare(
 			"INSERT INTO notes (id, user_id, kind, title, mastered, created_at, updated_at) VALUES (?, ?, 'mistake', ?, 1, ?, ?)",
@@ -139,7 +140,7 @@ describe('成就的解鎖時間（PRO-2）', () => {
 		const s = await summary(c);
 		expect(s.achievements.badges).toEqual([
 			{ id: 'mastered-10', title: '錯題剋星', icon: 'brain', unlockedAt: base + 120_000 },
-			{ id: 'hours-10', title: '起步 10 小時', icon: 'clock', unlockedAt: base + 60_000 },
+			{ id: 'hours-10', title: '起步 10 小時', icon: 'clock', unlockedAt: base + MINUTE_MS },
 			{ id: 'first-session', title: '踏出第一步', icon: 'sparkles', unlockedAt: null },
 		]);
 		expect(s.achievements.unlocked).toBe(3);

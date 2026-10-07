@@ -3,14 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { makeTask, registeredClient, type Client } from './helpers';
 
 import { addDays, today } from '../src/shared/dates';
+import { MINUTE_MS } from '../src/shared/time';
 
 type Item = { id: string; title: string; done: boolean };
 const item = (i: number, title = `第 ${i} 項`): Item => ({ id: `item-${i}`, title, done: false });
 
 /** 在「現在」之前 endMinAgo 分鐘結束、長度 minutes 分鐘的學習紀錄 */
 async function logFor(c: Client, taskId: string | null, minutes: number, endMinAgo = 1, extra: Record<string, unknown> = {}) {
-	const endedAt = Date.now() - endMinAgo * 60_000;
-	const res = await c.post('/api/study-sessions', { mode: 'manual', startedAt: endedAt - minutes * 60_000, endedAt, taskId, ...extra });
+	const endedAt = Date.now() - endMinAgo * MINUTE_MS;
+	const res = await c.post('/api/study-sessions', { mode: 'manual', startedAt: endedAt - minutes * MINUTE_MS, endedAt, taskId, ...extra });
 	expect(res.status, JSON.stringify(res.data)).toBe(201);
 	return res.data.session;
 }
@@ -114,7 +115,12 @@ describe('任務的跨使用者隔離', () => {
 		expect((await bob.patch(`/api/tasks/${t.id}`, { checklist: [] })).status).toBe(404);
 		// 引用別人的 id 回 400
 		const now = Date.now();
-		const res = await bob.post('/api/study-sessions', { mode: 'manual', startedAt: now - 600_000, endedAt: now - 60_000, taskId: t.id });
+		const res = await bob.post('/api/study-sessions', {
+			mode: 'manual',
+			startedAt: now - 10 * MINUTE_MS,
+			endedAt: now - MINUTE_MS,
+			taskId: t.id,
+		});
 		expect(res.status).toBe(400);
 		expect(res.data.error).toBe('找不到指定的任務');
 
@@ -122,7 +128,7 @@ describe('任務的跨使用者隔離', () => {
 		await env.DB.prepare(
 			'INSERT INTO study_sessions (id, user_id, task_id, mode, started_at, ended_at, duration_sec, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
 		)
-			.bind(crypto.randomUUID(), bob.user.id, t.id, 'manual', now - 600_000, now - 60_000, 540, now)
+			.bind(crypto.randomUUID(), bob.user.id, t.id, 'manual', now - 10 * MINUTE_MS, now - MINUTE_MS, 540, now)
 			.run();
 		expect((await alice.get('/api/tasks')).data.tasks).toMatchObject([{ id: t.id, spentMinutes: 0, checklist: [item(1)] }]);
 		expect((await bob.get('/api/tasks')).data.tasks).toHaveLength(0);

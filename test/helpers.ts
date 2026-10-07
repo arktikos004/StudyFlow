@@ -1,6 +1,7 @@
 import { SELF } from 'cloudflare:test';
 import type { EventItem, NoteItem, Subject, TaskItem } from '../src/shared/api-types';
 import { addDays, startOfLocalDay, today } from '../src/shared/dates';
+import { HOUR_MS, MINUTE_MS } from '../src/shared/time';
 
 export const BASE = 'http://example.com';
 
@@ -85,8 +86,8 @@ export type NoonClient = Awaited<ReturnType<typeof noonClient>>;
 
 /** 在某個當地日期的 startHour 點開始記錄 minutes 分鐘（手動補登） */
 export async function logSession(c: NoonClient, date: string, startHour: number, minutes: number, extra: Record<string, unknown> = {}) {
-	const startedAt = startOfLocalDay(date, c.tz) + startHour * 3_600_000;
-	const res = await c.post('/api/study-sessions', { mode: 'manual', startedAt, endedAt: startedAt + minutes * 60_000, ...extra });
+	const startedAt = startOfLocalDay(date, c.tz) + startHour * HOUR_MS;
+	const res = await c.post('/api/study-sessions', { mode: 'manual', startedAt, endedAt: startedAt + minutes * MINUTE_MS, ...extra });
 	if (res.status !== 201) throw new Error(`log session failed: ${res.status} ${JSON.stringify(res.data)}`);
 	return res.data.session;
 }

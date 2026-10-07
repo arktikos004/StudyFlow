@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Achievement, ProfileSummary } from '../src/shared/api-types';
 import { addDays, startOfLocalDay, today, zonedTime } from '../src/shared/dates';
 import { createClient, logSession, noonClient, registeredClient, type Client } from './helpers';
+import { HOUR_MS, MINUTE_MS } from '../src/shared/time';
 
 const EMPTY_SUMMARY: ProfileSummary = {
 	totalMinutes: 0,
@@ -114,8 +115,8 @@ describe('個人檔案摘要（PRO-1）', () => {
 			return list.find((a) => a.id === 'hours-10')!.progress;
 		};
 
-		const end = Date.now() - 10 * 60_000;
-		const first = await c.post('/api/study-sessions', { mode: 'stopwatch', startedAt: end - 3_600_000, endedAt: end, durationSec: 3599 });
+		const end = Date.now() - 10 * MINUTE_MS;
+		const first = await c.post('/api/study-sessions', { mode: 'stopwatch', startedAt: end - HOUR_MS, endedAt: end, durationSec: 3599 });
 		expect(first.status, JSON.stringify(first.data)).toBe(201);
 		let s = await summary(c);
 		expect(s.totalMinutes).toBe(59);
@@ -125,7 +126,7 @@ describe('個人檔案摘要（PRO-1）', () => {
 		// 再多 1 秒剛好滿 1 小時：兩邊同時進位
 		const second = await c.post('/api/study-sessions', {
 			mode: 'stopwatch',
-			startedAt: end + 60_000,
+			startedAt: end + MINUTE_MS,
 			endedAt: end + 61_000,
 			durationSec: 1,
 		});
@@ -146,7 +147,7 @@ describe('個人檔案摘要（PRO-1）', () => {
 			[addDays(d, -1), '00:10'],
 		]) {
 			const startedAt = zonedTime(date, time, tz);
-			const res = await c.post('/api/study-sessions', { mode: 'manual', startedAt, endedAt: startedAt + 20 * 60_000 });
+			const res = await c.post('/api/study-sessions', { mode: 'manual', startedAt, endedAt: startedAt + 20 * MINUTE_MS });
 			expect(res.status, JSON.stringify(res.data)).toBe(201);
 		}
 		const taipei = await summary(c);
@@ -176,8 +177,8 @@ describe('個人檔案摘要的跨使用者隔離', () => {
 		const now = Date.now();
 		const hijack = await bob.post('/api/study-sessions', {
 			mode: 'manual',
-			startedAt: now - 600_000,
-			endedAt: now - 60_000,
+			startedAt: now - 10 * MINUTE_MS,
+			endedAt: now - MINUTE_MS,
 			taskId: task.id,
 		});
 		expect(hijack.status).toBe(400);
@@ -213,9 +214,11 @@ describe('連續天數超過一年（review 3）', () => {
 		const insert = env.DB.prepare(
 			"INSERT INTO study_sessions (id, user_id, mode, started_at, ended_at, duration_sec, created_at) VALUES (?, ?, 'manual', ?, ?, 600, ?)",
 		);
-		const startOf = (daysAgo: number) => startOfLocalDay(addDays(c.today, -daysAgo), c.tz) + 9 * 3_600_000;
+		const startOf = (daysAgo: number) => startOfLocalDay(addDays(c.today, -daysAgo), c.tz) + 9 * HOUR_MS;
 		await env.DB.batch(
-			Array.from({ length: 400 }, (_, i) => insert.bind(crypto.randomUUID(), c.user.id, startOf(i), startOf(i) + 600_000, startOf(i))),
+			Array.from({ length: 400 }, (_, i) =>
+				insert.bind(crypto.randomUUID(), c.user.id, startOf(i), startOf(i) + 10 * MINUTE_MS, startOf(i)),
+			),
 		);
 
 		expect(await summary(c)).toMatchObject({ totalSessions: 400, totalMinutes: 4000, currentStreak: 400, longestStreak: 400 });
@@ -223,7 +226,7 @@ describe('連續天數超過一年（review 3）', () => {
 
 		// 今天還沒讀書：從昨天算起
 		await env.DB.prepare('DELETE FROM study_sessions WHERE user_id = ? AND started_at >= ?')
-			.bind(c.user.id, startOf(0) - 9 * 3_600_000)
+			.bind(c.user.id, startOf(0) - 9 * HOUR_MS)
 			.run();
 		expect(await summary(c)).toMatchObject({ totalSessions: 399, currentStreak: 399, longestStreak: 399 });
 		expect((await c.get('/api/dashboard')).data.streak).toBe(365);

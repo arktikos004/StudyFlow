@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { today } from '../src/shared/dates';
 import { createClient, decodeText, PNG_1X1, registeredClient, type Client } from './helpers';
+import { MINUTE_MS } from '../src/shared/time';
 
 /** 簡單的 RFC 4180 解析：處理雙引號、逗號與欄位內換行 */
 function parseCsv(text: string): string[][] {
@@ -55,8 +56,9 @@ describe('JSON 備份（DATA-1）', () => {
 			await c.post('/api/tasks', { title: '複習', subjectId: subject.id, checklist: [{ id: 'a', title: '第一章', done: true }] })
 		).data.task;
 		const now = Date.now();
-		const session = (await c.post('/api/study-sessions', { mode: 'pomodoro', startedAt: now - 30 * 60_000, endedAt: now - 5 * 60_000 }))
-			.data.session;
+		const session = (
+			await c.post('/api/study-sessions', { mode: 'pomodoro', startedAt: now - 30 * MINUTE_MS, endedAt: now - 5 * MINUTE_MS })
+		).data.session;
 		const note = (await c.post('/api/notes', { kind: 'mistake', title: '錯題', tags: ['遞迴'] })).data.note;
 		const form = new FormData();
 		form.append('file', new File([PNG_1X1], 'q.png', { type: 'image/png' }));
@@ -99,7 +101,7 @@ describe('CSV 匯出（DATA-1）', () => {
 		await c.post('/api/study-sessions', {
 			mode: 'manual',
 			startedAt: s1,
-			endedAt: s1 + 90 * 60_000,
+			endedAt: s1 + 90 * MINUTE_MS,
 			subjectId: subject.id,
 			taskId: task.id,
 			note: '-1 分',
@@ -109,7 +111,7 @@ describe('CSV 匯出（DATA-1）', () => {
 		await c.post('/api/study-sessions', {
 			mode: 'pomodoro',
 			startedAt: s2,
-			endedAt: s2 + 30 * 60_000,
+			endedAt: s2 + 30 * MINUTE_MS,
 			durationSec: 25 * 60,
 			note: '第一行, "引號"\n第二行',
 		});
@@ -147,7 +149,7 @@ describe('CSV 匯出（DATA-1）', () => {
 			})
 		).data.task;
 		const now = Date.now();
-		await c.post('/api/study-sessions', { mode: 'manual', startedAt: now - 40 * 60_000, endedAt: now - 10 * 60_000, taskId: t1.id });
+		await c.post('/api/study-sessions', { mode: 'manual', startedAt: now - 40 * MINUTE_MS, endedAt: now - 10 * MINUTE_MS, taskId: t1.id });
 		const t2 = (await c.post('/api/tasks', { title: '@寫報告', priority: 'low' })).data.task;
 		const done = (await c.patch(`/api/tasks/${t2.id}`, { status: 'done' })).data.task;
 
@@ -284,8 +286,14 @@ describe('匯出的跨使用者隔離', () => {
 		expect((await bob.post('/api/tasks', { title: '偷掛科目', subjectId: secret.id })).status).toBe(400);
 		const now = Date.now();
 		expect(
-			(await bob.post('/api/study-sessions', { mode: 'manual', startedAt: now - 600_000, endedAt: now - 60_000, taskId: aliceTask.id }))
-				.status,
+			(
+				await bob.post('/api/study-sessions', {
+					mode: 'manual',
+					startedAt: now - 10 * MINUTE_MS,
+					endedAt: now - MINUTE_MS,
+					taskId: aliceTask.id,
+				})
+			).status,
 		).toBe(400);
 
 		const bobFiles = [

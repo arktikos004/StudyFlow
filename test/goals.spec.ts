@@ -2,6 +2,7 @@ import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { addDays, weekStart } from '../src/shared/dates';
 import { createClient, logSession, noonClient, registeredClient, makeSubject } from './helpers';
+import { HOUR_MS, MINUTE_MS } from '../src/shared/time';
 
 describe('每日／每週讀書目標（GOAL-1）', () => {
 	it('預設沒有目標；可以設定、只改其中一個、清除', async () => {
@@ -167,8 +168,8 @@ describe('目標的跨使用者隔離', () => {
 		const now = Date.now();
 		const res = await bob.post('/api/study-sessions', {
 			mode: 'manual',
-			startedAt: now - 3_600_000,
-			endedAt: now - 60_000,
+			startedAt: now - HOUR_MS,
+			endedAt: now - MINUTE_MS,
 			subjectId: math.id,
 		});
 		expect(res.status).toBe(400);

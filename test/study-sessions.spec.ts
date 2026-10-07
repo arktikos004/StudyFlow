@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { addDays } from '../src/shared/dates';
 import { logSession, makeSubject, noonClient, registeredClient, type Client } from './helpers';
+import { HOUR_MS, MINUTE_MS } from '../src/shared/time';
 
 /** 一小時前結束、長度 30 分鐘的紀錄 */
 async function makeSession(c: Client, body: Record<string, unknown> = {}) {
-	const endedAt = Date.now() - 60 * 60_000;
-	const res = await c.post('/api/study-sessions', { mode: 'manual', startedAt: endedAt - 30 * 60_000, endedAt, ...body });
+	const endedAt = Date.now() - 60 * MINUTE_MS;
+	const res = await c.post('/api/study-sessions', { mode: 'manual', startedAt: endedAt - 30 * MINUTE_MS, endedAt, ...body });
 	expect(res.status, JSON.stringify(res.data)).toBe(201);
 	return res.data.session;
 }
@@ -48,16 +49,16 @@ describe('編輯學習紀錄（TMR-2）', () => {
 		const c = await registeredClient();
 		const s = await makeSession(c, { durationSec: 20 * 60 }); // 30 分鐘的時段，實際專注 20 分
 
-		const longer = await c.patch(`/api/study-sessions/${s.id}`, { endedAt: s.endedAt + 15 * 60_000 });
-		expect(longer.data.session).toMatchObject({ endedAt: s.endedAt + 15 * 60_000, durationSec: 45 * 60 });
+		const longer = await c.patch(`/api/study-sessions/${s.id}`, { endedAt: s.endedAt + 15 * MINUTE_MS });
+		expect(longer.data.session).toMatchObject({ endedAt: s.endedAt + 15 * MINUTE_MS, durationSec: 45 * 60 });
 
-		const earlier = await c.patch(`/api/study-sessions/${s.id}`, { startedAt: s.startedAt - 60 * 60_000 });
+		const earlier = await c.patch(`/api/study-sessions/${s.id}`, { startedAt: s.startedAt - 60 * MINUTE_MS });
 		expect(earlier.data.session.durationSec).toBe(105 * 60);
 	});
 
 	it('沒給秒數時由起訖時間推算，至少 1 秒：新增與編輯用同一個算法（起訖只差 0.3 秒不會存成 0 秒）', async () => {
 		const c = await registeredClient();
-		const endedAt = Date.now() - 60 * 60_000;
+		const endedAt = Date.now() - 60 * MINUTE_MS;
 		const created = await c.post('/api/study-sessions', { mode: 'stopwatch', startedAt: endedAt - 300, endedAt });
 		expect(created.status, JSON.stringify(created.data)).toBe(201);
 		expect(created.data.session.durationSec).toBe(1);
@@ -72,7 +73,7 @@ describe('編輯學習紀錄（TMR-2）', () => {
 		const s = await makeSession(c);
 		expect((await c.patch(`/api/study-sessions/${s.id}`, { durationSec: 600 })).data.session.durationSec).toBe(600);
 
-		const startedAt = s.startedAt - 30 * 60_000; // 時段變成 60 分鐘
+		const startedAt = s.startedAt - 30 * MINUTE_MS; // 時段變成 60 分鐘
 		const both = await c.patch(`/api/study-sessions/${s.id}`, { startedAt, durationSec: 50 * 60 });
 		expect(both.data.session).toMatchObject({ startedAt, durationSec: 50 * 60 });
 
@@ -85,9 +86,9 @@ describe('編輯學習紀錄（TMR-2）', () => {
 		const c = await registeredClient();
 		const s = await makeSession(c);
 		const cases: [Record<string, unknown>, string][] = [
-			[{ endedAt: Date.now() + 60 * 60_000 }, '不能記錄未來的時間'],
-			[{ startedAt: s.endedAt - 25 * 3_600_000 }, '單次學習不可超過 24 小時'],
-			[{ startedAt: s.endedAt + 60_000 }, '結束時間必須晚於開始時間'],
+			[{ endedAt: Date.now() + 60 * MINUTE_MS }, '不能記錄未來的時間'],
+			[{ startedAt: s.endedAt - 25 * HOUR_MS }, '單次學習不可超過 24 小時'],
+			[{ startedAt: s.endedAt + MINUTE_MS }, '結束時間必須晚於開始時間'],
 			[{ endedAt: s.startedAt }, '結束時間必須晚於開始時間'],
 			[{ durationSec: 31 * 60 + 1 }, '學習秒數不可超過起訖時間'],
 			[{ subjectId: 'not-a-uuid' }, 'ID 格式錯誤'],
@@ -118,7 +119,7 @@ describe('編輯學習紀錄（TMR-2）', () => {
 			);
 		expect(await spent()).toEqual({ '任務 A': 30, '任務 B': 0 });
 
-		await c.patch(`/api/study-sessions/${s.id}`, { taskId: taskB.id, endedAt: s.endedAt + 15 * 60_000 });
+		await c.patch(`/api/study-sessions/${s.id}`, { taskId: taskB.id, endedAt: s.endedAt + 15 * MINUTE_MS });
 		expect(await spent()).toEqual({ '任務 A': 0, '任務 B': 45 });
 		expect((await c.get('/api/dashboard')).data.todayMinutes).toBe(45);
 		expect((await c.get('/api/stats?days=7')).data.daily.at(-1)).toMatchObject({
@@ -183,8 +184,8 @@ describe('學習紀錄列表的日期區間', () => {
 describe('學習紀錄', () => {
 	it('新增後出現在列表，並拒絕不合理的時間', async () => {
 		const c = await registeredClient();
-		const endedAt = Date.now() - 60_000;
-		const startedAt = endedAt - 25 * 60_000;
+		const endedAt = Date.now() - MINUTE_MS;
+		const startedAt = endedAt - 25 * MINUTE_MS;
 		const res = await c.post('/api/study-sessions', { mode: 'pomodoro', startedAt, endedAt });
 		expect(res.status).toBe(201);
 		expect(res.data.session.durationSec).toBe(25 * 60);

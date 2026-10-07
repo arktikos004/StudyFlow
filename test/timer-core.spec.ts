@@ -17,10 +17,10 @@ import {
 	type QueuedRecord,
 	type TimerState,
 } from '../src/react-app/lib/timer-core';
+import { DAY_MS, HOUR_MS, MINUTE_MS as MIN } from '../src/shared/time';
 
 const TZ = 'Asia/Taipei';
 const dayOf = (ms: number) => localDate(ms, TZ);
-const MIN = 60_000;
 // 2026-09-29 10:00 台北
 const T0 = Date.UTC(2026, 8, 29, 2, 0);
 const TODAY = dayOf(T0);
@@ -62,8 +62,8 @@ describe('番茄鐘到點切換（advance）', () => {
 	it('還沒到點、暫停中、碼錶、閒置都不會切換', () => {
 		expect(advance(focusing(T0), T0 + 25 * MIN - 1, dayOf).events).toEqual([]);
 		const paused = focusing(T0, { running: false, segmentStart: null, accumulatedMs: 24 * MIN });
-		expect(advance(paused, T0 + 10 * 3_600_000, dayOf).events).toEqual([]);
-		expect(advance(focusing(T0, { mode: 'stopwatch' }), T0 + 5 * 3_600_000, dayOf).events).toEqual([]);
+		expect(advance(paused, T0 + 10 * HOUR_MS, dayOf).events).toEqual([]);
+		expect(advance(focusing(T0, { mode: 'stopwatch' }), T0 + 5 * HOUR_MS, dayOf).events).toEqual([]);
 		expect(advance(defaultState(TODAY), T0, dayOf).events).toEqual([]);
 	});
 
@@ -84,7 +84,7 @@ describe('番茄鐘到點切換（advance）', () => {
 	});
 
 	it('輪數跨日歸零：前一天完成 3 個，今天的第一個仍是短休息', () => {
-		const yesterday = dayOf(T0 - 86_400_000);
+		const yesterday = dayOf(T0 - DAY_MS);
 		const s = focusing(T0, { cycles: 3, cyclesDate: yesterday });
 		const { state, events } = advance(s, T0 + 25 * MIN, dayOf);
 		expect(state).toMatchObject({ cycles: 1, cyclesDate: TODAY, breakKind: 'short' });
@@ -104,7 +104,7 @@ describe('番茄鐘到點切換（advance）', () => {
 		const { state, events } = advance(s, T0 + 25 * MIN, dayOf);
 		expect(state).toMatchObject({ phase: 'break', running: false, segmentStart: null, accumulatedMs: 0 });
 		expect(events).toEqual([{ type: 'focus-done', at: T0 + 25 * MIN, count: 1, breakKind: 'short', autoStarted: false }]);
-		expect(advance(state, T0 + 10 * 3_600_000, dayOf).events).toEqual([]);
+		expect(advance(state, T0 + 10 * HOUR_MS, dayOf).events).toEqual([]);
 	});
 
 	it('休息結束後自動專注：從休息結束的時刻開始下一輪', () => {
@@ -143,14 +143,14 @@ describe('番茄鐘到點切換（advance）', () => {
 
 	it('電腦睡了 3 小時：只記錄睡著前已經在跑的那一輪，絕不補記不在時的番茄', () => {
 		const s = focusing(T0, { autoStartBreak: true, autoStartFocus: true });
-		const { state, records, events } = advance(s, T0 + 3 * 3_600_000, dayOf);
+		const { state, records, events } = advance(s, T0 + 3 * HOUR_MS, dayOf);
 		expect(records).toHaveLength(1);
 		expect(records[0]).toMatchObject({ startedAt: T0, endedAt: T0 + 25 * MIN });
 		expect(state).toMatchObject({ phase: 'idle', running: false, cycles: 1 });
 		expect(events.map((e) => e.type)).toEqual(['focus-done', 'break-done']);
 		expect(events[1]).toMatchObject({ late: true, autoStarted: false });
 		// 醒來後再 tick 也不會多出紀錄
-		expect(advance(state, T0 + 3 * 3_600_000 + 1000, dayOf).records).toEqual([]);
+		expect(advance(state, T0 + 3 * HOUR_MS + 1000, dayOf).records).toEqual([]);
 	});
 
 	it('休息中電腦睡著、醒來時休息剛結束不到 1 分鐘：照常自動開始', () => {
@@ -241,7 +241,7 @@ describe('第 k／N 輪（roundInfo）', () => {
 	});
 
 	it('跨日歸零，但跨午夜的休息仍算前一天那一輪', () => {
-		const yesterday = dayOf(T0 - 86_400_000);
+		const yesterday = dayOf(T0 - DAY_MS);
 		expect(roundInfo({ ...defaultState(yesterday), cycles: 3 }, TODAY)).toEqual({ done: 0, round: 1, of: 4, filled: 0 });
 		const breakOverMidnight: TimerState = { ...defaultState(yesterday), phase: 'break', running: true, cycles: 3 };
 		expect(roundInfo(breakOverMidnight, TODAY)).toMatchObject({ done: 0, round: 3, filled: 3 });

@@ -3,6 +3,7 @@ import { registeredClient } from './helpers';
 
 import { today } from '../src/shared/dates';
 import { makeSubject, PNG_1X1 } from './helpers';
+import { MINUTE_MS } from '../src/shared/time';
 
 // Sprint 3 QA：第二個帳號用第一個帳號的 id 操作，所有路徑都不能成功
 describe('QA：跨使用者隔離矩陣', () => {
@@ -41,8 +42,8 @@ describe('QA：跨使用者隔離矩陣', () => {
 			['/api/tasks', { title: 't', eventId: ev.id }],
 			['/api/notes', { kind: 'note', title: 't', subjectId: sub.id }],
 			['/api/events', { kind: 'exam', title: 't', date: '2030-01-01', subjectId: sub.id }],
-			['/api/study-sessions', { mode: 'manual', startedAt: now - 60_000, endedAt: now - 1000, taskId: task.id }],
-			['/api/study-sessions', { mode: 'manual', startedAt: now - 60_000, endedAt: now - 1000, subjectId: sub.id }],
+			['/api/study-sessions', { mode: 'manual', startedAt: now - MINUTE_MS, endedAt: now - 1000, taskId: task.id }],
+			['/api/study-sessions', { mode: 'manual', startedAt: now - MINUTE_MS, endedAt: now - 1000, subjectId: sub.id }],
 			['/api/subjects/order', { ids: [sub.id] }],
 		];
 		for (const [path, body] of badRef) {
@@ -88,9 +89,9 @@ describe('使用者之間的資料隔離', () => {
 		expect((await bob.post('/api/tasks', { title: 'x', subjectId: subject.id })).status).toBe(400);
 		expect((await bob.post('/api/tasks', { title: 'x', eventId: ev.id })).status).toBe(400);
 		const now = Date.now();
-		expect((await bob.post('/api/study-sessions', { mode: 'manual', startedAt: now - 60_000, endedAt: now, taskId: task.id })).status).toBe(
-			400,
-		);
+		expect(
+			(await bob.post('/api/study-sessions', { mode: 'manual', startedAt: now - MINUTE_MS, endedAt: now, taskId: task.id })).status,
+		).toBe(400);
 
 		expect((await alice.get(`/api/tasks`)).data.tasks[0].title).toBe('Alice 的任務');
 	});

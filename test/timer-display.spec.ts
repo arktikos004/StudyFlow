@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { defaultState, timerReading, type TimerState } from '../src/react-app/lib/timer-core';
 import { dialCaption, phaseLabel, progressText, statusText, timerStage, todaySummary } from '../src/react-app/lib/timer-display';
+import { MINUTE_MS as MIN } from '../src/shared/time';
 
 const TODAY = '2026-10-07';
-const MIN = 60_000;
 const NOW = Date.UTC(2026, 9, 7, 4, 0);
 
 /** 在 NOW 之前 minutes 分鐘開始、一直在跑的狀態；running: false 時改成累積了 minutes 分鐘後停下 */

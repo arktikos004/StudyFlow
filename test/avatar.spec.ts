@@ -2,6 +2,7 @@ import { env } from 'cloudflare:test';
 import { describe, expect, it, vi } from 'vitest';
 import { AVATAR_MAX_BYTES } from '../src/shared/schemas';
 import { createClient, PNG_1X1, registeredClient, type Client } from './helpers';
+import { MINUTE_MS } from '../src/shared/time';
 
 const ascii = (s: string) => [...s].map((ch) => ch.charCodeAt(0));
 // 後端只看檔案開頭判斷格式，測試用最小的檔頭就夠了
@@ -54,7 +55,7 @@ describe('頭像（PRO-1）', () => {
 		const user = await uploadAvatar(c, PNG_1X1, 'application/octet-stream');
 		expect(user).toMatchObject({ id: c.user.id, email: c.email, displayName: c.user.displayName });
 		expect(user).not.toHaveProperty('avatarKey');
-		expect(Math.abs(user.avatarUpdatedAt - Date.now())).toBeLessThan(60_000);
+		expect(Math.abs(user.avatarUpdatedAt - Date.now())).toBeLessThan(MINUTE_MS);
 		expect((await c.get('/api/auth/me')).data.user.avatarUpdatedAt).toBe(user.avatarUpdatedAt);
 
 		const key = await storedKey(c.user.id);
@@ -249,7 +250,7 @@ describe('頭像的併發與時鐘（review 3）', () => {
 			const stamps: number[] = [];
 			for (let i = 0; i < 3; i++) stamps.push((await uploadAvatar(c)).avatarUpdatedAt);
 			expect(stamps).toEqual([T, T + 1, T + 2]);
-			now.mockReturnValue(T - 60_000); // 時鐘倒退一分鐘
+			now.mockReturnValue(T - MINUTE_MS); // 時鐘倒退一分鐘
 			expect((await uploadAvatar(c)).avatarUpdatedAt).toBe(T + 3);
 			now.mockReturnValue(T + 10_000); // 時鐘超過之後就用現在的時間
 			expect((await uploadAvatar(c)).avatarUpdatedAt).toBe(T + 10_000);
