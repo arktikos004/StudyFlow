@@ -1,6 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import type { ChecklistItem, Task, TaskItem } from '../../../shared/api-types';
+import type { ChecklistItem, EventItem, Task, TaskItem } from '../../../shared/api-types';
 import { today } from '../../../shared/dates';
 import { taskSchema } from '../../../shared/schemas';
 import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL } from '../../../shared/labels';
@@ -12,6 +12,16 @@ import { Dialog, Field, Input, Select, Textarea, useConfirm } from '../ui';
 import { DialogFooter, FormError } from './shared';
 
 const blankToNull = (v: string) => (v.trim() === '' ? null : v);
+
+/**
+ * 任務連結的考試要另外列出的選項文字：連結的考試不在「今天以後」的清單裡，就是已經結束；
+ * 清單還沒載入時先標「載入中」，不要誤標成已結束。在清單裡（或沒有連結）時不用另外列。
+ */
+function linkedEventLabel(eventId: string | null | undefined, upcoming: readonly EventItem[] | undefined): string | null {
+	if (!eventId) return null;
+	if (!upcoming) return '載入中…';
+	return upcoming.some((e) => e.id === eventId) ? null : '（已結束的考試）';
+}
 
 export type TaskDefaults = Partial<Pick<TaskInput, 'dueDate' | 'eventId' | 'subjectId'>>;
 
@@ -42,7 +52,8 @@ function TaskForm({
 	confirm: Confirm;
 }) {
 	const user = useUser();
-	const { data: events = [] } = useEvents({ from: today(user.timezone) });
+	const { data: loadedEvents } = useEvents({ from: today(user.timezone) });
+	const events = loadedEvents ?? [];
 	const [error, setError] = useState<string>();
 	const [form, setForm] = useState({
 		title: task?.title ?? '',
@@ -97,7 +108,7 @@ function TaskForm({
 	};
 
 	// 編輯舊任務時，連結的考試可能已經結束（不在「即將到來」清單中）
-	const pastEventId = task?.eventId && !events.some((e) => e.id === task.eventId) ? task.eventId : null;
+	const linkedLabel = linkedEventLabel(task?.eventId, loadedEvents);
 
 	return (
 		<form id="task-form" onSubmit={onSubmit} className="grid grid-cols-2 gap-4" noValidate>
@@ -162,7 +173,7 @@ function TaskForm({
 				{(id) => (
 					<Select id={id} value={form.eventId ?? ''} onChange={(e) => pickEvent(e.target.value || null)}>
 						<option value="">不連結</option>
-						{pastEventId && <option value={pastEventId}>（已結束的考試）</option>}
+						{linkedLabel && <option value={task?.eventId ?? ''}>{linkedLabel}</option>}
 						{events.map((ev) => (
 							<option key={ev.id} value={ev.id}>
 								{ev.date.slice(5).replace('-', '/')} {ev.title}
