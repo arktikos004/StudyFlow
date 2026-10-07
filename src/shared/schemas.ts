@@ -1,9 +1,13 @@
 import { z } from 'zod';
+import { isRealDate } from './dates';
 import { DAY_MS, MINUTE_MS } from './time';
 
 // 前後端共用的輸入驗證：後端用來擋錯誤資料，前端用來顯示同樣的錯誤訊息
 
-export const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式錯誤');
+export const dateString = z
+	.string()
+	.regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式錯誤')
+	.refine(isRealDate, '沒有這一天，請確認日期');
 const timeString = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '時間格式錯誤');
 const id = z.uuid('ID 格式錯誤');
 /** 列表的日期區間（?from=&to=），兩邊都可以省略 */

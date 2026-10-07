@@ -3,6 +3,7 @@ import { csrf } from 'hono/csrf';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 import { secureHeaders } from 'hono/secure-headers';
+import { z } from 'zod';
 import { createDb } from './lib/db';
 import { achievementRoutes } from './routes/achievements';
 import { attachmentRoutes } from './routes/attachments';
@@ -20,6 +21,9 @@ import { subjectRoutes } from './routes/subjects';
 import { summaryRoutes } from './routes/summary';
 import { taskRoutes } from './routes/tasks';
 import type { AppEnv } from './types';
+
+// 驗證錯誤的預設訊息用 zh-TW：schema 沒有自己寫訊息的欄位（例如列舉、ID 格式），原本會回 Zod 的英文訊息
+z.config(z.locales.zhTW());
 
 /** 每個請求一個資料庫連線物件，放在 c.var.db */
 const injectDb = createMiddleware<AppEnv>(async (c, next) => {

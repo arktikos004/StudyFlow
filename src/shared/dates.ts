@@ -73,6 +73,15 @@ export function localDateTime(epochMs: number, timeZone: string): string {
 	return dateTimeFormat(timeZone).format(epochMs);
 }
 
+/** 'YYYY-MM-DD' 是不是真的有這一天（2026-02-31、2026-13-01 都不是） */
+export function isRealDate(date: string): boolean {
+	const [y, m, d] = date.split('-').map(Number);
+	// 用 setUTCFullYear 而不是 Date.UTC：Date.UTC 會把 0–99 年當成 1900–1999
+	const utc = new Date(0);
+	utc.setUTCFullYear(y, m - 1, d);
+	return utc.getUTCFullYear() === y && utc.getUTCMonth() === m - 1 && utc.getUTCDate() === d;
+}
+
 export function today(timeZone: string): string {
 	return localDate(Date.now(), timeZone);
 }
