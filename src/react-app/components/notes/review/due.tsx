@@ -144,7 +144,9 @@ export function DueReview({
 			{!done && (
 				<div className="mb-4 flex flex-wrap items-center gap-2">
 					<ModeSwitch value="due" onChange={onMode} />
-					<SubjectSelect aria-label="科目" value={subjectId} onChange={onSubject} emptyLabel="所有科目" />
+					<div className="w-36">
+						<SubjectSelect aria-label="科目" value={subjectId} onChange={onSubject} emptyLabel="所有科目" />
+					</div>
 				</div>
 			)}
 			{body}
