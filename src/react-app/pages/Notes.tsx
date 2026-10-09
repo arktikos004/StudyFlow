@@ -63,11 +63,10 @@ export function NotesPage() {
 	// 列表與「帳號有沒有任何筆記」只在列表檢視需要：複習檢視不發這兩個請求
 	const listView = view !== 'review';
 	const notesQuery = useNotes(filters, { enabled: listView });
-	// 本人完全沒有筆記與錯題（不篩選的全部清單是空的）：頁首不放主要動作、篩選列隱藏，由空狀態負責（跨頁慣例）
-	const everything = useNotes({}, { enabled: listView });
-	const empty = listView && everything.data?.length === 0;
+	// 本人完全沒有筆記與錯題（頁首摘要的總數是 0）：頁首不放主要動作、篩選列隱藏，由空狀態負責（跨頁慣例）
+	const empty = listView && summary.data?.notesCount === 0;
 	// 還不知道有沒有資料（冷載入）：頁首動作、篩選列、列表都先不畫，不會先出現兩組 primary 再換成空狀態
-	const checking = listView && everything.isPending;
+	const checking = listView && summary.isPending;
 	const count = listView && !notesQuery.isPlaceholderData ? notesQuery.data?.length : undefined;
 	const summaryText = notesSummary({ count, due, filtered, empty });
 

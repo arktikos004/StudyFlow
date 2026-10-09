@@ -45,6 +45,7 @@ describe('頁首摘要 /api/summary', () => {
 			dueTodayCount: 2,
 			overdueCount: 1,
 			reviewDueCount: 2,
+			notesCount: 4,
 			nextExam: { id: next.id, title: '後天下午考', date: addDays(t, 2), time: '14:00', subjectId: subject.id },
 		});
 	});
@@ -56,6 +57,7 @@ describe('頁首摘要 /api/summary', () => {
 			dueTodayCount: 0,
 			overdueCount: 0,
 			reviewDueCount: 0,
+			notesCount: 0,
 			nextExam: null,
 		});
 		const exam = (await c.post('/api/events', { kind: 'exam', title: '今天的小考', date: c.today })).data.event;
@@ -121,7 +123,7 @@ describe('摘要的跨使用者隔離', () => {
 		const exam = (await alice.post('/api/events', { kind: 'exam', title: 'Alice 的考試', date: addDays(alice.today, 1) })).data.event;
 
 		const bobSummary = (await bob.get('/api/summary')).data;
-		expect(bobSummary).toMatchObject({ dueTodayCount: 0, overdueCount: 0, reviewDueCount: 0, nextExam: null });
+		expect(bobSummary).toMatchObject({ dueTodayCount: 0, overdueCount: 0, reviewDueCount: 0, notesCount: 0, nextExam: null });
 
 		// 別人的資料回 404；引用別人的 id 回 400
 		expect((await bob.patch(`/api/events/${exam.id}`, { date: addDays(alice.today, 30) })).status).toBe(404);
@@ -129,7 +131,7 @@ describe('摘要的跨使用者隔離', () => {
 		expect(hijack.status).toBe(400);
 		expect(hijack.data.error).toBe('找不到指定的考試或截止日');
 
-		expect((await alice.get('/api/summary')).data).toMatchObject({ overdueCount: 1, reviewDueCount: 1, nextExam: { id: exam.id } });
+		expect((await alice.get('/api/summary')).data).toMatchObject({ overdueCount: 1, reviewDueCount: 1, notesCount: 1, nextExam: { id: exam.id } });
 		expect((await alice.get('/api/dashboard')).data.upcomingEvents).toMatchObject([{ id: exam.id, taskTotal: 0, taskDone: 0 }]);
 	});
 
