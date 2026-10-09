@@ -29,6 +29,13 @@
       "when": 1791339397801,
       "tag": "0003_achievement_unlocks",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791524063490,
+      "tag": "0004_mastered_review_and_cleanup",
+      "breakpoints": true
     }
   ]
 }
