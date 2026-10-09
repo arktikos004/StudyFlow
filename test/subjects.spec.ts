@@ -27,6 +27,17 @@ describe('科目圖示（SUB-2）', () => {
 });
 
 describe('科目排序（SUB-2）', () => {
+	it('科目超過 200 個也能重新排序（數量不設上限）', async () => {
+		const c = await registeredClient();
+		const ids = Array.from({ length: 250 }, () => crypto.randomUUID());
+		const insert = env.DB.prepare('INSERT INTO subjects (id, user_id, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+		await env.DB.batch(ids.map((id, i) => insert.bind(id, c.user.id, `科目 ${i}`, '#2a78d6', i, Date.now() + i)));
+		const reversed = [...ids].reverse();
+		const res = await c.put('/api/subjects/order', { ids: reversed });
+		expect(res.status, JSON.stringify(res.data)).toBe(200);
+		expect(res.data.subjects.map((s: { id: string }) => s.id)).toEqual(reversed);
+	});
+
 	it('新科目排在最後；PUT /order 調整順序後，列表依新順序排列', async () => {
 		const c = await registeredClient();
 		const a = await makeSubject(c, 'A');

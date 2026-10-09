@@ -113,12 +113,11 @@ export const subjectSchema = z.object({
 });
 export const subjectUpdateSchema = subjectSchema.partial().extend({ archived: z.boolean().optional() });
 
-/** 科目的新順序：必須剛好是本人全部科目的 id（後端再檢查是否屬於本人） */
+/** 科目的新順序：必須剛好是本人全部科目的 id（後端再檢查是否屬於本人）。數量不設上限：後端用一條 SQL 更新，不受 D1 參數上限影響 */
 export const subjectOrderSchema = z.object({
 	ids: z
 		.array(id, { error: '科目清單不正確' })
 		.min(1, '科目清單不正確')
-		.max(200, '科目清單不正確')
 		.refine((ids) => new Set(ids).size === ids.length, '科目清單不正確'),
 });
 
