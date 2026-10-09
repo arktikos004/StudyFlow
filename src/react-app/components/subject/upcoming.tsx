@@ -1,10 +1,12 @@
-import { CalendarClock, ChevronRight, GraduationCap, MapPin, Plus } from 'lucide-react';
-import { useId, useState } from 'react';
+import { ChevronRight, GraduationCap, Plus } from 'lucide-react';
+import { useState } from 'react';
 import type { EventItem } from '../../../shared/api-types';
 import { EVENT_KIND_LABEL } from '../../../shared/labels';
-import { formatDateForToday, percent } from '../../lib/format';
+import { formatDateForToday } from '../../lib/format';
 import { CountdownTile } from '../countdown';
-import { Badge, Button, Card, CardHeader, EmptyState, ProgressBar } from '../ui';
+import { PrepProgress } from '../dashboard/exams';
+import { EventKindBadge, EventWhenWhere } from '../event-meta';
+import { Button, Card, CardHeader, EmptyState } from '../ui';
 import { ShowMore } from './show-more';
 
 // 單科總覽的「即將到來」：最近一場考試或截止日放大顯示，其他列在下面。
@@ -15,29 +17,7 @@ const EVENT_LIMIT = 3;
 /** 日期與時間（9/29（一） 14:00）；不是今年時加上年份 */
 const eventWhen = (event: EventItem, today: string) => [formatDateForToday(event.date, today), event.time].filter(Boolean).join(' ');
 
-function EventKindBadge({ kind }: { kind: EventItem['kind'] }) {
-	return (
-		<Badge tone="outline" icon={kind === 'exam' ? <GraduationCap aria-hidden /> : <CalendarClock aria-hidden />}>
-			{EVENT_KIND_LABEL[kind]}
-		</Badge>
-	);
-}
-
-function EventMeta({ event, today }: { event: EventItem; today: string }) {
-	return (
-		<p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-meta text-ink-2">
-			<span className="font-num tabular-nums">{eventWhen(event, today)}</span>
-			{event.location && (
-				<span className="inline-flex min-w-0 items-center gap-1">
-					<MapPin className="size-3.5 shrink-0" aria-hidden />
-					<span className="truncate">{event.location}</span>
-				</span>
-			)}
-		</p>
-	);
-}
-
-/** 下一場考試或截止日：倒數磚、名稱、時間地點、準備進度（連結到這場的任務完成數） */
+/** 下一場考試或截止日：倒數磚、名稱、時間地點、準備進度（和考試頁、總覽一樣的 PrepProgress） */
 function NextEvent({
 	event,
 	today,
@@ -51,9 +31,6 @@ function NextEvent({
 	color: string;
 	onOpen: () => void;
 }) {
-	const labelId = useId();
-	const pct = percent(event.taskDone, event.taskTotal);
-	const progressText = `${event.taskDone}／${event.taskTotal} 項任務，${pct}%`;
 	return (
 		<div className="flex items-start gap-4 px-4 pt-1 pb-4 sm:px-5">
 			<CountdownTile kind={event.kind} date={event.date} time={event.time} today={today} timeZone={timeZone} />
@@ -67,27 +44,10 @@ function NextEvent({
 					>
 						{event.title}
 					</button>
-					<EventMeta event={event} today={today} />
+					<EventWhenWhere event={event} today={today} className="mt-0.5" />
 				</div>
 				{event.taskTotal > 0 ? (
-					<div className="space-y-1.5">
-						<div className="flex items-baseline justify-between gap-3 text-meta">
-							<span id={labelId} className="text-ink-2">
-								準備進度
-							</span>
-							<span className="font-num text-ink-2 tabular-nums">
-								<span className="font-semibold text-ink">{event.taskDone}</span>／{event.taskTotal} 項任務，{pct}%
-							</span>
-						</div>
-						<ProgressBar
-							value={event.taskDone}
-							max={event.taskTotal}
-							labelledBy={labelId}
-							valueText={progressText}
-							color={color}
-							size="sm"
-						/>
-					</div>
+					<PrepProgress event={event} color={color} size="sm" />
 				) : (
 					<p className="text-meta text-ink-3">還沒有準備任務：新增任務時選擇這場{EVENT_KIND_LABEL[event.kind]}，就會計入準備進度。</p>
 				)}

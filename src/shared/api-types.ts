@@ -19,6 +19,8 @@ export type PublicUser = {
 	 * R2 的儲存位置（avatarKey）只在後端使用，不會出現在任何回應裡。
 	 */
 	avatarUpdatedAt: number | null;
+	/** 已掌握的錯題預設每幾天再複習一次；null = 不提醒（單則筆記可以另外設定） */
+	masteredReviewDays: number | null;
 };
 
 export type EventItem = StudyEvent & { taskTotal: number; taskDone: number };
@@ -72,6 +74,8 @@ export type SummaryResponse = {
 	overdueCount: number;
 	/** 還沒掌握、複習日在今天以前的筆記數（同 dashboard.reviewDueCount） */
 	reviewDueCount: number;
+	/** 本人的筆記與錯題總數（筆記頁用來判斷帳號是不是完全沒有資料） */
+	notesCount: number;
 	/** 下一場考試：kind = 'exam'、date >= 今天，依日期、時間排序的第一筆 */
 	nextExam: { id: string; title: string; date: string; time: string | null; subjectId: string | null } | null;
 };

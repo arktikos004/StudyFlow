@@ -6,7 +6,7 @@ export { Button, ButtonLink, MoreLink, TextLink, type ButtonSize, type ButtonVar
 export { MiniIconButton, ShowAllToggle, StretchedButton, TableToggle, ToggleButton } from './button-variants';
 export { cn } from './cn';
 export { Dialog } from './Dialog';
-export { Field, Input, SearchInput, Select, Textarea, type FieldAria, type FieldLayout } from './fields';
+export { Field, Input, SearchInput, Select, Textarea, type FieldAria } from './fields';
 export { type IconProp } from './icon';
 export { gridKeyTarget } from './keyboard';
 export { Card, CardHeader, PageHeader, PageStack, SectionLabel, type SectionLabelTone } from './layout';
@@ -14,7 +14,7 @@ export { usePrefersReducedMotion } from './motion';
 export { Countdown, Duration, Figure, NumDisplay, Unit, type NumSize } from './numbers';
 export { GoalProgress, ProgressBar, ProgressRing, type ProgressTone } from './progress';
 export { Segmented } from './Segmented';
-export { EmptyState, ErrorNote, PageLoader, Spinner } from './states';
+export { EmptyState, ErrorNote, InlineError, PageLoader, Spinner } from './states';
 export { Highlight, Kbd } from './text';
 export { Checkbox, Switch } from './toggles';
 export { useConfirm, type ConfirmOptions, type ConfirmTone } from './useConfirm';

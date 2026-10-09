@@ -11,16 +11,18 @@ import { UpcomingCard } from '../components/dashboard/upcoming';
 import { WeekCard } from '../components/dashboard/week';
 import { EventDialog, TaskDialog, type TaskDefaults } from '../components/forms';
 import { Button, ButtonLink, Card, Duration, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack, Unit } from '../components/ui';
+import { useUser } from '../lib/account-queries';
 import { daysIntoWeek, greetingFor } from '../lib/dashboard-format';
+import { usePageTitle } from '../lib/document-title';
 import { formatDate, formatMinutes } from '../lib/format';
 import { useDashboard, useSubjects } from '../lib/queries';
-import { useUser } from '../lib/account-queries';
 import { useTimerState } from '../lib/timer';
 
 /** 任務對話框：編輯既有任務，或帶預設值新增（例如某場考試的準備任務） */
 type TaskDialogState = { task?: Task; defaults?: TaskDefaults } | null;
 
 export function DashboardPage() {
+	usePageTitle('總覽');
 	const user = useUser();
 	const { data, isPending, error, refetch, isRefetching } = useDashboard();
 	// 等科目也到齊再畫，科目 chip 與顏色不會晚一步才出現

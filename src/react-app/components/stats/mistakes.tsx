@@ -35,12 +35,7 @@ export function MistakeMasteryCard({ mistakes }: { mistakes: StatsResponse['mist
 						)}
 					</>
 				) : (
-					<EmptyState
-						variant="inline"
-						className="px-0 sm:px-0"
-						title="還沒有錯題紀錄"
-						action={<MoreLink to="/notes?new=mistake">新增第一題錯題</MoreLink>}
-					/>
+					<EmptyState variant="inline" flush title="還沒有錯題紀錄" action={<MoreLink to="/notes?new=mistake">新增第一題錯題</MoreLink>} />
 				)}
 			</div>
 		</Card>

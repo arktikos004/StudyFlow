@@ -22,6 +22,7 @@ const note: NoteItem = {
 	reviewStage: 1,
 	nextReviewDate: '2026-10-08',
 	lastReviewedAt: null,
+	masteredReviewDays: null,
 	createdAt: 0,
 	updatedAt: 0,
 	attachments: [],

@@ -2,15 +2,16 @@ import { TriangleAlert } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import type { ChecklistItem, EventItem, Task, TaskItem } from '../../../shared/api-types';
 import { today } from '../../../shared/dates';
-import { taskSchema } from '../../../shared/schemas';
 import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL } from '../../../shared/labels';
-import { useCreateTask, useDeleteTask, useEvents, useUpdateTask, type TaskInput } from '../../lib/queries';
+import { ESTIMATE_MAX_MINUTES, taskSchema } from '../../../shared/schemas';
 import { useUser } from '../../lib/account-queries';
+import { fieldErrors, useFieldErrors } from '../../lib/form-errors';
+import { useCreateTask, useDeleteTask, useEvents, useUpdateTask, type TaskInput } from '../../lib/queries';
 import { formatTaskTime, spentOf } from '../../lib/task-format';
 import { SubjectSelect } from '../subjects';
 import { ChecklistEditor } from '../tasks/ChecklistEditor';
 import { Dialog, Field, Input, Select, Textarea, useConfirm } from '../ui';
-import { DialogFooter, FormError } from './shared';
+import { DialogFooter } from './shared';
 
 const blankToNull = (v: string) => (v.trim() === '' ? null : v);
 
@@ -25,6 +26,9 @@ function linkedEventLabel(eventId: string | null | undefined, upcoming: readonly
 }
 
 export type TaskDefaults = Partial<Pick<TaskInput, 'dueDate' | 'eventId' | 'subjectId'>>;
+
+/** 可能出錯的欄位，依畫面上的順序（送出時焦點移到第一個錯的欄位）；子項目由 ChecklistEditor 自己檢查 */
+const TASK_FIELDS = ['title', 'dueDate', 'estimatedMinutes', 'description'] as const;
 
 type Confirm = ReturnType<typeof useConfirm>[0];
 
@@ -55,7 +59,7 @@ function TaskForm({
 	const user = useUser();
 	const { data: loadedEvents } = useEvents({ from: today(user.timezone) });
 	const events = loadedEvents ?? [];
-	const [error, setError] = useState<string>();
+	const fields = useFieldErrors(TASK_FIELDS);
 	const [form, setForm] = useState({
 		title: task?.title ?? '',
 		description: task?.description ?? '',
@@ -83,8 +87,8 @@ function TaskForm({
 			estimatedMinutes: values.estimatedMinutes ? Number(values.estimatedMinutes) : null,
 		};
 		const parsed = taskSchema.safeParse(input);
-		if (!parsed.success) return setError(parsed.error.issues[0].message);
-		setError(undefined);
+		if (!parsed.success) return fields.show(fieldErrors(parsed.error.issues, TASK_FIELDS));
+		fields.show({});
 		onSave(input);
 	};
 
@@ -113,12 +117,17 @@ function TaskForm({
 
 	return (
 		<form id="task-form" onSubmit={onSubmit} className="grid grid-cols-2 gap-4" noValidate>
-			<Field label="任務名稱" className="col-span-2">
-				{(id) => (
+			<Field label="任務名稱" className="col-span-2" error={fields.errors.title}>
+				{(id, aria) => (
 					<Input
+						ref={fields.bind('title')}
 						id={id}
+						{...aria}
 						value={form.title}
-						onChange={(e) => setForm({ ...form, title: e.target.value })}
+						onChange={(e) => {
+							setForm({ ...form, title: e.target.value });
+							fields.clear('title');
+						}}
 						placeholder="例如：複習第 3 章、寫完 HW2"
 						maxLength={200}
 						autoFocus
@@ -128,8 +137,20 @@ function TaskForm({
 			<Field label="科目">
 				{(id) => <SubjectSelect id={id} value={form.subjectId} onChange={(subjectId) => setForm({ ...form, subjectId })} />}
 			</Field>
-			<Field label="期限（選填）">
-				{(id) => <Input id={id} type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />}
+			<Field label="期限（選填）" error={fields.errors.dueDate}>
+				{(id, aria) => (
+					<Input
+						ref={fields.bind('dueDate')}
+						id={id}
+						{...aria}
+						type="date"
+						value={form.dueDate}
+						onChange={(e) => {
+							setForm({ ...form, dueDate: e.target.value });
+							fields.clear('dueDate');
+						}}
+					/>
+				)}
 			</Field>
 			<Field label="優先度">
 				{(id) => (
@@ -156,16 +177,22 @@ function TaskForm({
 			<Field
 				label="預估時間（分鐘）"
 				hint={spent > 0 ? <SpentHint spent={spent} estimate={Number(form.estimatedMinutes) || null} /> : undefined}
+				error={fields.errors.estimatedMinutes}
 			>
-				{(id) => (
+				{(id, aria) => (
 					<Input
+						ref={fields.bind('estimatedMinutes')}
 						id={id}
+						{...aria}
 						type="number"
 						inputMode="numeric"
 						min={1}
-						max={1440}
+						max={ESTIMATE_MAX_MINUTES}
 						value={form.estimatedMinutes}
-						onChange={(e) => setForm({ ...form, estimatedMinutes: e.target.value })}
+						onChange={(e) => {
+							setForm({ ...form, estimatedMinutes: e.target.value });
+							fields.clear('estimatedMinutes');
+						}}
 						placeholder="例如：60"
 					/>
 				)}
@@ -184,12 +211,21 @@ function TaskForm({
 				)}
 			</Field>
 			<ChecklistEditor items={form.checklist} onChange={(checklist) => setForm((f) => ({ ...f, checklist }))} onAllDone={onAllDone} />
-			<Field label="說明（選填）" className="col-span-2">
-				{(id) => (
-					<Textarea id={id} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={5000} />
+			<Field label="說明（選填）" className="col-span-2" error={fields.errors.description}>
+				{(id, aria) => (
+					<Textarea
+						ref={fields.bind('description')}
+						id={id}
+						{...aria}
+						value={form.description}
+						onChange={(e) => {
+							setForm({ ...form, description: e.target.value });
+							fields.clear('description');
+						}}
+						maxLength={5000}
+					/>
 				)}
 			</Field>
-			<FormError error={error} />
 		</form>
 	);
 }

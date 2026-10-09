@@ -6,7 +6,7 @@ import { renderIcon, type IconProp } from './icon';
 
 /**
  * 卡片：圓角 xl、邊框 line、陰影 sm。卡片裡不放卡片。
- * variant：inset（內嵌、subtle 底，無邊框陰影）、plain（只有邊框，無陰影）。
+ * variant：plain（只有邊框，無陰影），例如已經過去的考試。
  * interactive：整張可點的卡片才加（hover 時邊框加深、陰影 md）；靜態卡片不要 hover 效果。
  */
 export function Card({
@@ -18,21 +18,16 @@ export function Card({
 }: {
 	className?: string;
 	children: ReactNode;
-	as?: 'section' | 'div' | 'article' | 'li';
-	variant?: 'default' | 'inset' | 'plain';
+	as?: 'section' | 'div' | 'article';
+	variant?: 'default' | 'plain';
 	interactive?: boolean;
 }) {
 	return (
 		<As
 			className={cn(
-				'rounded-xl',
-				variant === 'default' && 'border border-line bg-card shadow-sm',
-				variant === 'plain' && 'border border-line bg-card',
-				variant === 'inset' && 'bg-subtle',
-				interactive &&
-					(variant === 'inset'
-						? 'transition-colors duration-120 ease-out hover:bg-line'
-						: 'transition-[border-color,box-shadow] duration-120 ease-out hover:border-line-strong hover:shadow-md'),
+				'rounded-xl border border-line bg-card',
+				variant === 'default' && 'shadow-sm',
+				interactive && 'transition-[border-color,box-shadow] duration-120 ease-out hover:border-line-strong hover:shadow-md',
 				className,
 			)}
 		>
@@ -130,7 +125,7 @@ export function SectionLabel({
 	className,
 	children,
 }: {
-	as?: 'h2' | 'h3' | 'h4' | 'p' | 'div';
+	as?: 'h2' | 'h3';
 	size?: 'meta' | 'sm';
 	tone?: SectionLabelTone;
 	icon?: IconProp;

@@ -1,6 +1,7 @@
 import { addDays, localDate, localDateTime, weekStart } from '../../../shared/dates';
+import { formatStudyMinutes, spokenDate } from '../../lib/time-format';
 
-// 月曆的純函式（有測試）：月格、鍵盤移動、學習紀錄依使用者時區切成每天的時段、重疊時段的欄位配置。
+// 月曆的純函式（有測試）：月格、格子的報讀、鍵盤移動、學習紀錄依使用者時區切成每天的時段、重疊時段的欄位配置。
 
 export const DAY_MINUTES = 24 * 60;
 /** 考試沒有結束時間：時間軸上固定畫 30 分鐘高 */
@@ -17,6 +18,31 @@ export function eventStartMinute(time: string | null | undefined): number | null
 export function monthGrid(month: string): string[] {
 	const start = weekStart(`${month}-01`);
 	return Array.from({ length: 42 }, (_, i) => addDays(start, i));
+}
+
+/**
+ * 月格的報讀：日期、今天、考試／截止日、任務、讀書時間。
+ * 「N 項任務到期」和頁首摘要一樣不算已完成的；已完成的另外報（格子裡看得到劃掉的任務）。
+ */
+export function dayCellLabel(
+	date: string,
+	today: string,
+	items: { events: readonly { kind: string }[]; tasks: readonly { status: string }[] } | undefined,
+	minutes: number,
+): string {
+	const parts = [spokenDate(date)];
+	if (date === today) parts.push('今天');
+	const exams = items?.events.filter((e) => e.kind === 'exam').length ?? 0;
+	const deadlines = (items?.events.length ?? 0) - exams;
+	const done = items?.tasks.filter((t) => t.status === 'done').length ?? 0;
+	const due = (items?.tasks.length ?? 0) - done;
+	if (exams) parts.push(`${exams} 場考試`);
+	if (deadlines) parts.push(`${deadlines} 個截止日`);
+	if (due) parts.push(`${due} 項任務到期`);
+	if (done) parts.push(`${done} 項任務已完成`);
+	if (minutes >= 1) parts.push(`讀書 ${formatStudyMinutes(minutes)}`);
+	if (!exams && !deadlines && !due && !done && minutes < 1) parts.push('沒有安排');
+	return parts.join('，');
 }
 
 /** 從 date 所在週的週一開始的 7 天 */

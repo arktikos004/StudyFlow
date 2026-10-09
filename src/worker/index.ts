@@ -4,6 +4,7 @@ import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 import { secureHeaders } from 'hono/secure-headers';
 import { z } from 'zod';
+import { deleteExpired } from './lib/cleanup';
 import { createDb } from './lib/db';
 import { achievementRoutes } from './routes/achievements';
 import { attachmentRoutes } from './routes/attachments';
@@ -73,4 +74,10 @@ app.onError((err, c) => {
 	return c.json({ error: '伺服器發生錯誤，請稍後再試' }, 500);
 });
 
-export default app;
+export default {
+	fetch: app.fetch,
+	/** 每天台北時間 03:00 清掉過期的登入與失敗計數（wrangler.jsonc 的 triggers.crons；Cron 用 UTC） */
+	scheduled(_controller, env, ctx) {
+		ctx.waitUntil(deleteExpired(createDb(env.DB)));
+	},
+} satisfies ExportedHandler<Env>;

@@ -1,10 +1,12 @@
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
+import { today } from '../../shared/dates';
 import { changePasswordSchema, loginSchema, registerSchema, updateProfileSchema } from '../../shared/schemas';
 import { users } from '../db/schema';
 import { createSession, destroyOtherSessions, destroySession } from '../lib/auth-session';
 import { hasValues } from '../lib/db';
+import { rescheduleMasteredNotes } from '../lib/notes';
 import { hashPassword, verifyLoginPassword, verifyPassword } from '../lib/password';
 import * as rateLimit from '../lib/rate-limit';
 import { publicUser } from '../lib/users';
@@ -68,8 +70,20 @@ export const authRoutes = new Hono<AppEnv>()
 	// 每日目標與時區會改變學習紀錄的成就（「說到做到」、連續天數）
 	.patch('/me', requireAuth, recordAchievementUnlocks('study'), validate('json', updateProfileSchema), async (c) => {
 		const input = c.req.valid('json');
-		if (!hasValues(input)) return c.json({ user: publicUser(c.var.user) });
-		const user = await c.var.db.update(users).set(input).where(eq(users.id, c.var.user.id)).returning().get();
+		const db = c.var.db;
+		const current = c.var.user;
+		if (!hasValues(input)) return c.json({ user: publicUser(current) });
+		const updateUser = db.update(users).set(input).where(eq(users.id, current.id)).returning();
+		// 改了已掌握題目的預設間隔：跟著預設的已掌握題目一起重新排下次複習（同一個交易）
+		const daysChanged = input.masteredReviewDays !== undefined && input.masteredReviewDays !== current.masteredReviewDays;
+		const [user] = daysChanged
+			? (
+					await db.batch([
+						updateUser,
+						rescheduleMasteredNotes(db, current.id, today(input.timezone ?? current.timezone), input.masteredReviewDays ?? null),
+					])
+				)[0]
+			: await updateUser;
 		// 後面的 middleware（成就的解鎖時間）要用更新後的每日目標與時區
 		c.set('user', user);
 		return c.json({ user: publicUser(user) });

@@ -20,12 +20,13 @@ import { EventDialog, TaskDialog } from '../components/forms';
 import { SessionDialog } from '../components/SessionDialog';
 import { SubjectTag } from '../components/subjects';
 import { Button, Card, ErrorNote, PageHeader, PageStack, Segmented } from '../components/ui';
+import { useUser } from '../lib/account-queries';
 import { useMinuteClock } from '../lib/clock';
 import { isDateParam, useDeepLink, useOpenDeepLink } from '../lib/deep-link';
+import { usePageTitle } from '../lib/document-title';
 import { formatDateForToday, formatMinutes, formatMonthDay, formatRange } from '../lib/format';
 import { useMediaQuery } from '../lib/media-query';
 import { useEvents, useStudySessions, useSubjectMap, useTasks } from '../lib/queries';
-import { useUser } from '../lib/account-queries';
 import { useSubjectTone } from '../lib/subject-color';
 
 type View = 'month' | 'week';
@@ -43,6 +44,7 @@ function readView(): View {
 type OpenHit = { id: string; event?: EventItem; task?: Task };
 
 export function CalendarPage() {
+	usePageTitle('月曆');
 	const user = useUser();
 	const tz = user.timezone;
 	const today = todayOf(tz);

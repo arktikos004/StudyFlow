@@ -1,30 +1,14 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react';
 import type { EventItem, Task } from '../../../shared/api-types';
 import type { SubjectTone } from '../../../shared/color';
-import { formatStudyMinutes, spokenDate } from '../../lib/time-format';
 import { cn } from '../ui';
 import { EventChip, TaskChip } from './chips';
-import { monthGrid, moveDate } from './layout';
+import { dayCellLabel, monthGrid, moveDate } from './layout';
 
 export type DayItems = { events: EventItem[]; tasks: Task[] };
 
 const WEEK_HEAD = ['一', '二', '三', '四', '五', '六', '日'];
 const WEEK_HEAD_FULL = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
-
-/** 格子的報讀：日期、今天、考試／截止日／任務數、讀書時間 */
-function cellLabel(date: string, today: string, items: DayItems | undefined, minutes: number) {
-	const parts = [spokenDate(date)];
-	if (date === today) parts.push('今天');
-	const exams = items?.events.filter((e) => e.kind === 'exam').length ?? 0;
-	const deadlines = (items?.events.length ?? 0) - exams;
-	const tasks = items?.tasks.length ?? 0;
-	if (exams) parts.push(`${exams} 場考試`);
-	if (deadlines) parts.push(`${deadlines} 個截止日`);
-	if (tasks) parts.push(`${tasks} 項任務到期`);
-	if (minutes >= 1) parts.push(`讀書 ${formatStudyMinutes(minutes)}`);
-	if (!exams && !deadlines && !tasks && minutes < 1) parts.push('沒有安排');
-	return parts.join('，');
-}
 
 /**
  * 月檢視：WAI-ARIA grid（grid、row、gridcell 三層），只有一個 tab stop（選取的那天）。
@@ -111,7 +95,7 @@ export function MonthView({
 								tabIndex={d === tabStop ? 0 : -1}
 								aria-selected={isSel}
 								aria-current={isToday ? 'date' : undefined}
-								aria-label={cellLabel(d, today, items, minutes)}
+								aria-label={dayCellLabel(d, today, items, minutes)}
 								onClick={() => onSelect(d)}
 								onDoubleClick={() => onCreate(d)}
 								onKeyDown={(e) => onKeyDown(e, d)}

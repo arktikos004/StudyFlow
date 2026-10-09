@@ -313,7 +313,7 @@
   - 標籤 14/600 ink-2。
   - 提示 13 ink-3；錯誤 13 danger 加圖示。兩者都用 aria-describedby 連到欄位，錯誤時加 aria-invalid。
   - 輸入框：在卡片上用 page 色內嵌底；邊框 line-field；focus 時邊框變 accent，外加 3px 的 accent/20 光環。
-  - 版型：stacked（預設，標籤在上）；inline（Sprint 2）標籤與提示在左、欄位在右，用在設定列、短數字欄位。
+  - 標籤在上、欄位在中間、提示或錯誤在下（Sprint 5 刪掉沒有人用的 inline 版型）。
 - **Badge**：
   - 高 20px，12px 字，圓角 sm。
   - 狀態一律是圖示加文字；標籤用 outline；錯題、筆記用中性色加圖示。
@@ -324,14 +324,14 @@
   - 圓形。有照片時顯示照片（`object-cover`，邊緣 ink 10% 的 1px 細線）；沒有照片、或照片載入失敗（例如離線）時，顯示暱稱的第一個字素（`firstGrapheme`，emoji、組合字不切半；拉丁字母轉大寫），accent 底、on-accent 字，跟著主題色。載入失敗後，連回網路（`online` 事件）時會再試一次，側欄的頭像不會一直停在首字。
   - 照片載入中是 subtle 底，不先閃一下首字；失敗才換成首字，src 換了會重新載入。
   - 尺寸：sm 32（側欄）、md 40（手機選單）、lg 72（個人檔案）、xl 96（編輯對話框的預覽）。首字 600。
-  - 無障礙：旁邊已經有暱稱文字時是裝飾（`aria-hidden`、`alt=""`）；單獨出現時給 `label`（`role="img"`）。
+  - 無障礙：是裝飾（`aria-hidden`、`alt=""`），用到的地方旁邊都有暱稱文字。要單獨出現時再加無障礙名稱（Sprint 5 刪掉沒有人用的 `label`）。
   - 不可當成按鈕或連結的唯一內容；要可以點時，整列（頭像＋暱稱）一起當連結。
 
 **版面元件**
 - **Card**：
   - 圓角 xl，邊框 line，陰影 sm。
   - 只有可互動的卡片才有 hover 效果。
-  - 變體：inset、plain。
+  - 變體：plain（只有邊框、沒有陰影），例如已經過去的考試。
   - 卡片裡不放卡片。
 - **CardHeader**：h2，可加 meta，動作用文字加 ChevronRight。圖示直接傳 lucide 元件（18px、ink-3 由元件決定）。
 - **PageHeader**：h1，下面放即時摘要，或什麼都不放；上方可以放 eyebrow（日期這類小字）。下方間距是區塊間距（手機 24、桌面 32）。
@@ -343,6 +343,8 @@
 - **EmptyState**：
   - page 版：圖示圓、標題、一句邀請，加上 primary 動作。
   - inline 版：一行文字加 ghost 動作。
+  - `flush`（Sprint 5）：放在已經有左右內距的容器裡（例如卡片的內容區）時，不再加自己的左右內距，和旁邊的內容對齊。不要用 `className="px-0"` 去蓋：產生的 CSS 裡預設的 `px-4`、`sm:px-5` 排在後面，蓋不掉。
+- **InlineError**（Sprint 5）：行內錯誤，圖示加紅字、`role="alert"`。欄位底下用預設的 sm（13px、14px 圖示），整張表單的錯誤放在送出按鈕上方、用 md（14px、16px 圖示）。`Field` 的 `error` 就是用它；不要再自己組「圖示加 text-danger」。
 
 **覆蓋層**
 - **Dialog**：
@@ -408,6 +410,10 @@
   - 密碼：平常只有一列（「密碼」＋「變更後，其他裝置會登出」＋「變更密碼」按鈕，`aria-expanded`、ChevronDown 轉 180°），按了才在下面展開表單（漸進揭露，不用對話框）。送出中不能取消或收起（結果要有地方顯示）。
     - 表單：目前密碼、新密碼（至少 8 個字元）、確認新密碼，`autoComplete` 正確，另有隱藏的 username（Email）讓密碼管理工具知道是哪個帳號。錯誤在欄位旁、送出時焦點到第一個錯誤；目前密碼不對（後端 400）標在「目前密碼」，其他失敗在按鈕上方。
     - 「取消」ghost、「更新密碼」secondary；成功時 toast「密碼已更新，其他裝置已登出」、收起、焦點回到「變更密碼」。滑鼠操作時展開後焦點進「目前密碼」，觸控裝置不自動 focus。
+- **錯題複習卡**（Sprint 5，NOTE-3，`components/settings/MasteredReviewCard.tsx`，讀書目標卡的下面）：
+  - 一句說明（錯題在第 1、3、7、14、30 天提醒，都記得就算已掌握），加上「已掌握的錯題」選單：不提醒（預設）、每 7／14／30／60／90 天、自訂天數（選了才出現「每 [  ] 天」的輸入框，1–365）。
+  - 「儲存」是 primary，沒改時停用；自訂天數不對時錯誤在欄位底下（InlineError），不送出。成功時 toast「已更新錯題複習的設定」。
+  - 選單是 `components/MasteredReviewField.tsx`，和筆記編輯共用；選項與值的轉換在 `lib/mastered-review.ts`（有單元測試）。
 - **共用小元件**（Sprint 1 由設計師提供）：
   - ProgressBar、ProgressRing
   - Switch、Checkbox
@@ -434,6 +440,8 @@
   - 顏色依語意：有逾期是 danger，否則 warning。桌面是 soft 膠囊（`bg-*-soft text-*`）靠右；手機是實心膠囊（`bg-danger／bg-warning`＋on-accent 字＋2px card 外圈）疊在圖示右上角。
   - 數字本身 aria-hidden，報讀文字接在名稱後面：「學習任務，3 項待處理，其中 1 項逾期」「筆記與錯題，2 項待複習」。
 - **換頁**：路徑改變時捲回頂端；上一頁／下一頁交給瀏覽器還原；只改網址參數（篩選、`?open=`）不捲動。
+- **瀏覽器標題**（Sprint 5，WCAG 2.4.2）：每一頁是「頁面名稱｜StudyFlow」，名稱和導覽一致（「月曆｜StudyFlow」）；單科總覽是科目名稱，登入、註冊、找不到頁面各有自己的名稱。計時中改成「24:13 專注中｜StudyFlow」，換到別頁也一樣，停下來後回到頁面名稱。每頁用 `lib/document-title.ts` 的 `usePageTitle`，計時由 `TimerPill` 的 `useTimerTitle` 提供。
+- **新版本提示**（Sprint 5）：部署新版後，Service Worker 裝好新版時跳 toast「有新版本」，附「重新載入」動作，不會自己重新整理（可能正在編輯）；不按的話，所有分頁都關掉、下次開啟就是新版（`lib/service-worker.ts`）。
 
 **頁面元件**
 - **計時**：進度環是科目 mark 疊在 tint 軌道上；數字用 font-num；番茄數以圓點顯示；`role="timer"`。
@@ -441,6 +449,10 @@
   - 結構是 grid → row → gridcell，可用方向鍵移動。
   - 今天：accent 圓底；選取中：內框 ring。
   - chip 用科目 tint 加圖示。
+- **錯題的複習狀態**（Sprint 5，NOTE-3）：
+  - 到期（下次複習日 ≤ 今天）一律是「待複習」（warning＋Brain），包括選了定期複習、到期的已掌握題目；其他已掌握的是「已掌握」（success＋CircleCheck），詳細內容加上「・10/16 複習」。
+  - 編輯已掌握的題目時，「加入複習排程」換成「已掌握後的複習」選單：跟隨設定（每 N 天）／不提醒／每 N 天（和設定頁的錯題複習卡共用 `MasteredReviewField`）。
+  - 今天到期的複習裡，已掌握的題目標示「已掌握・定期複習」，其他是「第 N 輪」。
 - **圖表**：遵守 dataviz 的規則：
   - 2 個以上的系列要有圖例。
   - 每張圖都有表格檢視。
@@ -479,6 +491,8 @@
 - **小標**：卡片外的分組標題（「已釘選 2」「已逾期 1」）和卡片內的欄位小標（「題目」「正確答案」）用 `SectionLabel`，不自己組 class。
 - **日期範圍**：寫成「9/7（一）至 10/6（二）」，用「至」，不用破折號（–、—、~）。
 - **載入失敗**：`ErrorNote` 傳 `onRetry`（通常是 query 的 `refetch`），讓使用者不必重新整理頁面。
+- **表單驗證**（Sprint 5 補上考試與任務表單）：送出前用共用的 zod schema 檢查，錯誤用 `useFieldErrors` 標在各自的欄位上（`aria-invalid`＋`aria-describedby`），送出時焦點移到第一個錯的欄位，改了那一欄就清掉它的錯誤。不要只在表單最下面放一則錯誤。
+- **同一個錯誤只說一次**：畫面已經有行內提示（例如複習記錄失敗的「跳過這題」）時，mutation 不再另外跳 toast。
 - **例外**（只有這幾個）：
   - 外觀設定的深淺色預覽可以有邊框：它是畫面的縮圖，不算卡片裡的卡片。
   - raw 的 `white`／`black` 只允許出現在選色器的把手（`ColorPicker.tsx`：把手必須在任何顏色上都看得見）。照片燈箱的背景用 `bg-scrim`，不用 `black`。另一個例外是 `lib/profile-image.ts` 轉檔用的 canvas 底色 `#ffffff`：那是 JPEG 影像的底色（透明的地方鋪白），不是介面的顏色。
@@ -501,24 +515,27 @@
 | `Button` | `variant: 'primary'｜'secondary'（預設）｜'ghost'｜'danger'｜'soft'`、`size: 'sm'｜'md'（預設）｜'lg'｜'icon'`、`loading` | 40px（觸控 44px；sm 32px，觸控裝置另有至少 44×44 的 `::after` 點擊範圍（Sprint 3 修正：原本只有 42px 高）；lg 48px；icon 36px、觸控 44px）。`loading` 保留文字並加 `aria-busy`。只有圖示時一定要給 `aria-label`。型別 `ButtonVariant`、`ButtonSize` |
 | `Input`、`Textarea` | 原生屬性 | 手機 16px、sm 以上 15px；page 色內嵌底、line-field 邊框、focus 時 accent 邊框加光環；`aria-invalid` 時變紅 |
 | `Select` | 原生屬性 | 右側 ChevronDown。**`className` 套在外層容器**（寬度、版面），select 填滿容器 |
-| `Field` | `label`、`hint`、`error`、`children: (id, aria) => …`、`className`；**Sprint 2**：`layout?: 'stacked'（預設）｜'inline'`（型別 `FieldLayout`） | `aria` 是 `FieldAria`（`aria-describedby`、`aria-invalid`），請展開到欄位上：`{(id, aria) => <Input id={id} {...aria} />}`。舊寫法 `(id) =>` 會自動把 aria 補到回傳的元素上。inline：標籤與提示／錯誤在左欄、欄位在右欄垂直置中，右欄寬度由欄位決定，請給欄位寬度（`className="w-24"`） |
-| `Card` | `as: 'section'｜'div'｜'article'｜'li'`、`variant: 'default'｜'inset'｜'plain'`、`interactive` | 只有整張可點的卡片才加 `interactive` |
+| `Field` | `label`、`hint`、`error`、`children: (id, aria) => …`、`className` | `aria` 是 `FieldAria`（`aria-describedby`、`aria-invalid`），請展開到欄位上：`{(id, aria) => <Input id={id} {...aria} />}`。舊寫法 `(id) =>` 會自動把 aria 補到回傳的元素上。錯誤用 `InlineError` 顯示 |
+| `Card` | `as: 'section'（預設）｜'div'｜'article'`、`variant: 'default'｜'plain'`、`interactive` | 只有整張可點的卡片才加 `interactive`；plain 沒有陰影 |
 | `CardHeader` | `title`、`icon`、`meta`、`action` | 標題是 h2（18px／600）；meta 例如「3 項」 |
 | `PageHeader` | `title`、`description`（ReactNode）、`actions` | h1；description 放即時摘要 |
 | `Badge` | `tone: 'neutral'｜'accent'｜'danger'｜'success'｜'warning'｜'outline'`、`icon` | 20px 高；圖示自動縮成 12px；型別 `BadgeTone` |
-| `EmptyState` | `icon`、`title`、`description`、`action`、`variant: 'page'｜'inline'`、`className` | inline 版：一行文字（`title`，`description`）＋右側 ghost 動作 |
+| `EmptyState` | `icon`、`title`、`description`、`action`、`variant: 'page'｜'inline'`、`flush`、`className` | inline 版：一行文字（`title`，`description`）＋右側 ghost 動作。flush：不加左右內距（放在已經有內距的容器裡） |
 | `Spinner`、`PageLoader`、`ErrorNote` | — | PageLoader 延遲 150ms 才出現；ErrorNote 有圖示 |
-| `Segmented<T>` | `value`、`onChange`、`options: { value, label, disabled? }[]`、`label`（必填，群組名稱）、`stretch`、`className` | WAI-ARIA radio：roving tabindex、方向鍵循環並選取、Home／End |
+| `InlineError` | `children`、`size?: 'sm'（預設）｜'md'`、`id?`、`className?` | 圖示加紅字、`role="alert"`。sm 給欄位底下，md 給整張表單的錯誤；`id` 給欄位的 `aria-describedby` |
+| `Segmented<T>` | `value`、`onChange`、`options: { value, label, disabled? }[]`、`label`（必填，群組名稱）、`className` | WAI-ARIA radio：roving tabindex、方向鍵循環並選取、Home／End |
 | `Dialog` | `open`、`onClose`、`title`、`footer`、`wide` | `aria-labelledby`；手機 bottom sheet（拖曳把手往下拉可關閉）；觸控裝置不自動 focus，桌面版 `autoFocus` 有效；關閉後卸載內容 |
-| `useConfirm(defaults?)` | 回傳 `[confirm, element]`；`confirm(opts: ConfirmOptions)` → `Promise<boolean>`。`ConfirmOptions = { title, message?, confirmText?, cancelText?, tone? }`；**Sprint 2**：`tone?: 'danger'（預設）｜'primary'`（型別 `ConfirmTone`），也可以 `useConfirm({ tone })` 設整個 hook 的預設值 | danger：danger 確認鈕、預設焦點在「取消」、省略 message 時顯示「刪除後無法復原。」、確認鈕預設「刪除」。primary：primary 確認鈕、預設焦點在確認鈕、省略 message 時不顯示、確認鈕預設「確定」（請改寫成動作）。既有呼叫端行為不變 |
+| `useConfirm()` | 回傳 `[confirm, element]`；`confirm(opts: ConfirmOptions)` → `Promise<boolean>`。`ConfirmOptions = { title, message?, confirmText?, tone? }`；**Sprint 2**：`tone?: 'danger'（預設）｜'primary'`（型別 `ConfirmTone`）。取消鈕固定是「取消」 | danger：danger 確認鈕、預設焦點在「取消」、省略 message 時顯示「刪除後無法復原。」、確認鈕預設「刪除」。primary：primary 確認鈕、預設焦點在確認鈕、省略 message 時不顯示、確認鈕預設「確定」（請改寫成動作）。既有呼叫端行為不變 |
 | `ProgressBar` | `value`、`max`（100）、`label` 或 `labelledBy`、`valueText`、`tone: 'accent'｜'success'｜'warning'｜'danger'`、`color`、`size: 'sm'｜'md'` | `role="progressbar"`；`color` 傳 `subjectTone(...).mark`，軌道自動用同色淡一階；型別 `ProgressTone` |
 | `ProgressRing` | 同上，另有 `size`（40）、`stroke`（4）、`trackColor`、`children`（圓心內容） | 底色和軌道同色時（例如膠囊底上）用 `trackColor` 換軌道色。**children 是純展示**：progressbar 的子元素在無障礙樹裡是 presentational，螢幕報讀器不會念；要報讀的內容放在 `label`／`valueText`，圓心不要放按鈕、連結等可互動元素 |
 | `GoalProgress` | `label`、`value`、`goal`（> 0）、`unit`（'分鐘'）、`format`、`color` | 已讀／目標、百分比、「還差 …」或「已達成」（圖示加文字，進度條轉成 success）。沒設目標時不要用它，改顯示「設定目標」連結 |
-| `Switch`、`Checkbox` | `checked`、`onChange(checked)`、`label`、`disabled`、`id`、`aria-*`；Checkbox 另有 `indeterminate`；**Sprint 2**：Switch 另有 `description?: ReactNode` | `role="switch"／"checkbox"` + `aria-checked`，整列可點、至少 44px；沒有 `label` 時要給 `aria-label`。description 顯示在標籤下方（13px ink-3），以 `aria-describedby` 連到開關（和呼叫端給的 aria-describedby 合併），名稱仍只有標籤；有 description 時開關對齊第一行 |
+| `Switch`、`Checkbox` | `checked`、`onChange(checked)`、`label`、`disabled`、`id`、`aria-*`；**Sprint 2**：Switch 另有 `description?: ReactNode` | `role="switch"／"checkbox"` + `aria-checked`，整列可點、至少 44px；沒有 `label` 時要給 `aria-label`。description 顯示在標籤下方（13px ink-3），以 `aria-describedby` 連到開關（和呼叫端給的 aria-describedby 合併），名稱仍只有標籤；有 description 時開關對齊第一行 |
 | `Highlight` | `text`、`query`（字串以空白分隔，或字串陣列）、`className` | 用 `<mark>`（mark token）標出關鍵字，不分大小寫 |
 | `Kbd` | `children` | 例如 `<Kbd>Ctrl</Kbd> <Kbd>K</Kbd>` |
 | `NumDisplay` | `children`、`unit`、`size: 'xl'｜'lg'（預設）｜'md'｜'sm'` | 數字字型、等寬數字；xl 為計時大字；型別 `NumSize` |
 | `Countdown` | `seconds`、`size`（'xl'） | `role="timer"`，mm:ss 或 h:mm:ss，半窄字寬 |
+
+**`components/event-meta.tsx`**（Sprint 5）：`EventKindBadge({ kind })`（中性色 badge：考試 GraduationCap、截止日 CalendarClock）、`EventWhenWhere({ event, today, className? })`（CalendarDays＋`<time>` 的日期時間，不是今年時加上年份；有地點時接 MapPin＋地點）。考試頁卡片與單科總覽的「即將到來」共用。單科總覽的任務列也改用 `components/tasks/TaskMeta.tsx` 的 `DueLabel`、`ChecklistCount`、`TaskTimeLabel`、`TaskStatusBadges`，準備進度用 `PrepProgress`，和任務頁、考試頁、總覽一致。月曆當天面板的考試列維持左側圖示（`EVENT_ICON`）加 accent／neutral badge 的做法。
 
 **`components/charts.tsx`**：`StatStrip({ items: StatItem[] })`，`StatItem = { key?, label, value, sub?, icon? }`（一張卡片用分隔線分格、手機 2 欄、sm 以上最多 4 格、數值 28／600）。`Heatmap` 內建「表格／圖表」切換與 `role="img"` 摘要。`Legend`、`SubjectBars`、`MiniDailyBars`、`DailyStackedBars`、`WeeklyTaskBars`、`SeriesDef` 的 API 不變（舊的 `StatTile` 已刪除，數字格一律用 `StatStrip`）。`StatTile` 已在 Sprint 5 的清理中刪除。
 
@@ -551,7 +568,7 @@
 |---|---|---|
 | `IconProp` | 型別：`LucideIcon \| ReactNode` | 元件的 icon prop：傳元件由元件決定大小顏色；傳元素照原樣 |
 | `PageStack` | `as?: 'div' \| 'section'`、其餘 HTML 屬性 | `space-y-section`：區塊之間的直向間距。兩欄以上的格線用工具類 `gap-section` |
-| `SectionLabel` | `children`、`as?: 'h2'（預設）\|'h3'\|'h4'\|'p'\|'div'`、`size?: 'meta'（預設）\|'sm'`、`tone?: 'neutral'（預設）\|'danger'\|'warning'\|'success'`（型別 `SectionLabelTone`）、`icon?: IconProp`、`count?: number`、`countUnit?: string`（'項'）、`id?`、`className?` | 小標，600、ink-2、圖示 16px（neutral 時圖示 ink-3）。count 用數字字型 ink-3，報讀成「已逾期，1項」。間距由呼叫端給（`className="mb-2 px-1"`） |
+| `SectionLabel` | `children`、`as?: 'h2'（預設）\|'h3'`、`size?: 'meta'（預設）\|'sm'`、`tone?: 'neutral'（預設）\|'danger'\|'warning'\|'success'`（型別 `SectionLabelTone`）、`icon?: IconProp`、`count?: number`、`countUnit?: string`（'項'）、`id?`、`className?` | 小標，600、ink-2、圖示 16px（neutral 時圖示 ink-3）。count 用數字字型 ink-3，報讀成「已逾期，1項」。間距由呼叫端給（`className="mb-2 px-1"`） |
 | `ToggleButton` | `pressed`、`onPressedChange(pressed)`、`busy?`、`variant?: 'text'（預設）\|'icon'`、`icon?: IconProp`、`size?: ButtonSize`、其餘 button 屬性（含 `aria-label`、`title`、`data-*`）；forwardRef | `aria-pressed`；按下時 accent-soft 底、accent-ink 字、圖示轉實心（`fill-current`）。名稱不隨狀態改字。busy 時 `aria-disabled`＋`aria-busy`、opacity .7、忽略點擊（不用 disabled，焦點不會掉）。text 版是 sm secondary（未按下時有框）；icon 版是 ghost icon（36px、觸控 44px，未按下 ink-3），一定要給 aria-label |
 | `MiniIconButton` | `label`（無障礙名稱，必填）、`icon?: LucideIcon`（預設 X）、其餘 button 屬性；forwardRef | 看起來 28px 的圓形圖示按鈕（card 90% 底、line 框、陰影 sm），`::after` 擴大到 44px。位置由 className 決定（`absolute top-1 right-1`）。焦點時底色轉成實心 card，焦點框外再墊一圈 card |
 | `StretchedButton` | `cover?: 'cell'（預設）\|'card'`、其餘 button 屬性；forwardRef | 整格可點的標題按鈕：`::after` 蓋滿最近的 relative 容器，焦點框畫在 `::after`。cell：往外 4px、圓角 md；card：貼齊、圓角 xl、焦點框內縮 2px（卡片有 overflow-hidden 也看得到）。文字樣式由 className 給 |
@@ -565,7 +582,7 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 
 | 名稱 | Props | 說明 |
 |---|---|---|
-| `Avatar` | `name`（暱稱，必填）、`src?: string \| null`（照片網址，例如 `avatarUrl(user)`、預覽的 `blob:`）、`size?: AvatarSize`（預設 'md'）、`label?: string`、`className?` | 圓形頭像。有照片顯示照片；沒有或載入失敗時顯示暱稱的第一個字素（accent 底、on-accent 字）。旁邊有暱稱時不給 `label`（`aria-hidden`）；單獨出現時給 `label`（`role="img"`） |
+| `Avatar` | `name`（暱稱，必填）、`src?: string \| null`（照片網址，例如 `avatarUrl(user)`、預覽的 `blob:`）、`size?: AvatarSize`（預設 'md'） | 圓形頭像。有照片顯示照片；沒有或載入失敗時顯示暱稱的第一個字素（accent 底、on-accent 字）。是裝飾（`aria-hidden`），旁邊要有暱稱文字 |
 | `AvatarSize` | 型別：`'sm' \| 'md' \| 'lg' \| 'xl'` | 32／40／72／96px |
 
 `firstGrapheme` 沒有搬家：它本來就在中性的 `lib/format.ts`（沒有 React），`components/ui/` 與 `components/subjects.tsx` 都從那裡 import，`components/ui/` 不必反過來 import `subjects.tsx`。

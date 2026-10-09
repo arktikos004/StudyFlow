@@ -33,6 +33,8 @@ export const users = sqliteTable('users', {
 	avatarKey: text('avatar_key'),
 	// 頭像最後更新的時間（UTC 毫秒），前端用來組出頭像網址並避開快取；NULL = 沒有上傳
 	avatarUpdatedAt: integer('avatar_updated_at'),
+	/** 已掌握的錯題預設每幾天再複習一次；NULL = 不提醒（筆記可以各自設定，見 notes.mastered_review_days） */
+	masteredReviewDays: integer('mastered_review_days'),
 });
 
 /** 登入狀態。資料表叫 sessions；程式裡叫 authSessions，和學習紀錄（studySessions）區分 */
@@ -47,14 +49,20 @@ export const authSessions = sqliteTable(
 		expiresAt: integer('expires_at').notNull(),
 		createdAt: createdAt(),
 	},
-	(t) => [index('sessions_user_idx').on(t.userId)],
+	// expires_at：每天清掉過期的登入（lib/cleanup.ts）
+	(t) => [index('sessions_user_idx').on(t.userId), index('sessions_expires_idx').on(t.expiresAt)],
 );
 
-export const loginAttempts = sqliteTable('login_attempts', {
-	key: text('key').primaryKey(),
-	count: integer('count').notNull().default(0),
-	windowStart: integer('window_start').notNull(),
-});
+export const loginAttempts = sqliteTable(
+	'login_attempts',
+	{
+		key: text('key').primaryKey(),
+		count: integer('count').notNull().default(0),
+		windowStart: integer('window_start').notNull(),
+	},
+	// window_start：每天清掉已經過了計數區間的紀錄（lib/cleanup.ts）
+	(t) => [index('login_attempts_window_idx').on(t.windowStart)],
+);
 
 export const subjects = sqliteTable(
 	'subjects',
@@ -174,6 +182,8 @@ export const notes = sqliteTable(
 		reviewStage: integer('review_stage').notNull().default(0),
 		nextReviewDate: text('next_review_date'),
 		lastReviewedAt: integer('last_reviewed_at'),
+		/** 已掌握後每幾天再複習一次：NULL = 照使用者的預設（users.mastered_review_days）、0 = 不提醒 */
+		masteredReviewDays: integer('mastered_review_days'),
 		createdAt: createdAt(),
 		updatedAt: updatedAt(),
 	},

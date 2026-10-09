@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, CircleAlert, Plus, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { ChecklistItem } from '../../../shared/api-types';
 import {
@@ -13,7 +13,7 @@ import {
 	removeChecklistItem,
 	toggleChecklistItem,
 } from '../../lib/task-checklist';
-import { Button, Checkbox, cn, Input } from '../ui';
+import { Button, Checkbox, cn, InlineError, Input } from '../ui';
 
 type FocusTarget = { id: string; action: 'up' | 'down' | 'remove' } | 'input';
 
@@ -185,10 +185,9 @@ export function ChecklistEditor({
 				</Button>
 			</div>
 			{shownError ? (
-				<p id={noteId} role="alert" className="mt-1.5 flex items-start gap-1.5 text-meta text-danger">
-					<CircleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-					<span>{shownError}</span>
-				</p>
+				<InlineError id={noteId} className="mt-1.5">
+					{shownError}
+				</InlineError>
 			) : (
 				(full || length > 0) && (
 					<p id={noteId} className="mt-1.5 text-meta text-ink-3">

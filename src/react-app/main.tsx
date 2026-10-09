@@ -3,7 +3,6 @@ import { lazy, StrictMode, Suspense, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
-import { registerSW } from 'virtual:pwa-register';
 import { Layout } from './components/Layout';
 import { GuestOnly, RequireAuth } from './components/RequireAuth';
 import { AppError, PageError } from './components/RouteError';
@@ -11,6 +10,7 @@ import { ThemedToaster } from './components/ThemedToaster';
 import { PageLoader } from './components/ui';
 import { ApiError } from './lib/api';
 import { ME_KEY } from './lib/query-keys';
+import { registerServiceWorker } from './lib/service-worker';
 import { initTheme } from './lib/theme';
 import { NotFound } from './pages/NotFound';
 // 數字字型 Archivo（自架，CSP 為 font-src 'self'）：standard = 字重 + 字寬兩個軸
@@ -35,8 +35,7 @@ const page = (node: ReactNode) => <Suspense fallback={<PageLoader />}>{node}</Su
 
 initTheme();
 
-// 有新版本時 Service Worker 自動更新
-registerSW({ immediate: true });
+registerServiceWorker();
 
 // 任何請求收到 401（例如 session 過期）就視為登出，RequireAuth 會導回登入頁
 const onAuthError = (error: unknown) => {

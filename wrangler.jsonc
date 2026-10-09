@@ -34,5 +34,9 @@
 			"pattern": "studyflow.sekinv.com",
 			"custom_domain": true
 		}
-	]
+	],
+	// 每天台北時間 03:00（UTC 19:00）清掉過期的登入與失敗計數（src/worker/lib/cleanup.ts）
+	"triggers": {
+		"crons": ["0 19 * * *"]
+	}
 }

@@ -12,6 +12,8 @@ export type RateLimitRule = { prefix: string; max: number; windowMs: number };
 export const REGISTER_BY_IP: RateLimitRule = { prefix: 'register:ip:', max: 10, windowMs: HOUR_MS };
 export const LOGIN_BY_EMAIL: RateLimitRule = { prefix: 'login:email:', max: 10, windowMs: 15 * MINUTE_MS };
 export const LOGIN_BY_IP: RateLimitRule = { prefix: 'login:ip:', max: 50, windowMs: 15 * MINUTE_MS };
+/** 最長的計數區間：比這更早開始的紀錄已經不影響任何限制，可以清掉（lib/cleanup.ts） */
+export const LONGEST_WINDOW_MS = Math.max(REGISTER_BY_IP.windowMs, LOGIN_BY_EMAIL.windowMs, LOGIN_BY_IP.windowMs);
 
 const keyOf = (rule: RateLimitRule, subject: string) => rule.prefix + subject;
 

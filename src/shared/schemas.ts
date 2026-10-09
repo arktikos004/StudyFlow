@@ -52,6 +52,20 @@ const goalMinutes = (label: string, { min, max }: { min: number; max: number }) 
 		.nullish();
 };
 
+/** 已掌握的錯題每幾天再複習一次的上限（天） */
+export const MASTERED_REVIEW_DAYS_MAX = 365;
+/** 已掌握題目的複習間隔（天）；null 與 0 的意思由使用的地方決定（見 updateProfileSchema、noteUpdateSchema） */
+const masteredReviewDays = (min: 0 | 1) => {
+	const range = `複習間隔需介於 1–${MASTERED_REVIEW_DAYS_MAX} 天`;
+	return z
+		.number({ error: '複習間隔請輸入數字' })
+		.int('複習間隔必須是整數')
+		.min(min, range)
+		.max(MASTERED_REVIEW_DAYS_MAX, range)
+		.nullable()
+		.optional();
+};
+
 export const updateProfileSchema = z.object({
 	displayName: displayName.optional(),
 	timezone: z
@@ -69,6 +83,8 @@ export const updateProfileSchema = z.object({
 		.optional(),
 	dailyGoalMinutes: goalMinutes('每日目標', GOAL_LIMITS.daily),
 	weeklyGoalMinutes: goalMinutes('每週目標', GOAL_LIMITS.weekly),
+	/** 已掌握的錯題預設每幾天再複習一次；null = 不提醒 */
+	masteredReviewDays: masteredReviewDays(1),
 });
 
 export const changePasswordSchema = z.object({
@@ -113,12 +129,11 @@ export const subjectSchema = z.object({
 });
 export const subjectUpdateSchema = subjectSchema.partial().extend({ archived: z.boolean().optional() });
 
-/** 科目的新順序：必須剛好是本人全部科目的 id（後端再檢查是否屬於本人） */
+/** 科目的新順序：必須剛好是本人全部科目的 id（後端再檢查是否屬於本人）。數量不設上限：後端用一條 SQL 更新，不受 D1 參數上限影響 */
 export const subjectOrderSchema = z.object({
 	ids: z
 		.array(id, { error: '科目清單不正確' })
 		.min(1, '科目清單不正確')
-		.max(200, '科目清單不正確')
 		.refine((ids) => new Set(ids).size === ids.length, '科目清單不正確'),
 });
 
@@ -136,6 +151,8 @@ export const eventUpdateSchema = eventSchema.partial();
 
 export const TASK_PRIORITIES = ['low', 'medium', 'high'] as const;
 export const TASK_STATUSES = ['todo', 'doing', 'done'] as const;
+/** 任務的預估時間最多一天（分鐘） */
+export const ESTIMATE_MAX_MINUTES = 1440;
 
 // 子任務清單：整份一起送出（新增、勾選、刪除、調整順序都是改陣列）
 export const CHECKLIST_MAX_ITEMS = 30;
@@ -162,7 +179,12 @@ export const taskSchema = z.object({
 	dueDate: dateString.nullish(),
 	priority: z.enum(TASK_PRIORITIES).default('medium'),
 	status: z.enum(TASK_STATUSES).default('todo'),
-	estimatedMinutes: z.number().int().min(1).max(1440).nullish(),
+	estimatedMinutes: z
+		.number({ error: '預估時間請輸入數字' })
+		.int('預估時間必須是整數')
+		.min(1, `預估時間需介於 1–${ESTIMATE_MAX_MINUTES} 分鐘`)
+		.max(ESTIMATE_MAX_MINUTES, `預估時間需介於 1–${ESTIMATE_MAX_MINUTES} 分鐘`)
+		.nullish(),
 	subjectId: id.nullish(),
 	eventId: id.nullish(),
 	checklist: checklist.default([]),
@@ -250,7 +272,10 @@ export const noteUpdateSchema = z.object({
 	mastered: z.boolean().optional(),
 	// 只改釘選時，不會更新「最後更新」時間，也不影響複習排程
 	pinned: z.boolean({ error: '釘選格式錯誤' }).optional(),
+	/** 只對還沒掌握的題目有作用；已掌握的題目依 masteredReviewDays 排程 */
 	scheduleReview: z.boolean().optional(),
+	/** 這則已掌握後每幾天再複習一次：null = 照使用者的預設、0 = 不提醒 */
+	masteredReviewDays: masteredReviewDays(0),
 });
 export const reviewSchema = z.object({ result: z.enum(['remembered', 'forgot']) });
 
