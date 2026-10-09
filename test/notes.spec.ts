@@ -1,8 +1,7 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
-import { makeNote, PNG_1X1, registeredClient, type Client } from './helpers';
-
 import { addDays, today } from '../src/shared/dates';
+import { makeNote, PNG_1X1, registeredClient, type Client } from './helpers';
 
 async function upload(c: Client, noteId: string) {
 	const form = new FormData();

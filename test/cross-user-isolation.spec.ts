@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { registeredClient } from './helpers';
-
 import { today } from '../src/shared/dates';
-import { makeSubject, PNG_1X1 } from './helpers';
 import { MINUTE_MS } from '../src/shared/time';
+import { makeSubject, PNG_1X1, registeredClient } from './helpers';
 
 /** 有效的照片上傳表單（1×1 PNG） */
 function photoForm() {
