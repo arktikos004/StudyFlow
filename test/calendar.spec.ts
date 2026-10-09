@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	dayCellLabel,
 	layoutColumns,
 	minutesByDate,
 	monthGrid,
@@ -153,5 +154,27 @@ describe('月格與鍵盤移動', () => {
 			'Asia/Taipei',
 		);
 		expect(Object.fromEntries(map)).toEqual({ '2026-09-28': 70, '2026-09-29': 30 });
+	});
+});
+
+describe('月格的報讀（dayCellLabel）', () => {
+	const exam = { kind: 'exam' };
+	const deadline = { kind: 'deadline' };
+	const open = { status: 'todo' };
+	const doing = { status: 'doing' };
+	const done = { status: 'done' };
+
+	it('任務到期不算已完成的（和頁首摘要一致），已完成的另外報', () => {
+		expect(dayCellLabel('2026-10-09', '2026-10-09', { events: [exam, deadline], tasks: [open, doing, done] }, 90)).toBe(
+			'10月9日 星期五，今天，1 場考試，1 個截止日，2 項任務到期，1 項任務已完成，讀書 1 小時 30 分',
+		);
+	});
+
+	it('只有已完成的任務：不是「沒有安排」', () => {
+		expect(dayCellLabel('2026-10-10', '2026-10-09', { events: [], tasks: [done, done] }, 0)).toBe('10月10日 星期六，2 項任務已完成');
+	});
+
+	it('什麼都沒有：沒有安排；不到 1 分鐘的讀書不報', () => {
+		expect(dayCellLabel('2026-10-09', '2026-10-09', undefined, 0.5)).toBe('10月9日 星期五，今天，沒有安排');
 	});
 });
