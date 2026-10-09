@@ -1,4 +1,4 @@
-import { Check, ChevronDown, CircleAlert, Moon, Sun, TriangleAlert } from 'lucide-react';
+import { Check, ChevronDown, Moon, Sun, TriangleAlert } from 'lucide-react';
 import { useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { flushSync } from 'react-dom';
 import {
@@ -13,10 +13,10 @@ import {
 	type Hsv,
 	type NamedColor,
 } from '../../shared/color';
-import { colorName, PALETTE, paletteIndex, PALETTE_HUES, RECOMMENDED } from '../../shared/palette';
+import { colorName, PALETTE, PALETTE_HUES, paletteIndex, RECOMMENDED } from '../../shared/palette';
 import { useSubjectTone } from '../lib/subject-color';
 import { SubjectChip } from './subjects';
-import { Button, cn, Input } from './ui';
+import { Button, cn, InlineError, Input } from './ui';
 
 // 科目選色器（SUB-1）：推薦 8 色 → 「更多顏色」10 × 4 色格 → 「自訂顏色」（飽和度／亮度方塊、色相、hex）。
 // 色票與預覽的顏色一律經過 subjectTone；提醒只提醒、不阻擋。
@@ -443,12 +443,7 @@ function CustomColor({ value, onChange }: { value: string; onChange: (hex: strin
 						className="pl-7 font-mono uppercase aria-invalid:border-danger"
 					/>
 				</div>
-				{invalid && (
-					<p id={errorId} role="alert" className="flex items-center gap-1 text-[0.8125rem] text-danger">
-						<CircleAlert className="size-4 shrink-0" aria-hidden />
-						顏色格式錯誤，請輸入 6 位數色碼，例如 #396ED6
-					</p>
-				)}
+				{invalid && <InlineError id={errorId}>顏色格式錯誤，請輸入 6 位數色碼，例如 #396ED6</InlineError>}
 			</div>
 		</div>
 	);

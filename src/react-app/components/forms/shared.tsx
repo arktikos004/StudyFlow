@@ -1,12 +1,12 @@
-import { Button } from '../ui';
+import { Button, InlineError } from '../ui';
 
 // 對話框的內容只在打開時才掛載，所以表單狀態每次打開都會用最新的初始值建立，不需要另外重設。
 
 export function FormError({ error }: { error?: string }) {
 	return error ? (
-		<p className="col-span-2 text-sm text-danger" role="alert">
+		<InlineError size="md" className="col-span-2">
 			{error}
-		</p>
+		</InlineError>
 	) : null;
 }
 

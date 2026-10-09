@@ -1,8 +1,8 @@
-import { CircleAlert, ImageUp, Trash2 } from 'lucide-react';
+import { ImageUp, Trash2 } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
 import { AVATAR_ACCEPT, prepareAvatar } from '../../lib/profile-image';
 import { draftPreview, photoNote, removeDraft, type PhotoDraft } from '../../lib/profile-photo';
-import { Avatar, Button } from '../ui';
+import { Avatar, Button, InlineError } from '../ui';
 
 /**
  * 頭像照片（由 props 控制，儲存時才真的上傳或移除）：96px 預覽、上傳／更換照片、移除照片。
@@ -85,12 +85,7 @@ export function ProfilePhotoField({
 					<p id={noteId} aria-live="polite" className="mt-2 text-meta text-ink-3">
 						{photoNote(draft)}
 					</p>
-					{processError && (
-						<p role="alert" className="mt-1 flex items-start gap-1.5 text-meta text-danger">
-							<CircleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-							<span>{processError}</span>
-						</p>
-					)}
+					{processError && <InlineError className="mt-1">{processError}</InlineError>}
 				</div>
 			</div>
 			<input

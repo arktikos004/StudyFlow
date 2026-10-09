@@ -1,14 +1,14 @@
 import { onlineManager } from '@tanstack/react-query';
-import { ChevronDown, CircleAlert } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import type { PublicUser } from '../../../shared/api-types';
 import { changePasswordSchema } from '../../../shared/schemas';
+import { useChangePassword, useUpdateProfile, useUser } from '../../lib/account-queries';
 import { ApiError } from '../../lib/api';
 import { fieldErrors, useFieldErrors } from '../../lib/form-errors';
 import { timezoneLabel, timezoneOptions } from '../../lib/profile-format';
-import { useChangePassword, useUpdateProfile, useUser } from '../../lib/account-queries';
-import { Button, Card, CardHeader, cn, Field, Input, Select } from '../ui';
+import { Button, Card, CardHeader, cn, Field, InlineError, Input, Select } from '../ui';
 import { EmailText } from './ProfileEmail';
 
 const isFinePointer = () => window.matchMedia('(pointer: fine)').matches;
@@ -131,12 +131,7 @@ function PasswordForm({
 			{field('currentPassword', '目前密碼', 'current-password')}
 			{field('newPassword', '新密碼', 'new-password', '至少 8 個字元')}
 			{field('confirm', '確認新密碼', 'new-password')}
-			{formError && (
-				<p role="alert" className="flex items-start gap-1.5 text-meta text-danger">
-					<CircleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-					<span>{formError}</span>
-				</p>
-			)}
+			{formError && <InlineError>{formError}</InlineError>}
 			<div className="flex justify-end gap-2">
 				{/* 送出中不能取消：表單收起來之後，成功時焦點會亂跳、失敗時錯誤沒地方顯示 */}
 				<Button variant="ghost" onClick={onDone} disabled={change.isPending}>

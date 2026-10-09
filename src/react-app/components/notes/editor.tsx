@@ -1,7 +1,7 @@
-import { CircleAlert, Eye, Pencil } from 'lucide-react';
+import { Eye, Pencil } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
 import type { NoteItem } from '../../../shared/api-types';
-import { NOTE_TAGS_MAX, NOTE_TITLE_MAX, REVIEW_INTERVALS, noteSchema, noteUpdateSchema } from '../../../shared/schemas';
+import { NOTE_TAGS_MAX, NOTE_TITLE_MAX, noteSchema, noteUpdateSchema, REVIEW_INTERVALS } from '../../../shared/schemas';
 import { useUser } from '../../lib/account-queries';
 import { compressImage } from '../../lib/attachment-image';
 import { fromIntervalChoice, masteredReviewLabel, toIntervalChoice } from '../../lib/mastered-review';
@@ -11,7 +11,7 @@ import { useCreateNote, useDeleteAttachment, useNote, useUpdateNote, useUploadAt
 import { DialogFooter } from '../forms/shared';
 import { MasteredReviewField } from '../MasteredReviewField';
 import { SubjectSelect } from '../subjects';
-import { Button, Checkbox, cn, Dialog, Field, Input, Segmented, Textarea, useConfirm, type ConfirmOptions } from '../ui';
+import { Button, Checkbox, cn, Dialog, Field, InlineError, Input, Segmented, Textarea, useConfirm, type ConfirmOptions } from '../ui';
 import { MarkdownView, PhotoGrid } from './content';
 import { PendingPhotoGrid, PhotoPicker } from './photos';
 
@@ -265,12 +265,7 @@ function NoteEditorForm({
 				</div>
 			)}
 
-			{error && (
-				<p className="flex items-start gap-1.5 text-sm text-danger" role="alert">
-					<CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-					<span>{error}</span>
-				</p>
-			)}
+			{error && <InlineError size="md">{error}</InlineError>}
 		</form>
 	);
 }

@@ -1,4 +1,4 @@
-import { ChevronDown, CircleAlert, Search, X } from 'lucide-react';
+import { ChevronDown, Search, X } from 'lucide-react';
 import {
 	cloneElement,
 	forwardRef,
@@ -11,6 +11,7 @@ import {
 	type TextareaHTMLAttributes,
 } from 'react';
 import { cn } from './cn';
+import { InlineError } from './states';
 
 // 表單元件：Input、Textarea、Select 的外觀在 index.css 的 .sf-field；Field 負責標籤、提示、錯誤與 aria
 
@@ -78,10 +79,7 @@ export function Field({
 		</label>
 	);
 	const note = error ? (
-		<p id={noteId} className="flex items-start gap-1.5 text-meta text-danger" role="alert">
-			<CircleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-			<span>{error}</span>
-		</p>
+		<InlineError id={noteId}>{error}</InlineError>
 	) : (
 		hint && (
 			<p id={noteId} className="text-meta text-ink-3">

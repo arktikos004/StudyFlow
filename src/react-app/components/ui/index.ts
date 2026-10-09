@@ -14,7 +14,7 @@ export { usePrefersReducedMotion } from './motion';
 export { Countdown, Duration, Figure, NumDisplay, Unit, type NumSize } from './numbers';
 export { GoalProgress, ProgressBar, ProgressRing, type ProgressTone } from './progress';
 export { Segmented } from './Segmented';
-export { EmptyState, ErrorNote, PageLoader, Spinner } from './states';
+export { EmptyState, ErrorNote, InlineError, PageLoader, Spinner } from './states';
 export { Highlight, Kbd } from './text';
 export { Checkbox, Switch } from './toggles';
 export { useConfirm, type ConfirmOptions, type ConfirmTone } from './useConfirm';

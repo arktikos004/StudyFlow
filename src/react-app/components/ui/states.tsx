@@ -67,6 +67,30 @@ export function PageLoader() {
 }
 
 /**
+ * 行內錯誤：圖示加紅字（不只靠顏色），role="alert" 讓報讀器馬上念出來。
+ * size="sm"（預設）：欄位底下的錯誤；size="md"：整張表單的錯誤，放在送出按鈕上方。
+ * id：給欄位的 aria-describedby 指向。
+ */
+export function InlineError({
+	id,
+	size = 'sm',
+	className,
+	children,
+}: {
+	id?: string;
+	size?: 'sm' | 'md';
+	className?: string;
+	children: ReactNode;
+}) {
+	return (
+		<p id={id} role="alert" className={cn('flex items-start gap-1.5 text-danger', size === 'sm' ? 'text-meta' : 'text-sm', className)}>
+			<CircleAlert className={cn('shrink-0', size === 'sm' ? 'mt-[3px] size-3.5' : 'mt-0.5 size-4')} aria-hidden />
+			<span className="min-w-0">{children}</span>
+		</p>
+	);
+}
+
+/**
  * 載入失敗的提示（圖示加文字，role="alert"）。
  * onRetry：有給就在右側顯示「重新載入」按鈕（通常傳 query 的 refetch），使用者不必重新整理頁面；
  * retrying：重試中（query 的 isRefetching），按鈕顯示轉圈並忽略點擊；用 aria-disabled＋aria-busy（不用 disabled），焦點留在按鈕上。
