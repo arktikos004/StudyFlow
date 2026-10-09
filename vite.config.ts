@@ -16,7 +16,8 @@ export default defineConfig({
 		tailwindcss(),
 		cloudflare(),
 		VitePWA({
-			registerType: 'autoUpdate',
+			// 有新版本時先提示，使用者按「重新載入」才換（lib/service-worker.ts），不在編輯途中自動重新整理
+			registerType: 'prompt',
 			injectRegister: false,
 			includeAssets: ['favicon.ico', 'logo.svg', 'apple-touch-icon-180x180.png', 'theme-init.js'],
 			manifest: {
