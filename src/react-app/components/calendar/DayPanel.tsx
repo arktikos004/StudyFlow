@@ -3,6 +3,8 @@ import { useId } from 'react';
 import type { EventItem, StudySession, Task } from '../../../shared/api-types';
 import { EVENT_KIND_LABEL, STUDY_MODE_LABEL } from '../../../shared/labels';
 import { formatDateForToday, formatMinutes } from '../../lib/format';
+import { useSubjectMap } from '../../lib/queries';
+import { sessionRowLabel } from '../../lib/session-format';
 import { formatClockRange } from '../../lib/time-format';
 import { SubjectTag } from '../subjects';
 import { TaskCheckbox } from '../TaskItem';
@@ -50,6 +52,7 @@ export function DayPanel({
 }) {
 	const titleId = useId();
 	const sessionsId = useId();
+	const subjectMap = useSubjectMap();
 	const total = sessions.reduce((sum, s) => sum + s.durationSec, 0) / 60;
 
 	return (
@@ -149,7 +152,7 @@ export function DayPanel({
 										<button
 											type="button"
 											onClick={() => onSession(s)}
-											aria-label={`編輯學習紀錄：${range}，${STUDY_MODE_LABEL[s.mode]}，${minutes}`}
+											aria-label={sessionRowLabel(s, s.subjectId ? subjectMap.get(s.subjectId)?.name : undefined, timeZone)}
 											className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left transition-colors duration-120 ease-out hover:bg-subtle sm:px-5"
 										>
 											<span className="min-w-0 flex-1">

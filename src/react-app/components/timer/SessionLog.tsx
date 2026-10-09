@@ -2,9 +2,10 @@ import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { StudySession } from '../../../shared/api-types';
 import { addDays } from '../../../shared/dates';
 import { STUDY_MODE_LABEL } from '../../../shared/labels';
+import { useUser } from '../../lib/account-queries';
 import { formatMinutes } from '../../lib/format';
 import { useDeleteSession, useStudySessions, useSubjectMap } from '../../lib/queries';
-import { useUser } from '../../lib/account-queries';
+import { sessionRowLabel } from '../../lib/session-format';
 import { formatClockRange, relativeDateLabel } from '../../lib/time-format';
 import { SubjectTag } from '../subjects';
 import { Button, Card, CardHeader, cn, EmptyState, ErrorNote, PageLoader, useConfirm } from '../ui';
@@ -120,7 +121,7 @@ export function SessionLog({
 								<button
 									type="button"
 									onClick={() => onEdit(x)}
-									aria-label={`編輯紀錄：${range}，${STUDY_MODE_LABEL[x.mode]}，${subject ?? '未分類'}，${minutes}`}
+									aria-label={sessionRowLabel(x, subject, tz)}
 									className="flex min-h-14 min-w-0 flex-1 items-center gap-3 py-2.5 pr-2 pl-4 text-left transition-colors duration-120 ease-out hover:bg-subtle sm:pl-5"
 								>
 									<span className="min-w-0 flex-1">
