@@ -159,12 +159,12 @@ export const noteRoutes = new Hono<AppEnv>()
 	.post('/:id/attachments', imageUploadLimit(ATTACHMENT_MAX_BYTES), async (c) => {
 		const db = c.var.db;
 		const user = c.var.user;
+		// 和其他路由一樣先檢查送來的內容（400、413、415），再找筆記（404）
+		const { bytes, contentType } = await readImageUpload(c, ATTACHMENT_MAX_BYTES);
 		const note = await getOwnedNote(db, c.req.param('id'), user.id);
 
 		const [{ n }] = await db.select({ n: count() }).from(attachments).where(eq(attachments.noteId, note.id));
 		if (n >= ATTACHMENT_MAX_PER_NOTE) throw new HTTPException(400, { message: `每則筆記最多 ${ATTACHMENT_MAX_PER_NOTE} 張照片` });
-
-		const { bytes, contentType } = await readImageUpload(c, ATTACHMENT_MAX_BYTES);
 
 		const id = crypto.randomUUID();
 		const r2Key = `users/${user.id}/${id}`;

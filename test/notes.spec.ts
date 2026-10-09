@@ -235,6 +235,17 @@ describe('筆記、錯題與複習', () => {
 		expect((await c.get(`/api/notes/${n.id}`)).data.note.attachments).toEqual([]);
 	});
 
+	it('照片上傳先檢查送來的內容（400），再找筆記（404）：和其他路由的順序一致', async () => {
+		const c = await registeredClient();
+		const missing = `/api/notes/${crypto.randomUUID()}/attachments`;
+		const empty = await c.post(missing, new FormData());
+		expect(empty.status, JSON.stringify(empty.data)).toBe(400);
+		expect(empty.data.error).toBe('請選擇照片');
+		const form = new FormData();
+		form.append('file', new File([PNG_1X1], 'p.png', { type: 'image/png' }));
+		expect((await c.post(missing, form)).status).toBe(404);
+	});
+
 	it('刪除單張照片：資料列與 R2 的檔案都刪掉，再刪一次回 404', async () => {
 		const c = await registeredClient();
 		const n = (await c.post('/api/notes', { kind: 'mistake', title: '看圖題' })).data.note;

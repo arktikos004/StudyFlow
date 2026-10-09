@@ -5,6 +5,13 @@ import { today } from '../src/shared/dates';
 import { makeSubject, PNG_1X1 } from './helpers';
 import { MINUTE_MS } from '../src/shared/time';
 
+/** 有效的照片上傳表單（1×1 PNG） */
+function photoForm() {
+	const form = new FormData();
+	form.append('file', new File([PNG_1X1], 'p.png', { type: 'image/png' }));
+	return form;
+}
+
 // Sprint 3 QA：第二個帳號用第一個帳號的 id 操作，所有路徑都不能成功
 describe('QA：跨使用者隔離矩陣', () => {
 	it('存取別人的 id 回 404；把別人的 id 放進自己的資料回 400', async () => {
@@ -21,7 +28,8 @@ describe('QA：跨使用者隔離矩陣', () => {
 			['PATCH', `/api/notes/${note.id}`, { title: 'x' }],
 			['DELETE', `/api/notes/${note.id}`],
 			['POST', `/api/notes/${note.id}/review`, { result: 'forgot' }],
-			['POST', `/api/notes/${note.id}/attachments`],
+			// 送有效的照片：內容先檢查（400），內容沒問題才會走到「找不到筆記」（404）
+			['POST', `/api/notes/${note.id}/attachments`, photoForm()],
 			['PATCH', `/api/tasks/${task.id}`, { title: 'x' }],
 			['DELETE', `/api/tasks/${task.id}`],
 			['PATCH', `/api/events/${ev.id}`, { title: 'x' }],
