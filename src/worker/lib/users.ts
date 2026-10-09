@@ -12,5 +12,6 @@ export function publicUser(u: User): PublicUser {
 		dailyGoalMinutes: u.dailyGoalMinutes,
 		weeklyGoalMinutes: u.weeklyGoalMinutes,
 		avatarUpdatedAt: u.avatarUpdatedAt,
+		masteredReviewDays: u.masteredReviewDays,
 	};
 }

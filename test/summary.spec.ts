@@ -28,7 +28,9 @@ describe('頁首摘要 /api/summary', () => {
 		await mistakeDue(c, '今天複習', t);
 		await mistakeDue(c, '前天就該複習', addDays(t, -2));
 		await mistakeDue(c, '明天複習', addDays(t, 1));
-		await mistakeDue(c, '已掌握', t, true);
+		await mistakeDue(c, '已掌握、不提醒', null, true);
+		// 已掌握但選擇定期複習的題目，到期也算待複習
+		await mistakeDue(c, '已掌握、定期複習到期', t, true);
 
 		await c.post('/api/events', { kind: 'exam', title: '昨天的考試', date: addDays(t, -1) });
 		await c.post('/api/events', { kind: 'deadline', title: '今天截止（不是考試）', date: t });
@@ -44,8 +46,8 @@ describe('頁首摘要 /api/summary', () => {
 			today: t,
 			dueTodayCount: 2,
 			overdueCount: 1,
-			reviewDueCount: 2,
-			notesCount: 4,
+			reviewDueCount: 3,
+			notesCount: 5,
 			nextExam: { id: next.id, title: '後天下午考', date: addDays(t, 2), time: '14:00', subjectId: subject.id },
 		});
 	});

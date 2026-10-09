@@ -16,7 +16,7 @@ import {
 import { attachments, notes, subjects, type Attachment, type Note } from '../db/schema';
 import { assertOwned, hasValues, notFound, ownedBy, type DB } from '../lib/db';
 import { noteMatches, reviewDue } from '../lib/notes';
-import { afterReview, firstReviewDate, reviewPatch } from '../lib/review';
+import { afterReview, effectiveMasteredDays, firstReviewDate, reviewPatch } from '../lib/review';
 import { deleteObjectsQuietly } from '../lib/storage';
 import { validate } from '../middleware/validate';
 import { recordAchievementUnlocks } from '../middleware/achievement-unlocks';
@@ -122,7 +122,12 @@ export const noteRoutes = new Hono<AppEnv>()
 		const patch: Partial<Note> = {
 			...input,
 			pinned,
-			...reviewPatch(current, { mastered: input.mastered, scheduleReview }, today(user.timezone)),
+			...reviewPatch(
+				current,
+				{ mastered: input.mastered, scheduleReview, masteredReviewDays: input.masteredReviewDays },
+				today(user.timezone),
+				user.masteredReviewDays,
+			),
 		};
 		// 只改釘選時不更新「最後更新」時間（NOTE-1）
 		if (hasValues(input) || scheduleReview !== undefined) patch.updatedAt = Date.now();
@@ -134,7 +139,12 @@ export const noteRoutes = new Hono<AppEnv>()
 		const { result } = c.req.valid('json');
 		const user = c.var.user;
 		const current = await getOwnedNote(c.var.db, c.req.param('id'), user.id);
-		const next = afterReview(current, result, today(user.timezone));
+		const next = afterReview(
+			current,
+			result,
+			today(user.timezone),
+			effectiveMasteredDays(current.masteredReviewDays, user.masteredReviewDays),
+		);
 		const row = await c.var.db
 			.update(notes)
 			.set({ ...next, lastReviewedAt: Date.now(), updatedAt: Date.now() })

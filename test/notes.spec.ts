@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { addDays, today } from '../src/shared/dates';
-import { makeNote, PNG_1X1, registeredClient, type Client } from './helpers';
+import { makeNote, noonClient, PNG_1X1, registeredClient, type Client, type NoonClient } from './helpers';
 
 async function upload(c: Client, noteId: string) {
 	const form = new FormData();
@@ -256,5 +256,75 @@ describe('筆記、錯題與複習', () => {
 		expect(await env.BUCKET.get(`users/${c.user.id}/${photo.id}`)).toBeNull();
 		expect((await c.get(`/api/notes/${n.id}`)).data.note.attachments).toEqual([]);
 		expect((await c.del(`/api/attachments/${photo.id}`)).status).toBe(404);
+	});
+});
+
+describe('已掌握題目的定期複習', () => {
+	async function masteredMistake(c: Client, title: string) {
+		const n = await makeNote(c, title, { kind: 'mistake' });
+		const res = await c.patch(`/api/notes/${n.id}`, { mastered: true });
+		expect(res.status, JSON.stringify(res.data)).toBe(200);
+		return res.data.note;
+	}
+	const reviewDateOf = async (c: NoonClient, id: string) => (await c.get(`/api/notes/${id}`)).data.note.nextReviewDate;
+
+	it('預設不提醒；設定成每 30 天後，跟著預設的已掌握題目排到 30 天後，改回不提醒就清掉', async () => {
+		const c = await noonClient();
+		const n = await masteredMistake(c, '已掌握');
+		expect(n.nextReviewDate).toBeNull();
+
+		const me = await c.patch('/api/auth/me', { masteredReviewDays: 30 });
+		expect(me.data.user.masteredReviewDays).toBe(30);
+		expect(await reviewDateOf(c, n.id)).toBe(addDays(c.today, 30));
+
+		await c.patch('/api/auth/me', { masteredReviewDays: null });
+		expect(await reviewDateOf(c, n.id)).toBeNull();
+	});
+
+	it('單則的設定優先（0 = 不提醒、N = 每 N 天），之後改預設也不影響它', async () => {
+		const c = await noonClient();
+		await c.patch('/api/auth/me', { masteredReviewDays: 30 });
+		const n = await masteredMistake(c, '每週複習');
+		expect(n.nextReviewDate).toBe(addDays(c.today, 30));
+
+		const weekly = (await c.patch(`/api/notes/${n.id}`, { masteredReviewDays: 7 })).data.note;
+		expect(weekly).toMatchObject({ masteredReviewDays: 7, nextReviewDate: addDays(c.today, 7) });
+		expect((await c.patch(`/api/notes/${n.id}`, { masteredReviewDays: 0 })).data.note.nextReviewDate).toBeNull();
+
+		await c.patch('/api/auth/me', { masteredReviewDays: 60 });
+		expect(await reviewDateOf(c, n.id)).toBeNull();
+	});
+
+	it('到期時出現在今天到期；記住了仍是已掌握、再隔 N 天；還不熟就從頭開始並取消已掌握', async () => {
+		const c = await noonClient();
+		const n = await masteredMistake(c, '定期複習');
+		await c.patch(`/api/notes/${n.id}`, { masteredReviewDays: 14 });
+		await env.DB.prepare('UPDATE notes SET next_review_date = ? WHERE id = ?').bind(c.today, n.id).run();
+		expect((await c.get('/api/notes?review=due')).data.notes.map((x: { id: string }) => x.id)).toContain(n.id);
+
+		const remembered = (await c.post(`/api/notes/${n.id}/review`, { result: 'remembered' })).data.note;
+		expect(remembered).toMatchObject({ mastered: true, nextReviewDate: addDays(c.today, 14) });
+		const forgot = (await c.post(`/api/notes/${n.id}/review`, { result: 'forgot' })).data.note;
+		expect(forgot).toMatchObject({ mastered: false, reviewStage: 0, nextReviewDate: addDays(c.today, 1) });
+	});
+
+	it('同時送「標成已掌握」與「加入排程」：以已掌握為準，預設不提醒時沒有複習日', async () => {
+		const c = await registeredClient();
+		const n = await makeNote(c, '一般筆記');
+		expect((await c.patch(`/api/notes/${n.id}`, { mastered: true, scheduleReview: true })).data.note).toMatchObject({
+			mastered: true,
+			nextReviewDate: null,
+		});
+	});
+
+	it('間隔超出範圍時回 400（中文訊息）；使用者的預設不能是 0', async () => {
+		const c = await registeredClient();
+		const me = await c.patch('/api/auth/me', { masteredReviewDays: 0 });
+		expect(me.status).toBe(400);
+		expect(me.data.error).toBe('複習間隔需介於 1–365 天');
+		const n = await makeNote(c, '筆記');
+		const res = await c.patch(`/api/notes/${n.id}`, { masteredReviewDays: 366 });
+		expect(res.status).toBe(400);
+		expect(res.data.error).toBe('複習間隔需介於 1–365 天');
 	});
 });

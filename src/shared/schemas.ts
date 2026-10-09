@@ -52,6 +52,20 @@ const goalMinutes = (label: string, { min, max }: { min: number; max: number }) 
 		.nullish();
 };
 
+/** 已掌握的錯題每幾天再複習一次的上限（天） */
+export const MASTERED_REVIEW_DAYS_MAX = 365;
+/** 已掌握題目的複習間隔（天）；null 與 0 的意思由使用的地方決定（見 updateProfileSchema、noteUpdateSchema） */
+const masteredReviewDays = (min: 0 | 1) => {
+	const range = `複習間隔需介於 1–${MASTERED_REVIEW_DAYS_MAX} 天`;
+	return z
+		.number({ error: '複習間隔請輸入數字' })
+		.int('複習間隔必須是整數')
+		.min(min, range)
+		.max(MASTERED_REVIEW_DAYS_MAX, range)
+		.nullable()
+		.optional();
+};
+
 export const updateProfileSchema = z.object({
 	displayName: displayName.optional(),
 	timezone: z
@@ -69,6 +83,8 @@ export const updateProfileSchema = z.object({
 		.optional(),
 	dailyGoalMinutes: goalMinutes('每日目標', GOAL_LIMITS.daily),
 	weeklyGoalMinutes: goalMinutes('每週目標', GOAL_LIMITS.weekly),
+	/** 已掌握的錯題預設每幾天再複習一次；null = 不提醒 */
+	masteredReviewDays: masteredReviewDays(1),
 });
 
 export const changePasswordSchema = z.object({
@@ -249,7 +265,10 @@ export const noteUpdateSchema = z.object({
 	mastered: z.boolean().optional(),
 	// 只改釘選時，不會更新「最後更新」時間，也不影響複習排程
 	pinned: z.boolean({ error: '釘選格式錯誤' }).optional(),
+	/** 只對還沒掌握的題目有作用；已掌握的題目依 masteredReviewDays 排程 */
 	scheduleReview: z.boolean().optional(),
+	/** 這則已掌握後每幾天再複習一次：null = 照使用者的預設、0 = 不提醒 */
+	masteredReviewDays: masteredReviewDays(0),
 });
 export const reviewSchema = z.object({ result: z.enum(['remembered', 'forgot']) });
 

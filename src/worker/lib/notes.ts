@@ -1,10 +1,25 @@
-import { and, count, eq, lte, or, sql, type SQL } from 'drizzle-orm';
+import { and, count, eq, isNull, lte, or, sql, type SQL } from 'drizzle-orm';
 import { notes } from '../db/schema';
 import type { DB } from './db';
+import { masteredNextDate } from './review';
 import { containsText } from './text';
 
-/** 到期待複習：還沒掌握，而且排定的複習日是今天或更早（沒有排程的複習日是 NULL，不會符合） */
-export const reviewDue = (todayStr: string): SQL => and(eq(notes.mastered, false), lte(notes.nextReviewDate, todayStr))!;
+/**
+ * 到期待複習：排定的複習日是今天或更早（沒有排程的複習日是 NULL，不會符合）。
+ * 已掌握的題目只有選擇定期複習時才有複習日，所以不必另外排除。
+ */
+export const reviewDue = (todayStr: string): SQL => lte(notes.nextReviewDate, todayStr);
+
+/**
+ * 使用者改了「已掌握的錯題每幾天複習」的預設：沒有自己設定間隔的已掌握題目，
+ * 下次複習改成今天加上新的間隔（改成不提醒時清掉）。一條 SQL，不受題目數量影響。
+ */
+export function rescheduleMasteredNotes(db: DB, userId: string, todayStr: string, days: number | null) {
+	return db
+		.update(notes)
+		.set({ nextReviewDate: masteredNextDate(todayStr, days) })
+		.where(and(eq(notes.userId, userId), eq(notes.mastered, true), isNull(notes.masteredReviewDays)));
+}
 
 /** 本人到期待複習的筆記與錯題數（總覽、頁首摘要用同一個數字） */
 export async function countReviewDue(db: DB, userId: string, todayStr: string): Promise<number> {

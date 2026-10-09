@@ -19,6 +19,8 @@ export type PublicUser = {
 	 * R2 的儲存位置（avatarKey）只在後端使用，不會出現在任何回應裡。
 	 */
 	avatarUpdatedAt: number | null;
+	/** 已掌握的錯題預設每幾天再複習一次；null = 不提醒（單則筆記可以另外設定） */
+	masteredReviewDays: number | null;
 };
 
 export type EventItem = StudyEvent & { taskTotal: number; taskDone: number };
