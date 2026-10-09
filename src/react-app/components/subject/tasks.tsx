@@ -1,11 +1,11 @@
-import { CalendarDays, CircleAlert, CircleCheck, CircleDot, Clock, Flag, ListChecks, Plus, TriangleAlert } from 'lucide-react';
+import { CircleCheck, ListChecks, Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { TaskItem } from '../../../shared/api-types';
-import { formatDate, formatMinutes } from '../../lib/format';
 import { dropKept, keepSaved, mergeKept, pruneKept, type KeptTask } from '../../lib/kept-tasks';
 import { useTaskResults } from '../../lib/task-queries';
 import { TaskCheckbox } from '../TaskItem';
-import { Badge, Button, Card, CardHeader, cn, EmptyState } from '../ui';
+import { ChecklistCount, DueLabel, TaskStatusBadges, TaskTimeLabel } from '../tasks/TaskMeta';
+import { Button, Card, CardHeader, cn, EmptyState } from '../ui';
 import { ShowMore } from './show-more';
 
 // 單科總覽的「未完成的任務」。
@@ -13,40 +13,9 @@ import { ShowMore } from './show-more';
 /** 先列出幾項任務，其餘收在「顯示全部」 */
 const TASK_LIMIT = 6;
 
-function DueLabel({ due, today }: { due: string | null; today: string }) {
-	if (!due) return null;
-	if (due < today)
-		return (
-			<span className="inline-flex items-center gap-1 font-semibold text-danger">
-				<CircleAlert className="size-3.5 shrink-0" aria-hidden />
-				逾期 {formatDate(due)}
-			</span>
-		);
-	if (due === today)
-		return (
-			<span className="inline-flex items-center gap-1 font-semibold text-warning">
-				<Clock className="size-3.5 shrink-0" aria-hidden />
-				今天到期
-			</span>
-		);
-	return (
-		<span className="inline-flex items-center gap-1">
-			<CalendarDays className="size-3.5 shrink-0" aria-hidden />
-			{formatDate(due)}
-		</span>
-	);
-}
-
+/** 一項任務：勾選、名稱，以及和任務頁一樣的期限、子項目、投入時間與狀態 badge（components/tasks/TaskMeta.tsx） */
 function TaskLine({ task, today, onOpen }: { task: TaskItem; today: string; onOpen: () => void }) {
 	const done = task.status === 'done';
-	const checked = task.checklist.filter((c) => c.done).length;
-	const over = !!task.estimatedMinutes && task.spentMinutes > task.estimatedMinutes;
-	const time = [
-		task.spentMinutes > 0 && `已投入 ${formatMinutes(task.spentMinutes)}`,
-		task.estimatedMinutes && `預估 ${formatMinutes(task.estimatedMinutes)}`,
-	]
-		.filter(Boolean)
-		.join('／');
 	return (
 		<li data-task={task.id} className="flex items-start gap-3 px-4 py-3 sm:px-5">
 			<span className="pt-0.5">
@@ -60,47 +29,20 @@ function TaskLine({ task, today, onOpen }: { task: TaskItem; today: string; onOp
 				>
 					{task.title}
 				</button>
-				<div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-ink-3">
+				<div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-meta text-ink-3">
 					{done ? (
 						<span className="inline-flex items-center gap-1 font-semibold text-success">
 							<CircleCheck className="size-3.5 shrink-0" aria-hidden />
 							剛完成
 						</span>
 					) : (
-						<DueLabel due={task.dueDate} today={today} />
+						task.dueDate && <DueLabel dueDate={task.dueDate} today={today} done={false} />
 					)}
-					{task.checklist.length > 0 && (
-						<span className="inline-flex items-center gap-1">
-							<ListChecks className="size-3.5 shrink-0" aria-hidden />
-							<span className="sr-only">子項目完成</span>
-							<span className="font-num tabular-nums">
-								{checked}／{task.checklist.length}
-							</span>
-						</span>
-					)}
-					{time && (
-						<span className={cn('inline-flex items-center gap-1', over && 'font-semibold text-warning')}>
-							{over ? <TriangleAlert className="size-3.5 shrink-0" aria-hidden /> : <Clock className="size-3.5 shrink-0" aria-hidden />}
-							{over && <span className="sr-only">超過預估，</span>}
-							{time}
-						</span>
-					)}
+					<ChecklistCount checklist={task.checklist} />
+					<TaskTimeLabel spent={task.spentMinutes} estimate={task.estimatedMinutes} />
 				</div>
 			</div>
-			{!done && (task.priority === 'high' || task.status === 'doing') && (
-				<div className="flex shrink-0 flex-col items-end gap-1">
-					{task.priority === 'high' && (
-						<Badge tone="outline" icon={<Flag aria-hidden />}>
-							高優先
-						</Badge>
-					)}
-					{task.status === 'doing' && (
-						<Badge tone="accent" icon={<CircleDot aria-hidden />}>
-							進行中
-						</Badge>
-					)}
-				</div>
-			)}
+			<TaskStatusBadges task={task} />
 		</li>
 	);
 }

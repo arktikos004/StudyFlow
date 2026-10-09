@@ -1,21 +1,20 @@
-import { Brain, CalendarClock, CalendarDays, ChevronDown, GraduationCap, ListPlus, MapPin, Pencil, Plus } from 'lucide-react';
+import { Brain, ChevronDown, GraduationCap, ListPlus, Pencil, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import type { EventItem } from '../../shared/api-types';
 import { localDate } from '../../shared/dates';
-import { EVENT_KIND_LABEL } from '../../shared/labels';
 import { CountdownTile } from '../components/countdown';
 import { PrepProgress } from '../components/dashboard/exams';
 import { useSubjectMark } from '../components/dashboard/hooks';
+import { EventKindBadge, EventWhenWhere } from '../components/event-meta';
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SubjectSelect, SubjectTag } from '../components/subjects';
-import { Badge, Button, Card, cn, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack, TextLink } from '../components/ui';
+import { Button, Card, cn, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack, TextLink } from '../components/ui';
 import { useUser } from '../lib/account-queries';
 import { useMinuteClock } from '../lib/clock';
 import { useDeepLink, useOpenDeepLink } from '../lib/deep-link';
 import { usePageTitle } from '../lib/document-title';
 import { eventsSummary } from '../lib/events-format';
-import { formatDateForToday } from '../lib/format';
 import { useEvents, useSubjectMap, useSubjects } from '../lib/queries';
 
 function EventCard({
@@ -51,9 +50,7 @@ function EventCard({
 				<div className="min-w-0 flex-1">
 					<div className="flex items-start justify-between gap-2">
 						<div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-2 pointer-coarse:pt-3">
-							<Badge icon={event.kind === 'exam' ? <GraduationCap aria-hidden /> : <CalendarClock aria-hidden />}>
-								{EVENT_KIND_LABEL[event.kind]}
-							</Badge>
+							<EventKindBadge kind={event.kind} />
 							<SubjectTag subjectId={event.subjectId} />
 						</div>
 						<Button size="icon" variant="ghost" onClick={onEdit} aria-label={`編輯「${event.title}」`} className="-mt-0.5 -mr-2 shrink-0">
@@ -61,21 +58,7 @@ function EventCard({
 						</Button>
 					</div>
 					<h3 className="mt-1 text-h3 font-semibold wrap-anywhere">{event.title}</h3>
-					<div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-meta text-ink-2">
-						<span className="inline-flex items-center gap-1">
-							<CalendarDays className="size-3.5 shrink-0 text-ink-3" aria-hidden />
-							<time dateTime={event.time ? `${event.date}T${event.time}` : event.date} className="font-num tabular-nums">
-								{formatDateForToday(event.date, today)}
-								{event.time && ` ${event.time}`}
-							</time>
-						</span>
-						{event.location && (
-							<span className="inline-flex min-w-0 items-center gap-1">
-								<MapPin className="size-3.5 shrink-0 text-ink-3" aria-hidden />
-								<span className="wrap-anywhere">{event.location}</span>
-							</span>
-						)}
-					</div>
+					<EventWhenWhere event={event} today={today} className="mt-1" />
 				</div>
 			</div>
 			{event.notes && <p className="mt-3 line-clamp-3 text-meta wrap-anywhere whitespace-pre-wrap text-ink-2">{event.notes}</p>}
