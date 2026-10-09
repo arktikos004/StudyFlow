@@ -12,8 +12,8 @@ import { KindBadge, MistakeAnswer, MistakeQuestion, NoteBody } from '../content'
 /**
  * 一次一題：先看題目、想好再「顯示答案」，然後選「還不熟」或「記住了」。
  * 焦點：顯示答案後移到答案區，換下一題時移到題目標題（按鈕會換掉，焦點不能掉到 body）。
- * record 回傳 Promise：今天到期模式送出後才換題。失敗時留在這一題，顯示原因與「跳過這題」；
- * 題目在別處被刪除（404）時自動略過。
+ * record 回傳 Promise：今天到期模式送出後才換題。失敗時留在這一題，顯示原因與「跳過這題」（只有這一則，不另外跳 toast）；
+ * 題目在別處被刪除（404）時跳一則提示後自動略過。
  */
 export function ReviewRunner({
 	queue: initialQueue,

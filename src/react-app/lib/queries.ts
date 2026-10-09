@@ -261,11 +261,15 @@ export const useCreateNote = () => useApiMutation((v: NoteInput) => api.post<{ n
 export const useUpdateNote = () =>
 	useApiMutation(({ id, ...v }: NoteUpdateInput) => api.patch<{ note: NoteItem }>(`/notes/${id}`, v), NOTE_KEYS);
 export const useDeleteNote = () => useApiMutation((id: string) => api.del(`/notes/${id}`), NOTE_KEYS, '已刪除');
-export const useReviewNote = () =>
-	useApiMutation(
-		({ id, result }: { id: string; result: 'remembered' | 'forgot' }) => api.post<{ note: NoteItem }>(`/notes/${id}/review`, { result }),
-		NOTE_KEYS,
-	);
+/** 複習的作答。失敗不跳 toast：複習畫面自己顯示（行內提示加「跳過這題」；題目被刪除時一則提示後跳過），避免同一個錯誤出現兩次 */
+export const useReviewNote = () => {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, result }: { id: string; result: 'remembered' | 'forgot' }) =>
+			api.post<{ note: NoteItem }>(`/notes/${id}/review`, { result }),
+		onSuccess: () => invalidateKeys(qc, NOTE_KEYS),
+	});
+};
 export const useUploadAttachment = () =>
 	useApiMutation(({ noteId, file }: { noteId: string; file: Blob }) => {
 		const form = new FormData();
