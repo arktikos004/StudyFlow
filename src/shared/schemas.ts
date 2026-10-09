@@ -151,6 +151,8 @@ export const eventUpdateSchema = eventSchema.partial();
 
 export const TASK_PRIORITIES = ['low', 'medium', 'high'] as const;
 export const TASK_STATUSES = ['todo', 'doing', 'done'] as const;
+/** 任務的預估時間最多一天（分鐘） */
+export const ESTIMATE_MAX_MINUTES = 1440;
 
 // 子任務清單：整份一起送出（新增、勾選、刪除、調整順序都是改陣列）
 export const CHECKLIST_MAX_ITEMS = 30;
@@ -177,7 +179,12 @@ export const taskSchema = z.object({
 	dueDate: dateString.nullish(),
 	priority: z.enum(TASK_PRIORITIES).default('medium'),
 	status: z.enum(TASK_STATUSES).default('todo'),
-	estimatedMinutes: z.number().int().min(1).max(1440).nullish(),
+	estimatedMinutes: z
+		.number({ error: '預估時間請輸入數字' })
+		.int('預估時間必須是整數')
+		.min(1, `預估時間需介於 1–${ESTIMATE_MAX_MINUTES} 分鐘`)
+		.max(ESTIMATE_MAX_MINUTES, `預估時間需介於 1–${ESTIMATE_MAX_MINUTES} 分鐘`)
+		.nullish(),
 	subjectId: id.nullish(),
 	eventId: id.nullish(),
 	checklist: checklist.default([]),

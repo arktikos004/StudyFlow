@@ -1,15 +1,19 @@
 import { useState, type FormEvent } from 'react';
 import type { EventItem } from '../../../shared/api-types';
 import { today } from '../../../shared/dates';
-import { eventSchema } from '../../../shared/schemas';
 import { EVENT_KIND_LABEL } from '../../../shared/labels';
-import { useCreateEvent, useDeleteEvent, useUpdateEvent, type EventInput } from '../../lib/queries';
+import { eventSchema } from '../../../shared/schemas';
 import { useUser } from '../../lib/account-queries';
+import { fieldErrors, useFieldErrors } from '../../lib/form-errors';
+import { useCreateEvent, useDeleteEvent, useUpdateEvent, type EventInput } from '../../lib/queries';
 import { SubjectSelect } from '../subjects';
 import { Dialog, Field, Input, Select, Textarea, useConfirm } from '../ui';
-import { DialogFooter, FormError } from './shared';
+import { DialogFooter } from './shared';
 
 const blankToNull = (v: string) => (v.trim() === '' ? null : v);
+
+/** 可能出錯的欄位，依畫面上的順序（送出時焦點移到第一個錯的欄位） */
+const EVENT_FIELDS = ['title', 'date', 'time', 'location', 'notes'] as const;
 
 /** 新增時的預設值（編輯既有考試時不使用）；例如單科頁、考試頁篩選某一科時預先選好科目 */
 export type EventDefaults = { subjectId?: string | null };
@@ -26,7 +30,7 @@ function EventForm({
 	onSave: (input: EventInput) => Promise<void>;
 }) {
 	const user = useUser();
-	const [error, setError] = useState<string>();
+	const fields = useFieldErrors(EVENT_FIELDS);
 	const [form, setForm] = useState({
 		kind: event?.kind ?? ('exam' as EventInput['kind']),
 		title: event?.title ?? '',
@@ -41,8 +45,8 @@ function EventForm({
 		e.preventDefault();
 		const input = { ...form, time: blankToNull(form.time), location: blankToNull(form.location), notes: blankToNull(form.notes) };
 		const parsed = eventSchema.safeParse(input);
-		if (!parsed.success) return setError(parsed.error.issues[0].message);
-		setError(undefined);
+		if (!parsed.success) return fields.show(fieldErrors(parsed.error.issues, EVENT_FIELDS));
+		fields.show({});
 		onSave(input);
 	};
 
@@ -62,47 +66,85 @@ function EventForm({
 			<Field label="科目" className="col-span-2 sm:col-span-1">
 				{(id) => <SubjectSelect id={id} value={form.subjectId} onChange={(subjectId) => setForm({ ...form, subjectId })} />}
 			</Field>
-			<Field label="標題" className="col-span-2">
-				{(id) => (
+			<Field label="標題" className="col-span-2" error={fields.errors.title}>
+				{(id, aria) => (
 					<Input
+						ref={fields.bind('title')}
 						id={id}
+						{...aria}
 						value={form.title}
-						onChange={(e) => setForm({ ...form, title: e.target.value })}
+						onChange={(e) => {
+							setForm({ ...form, title: e.target.value });
+							fields.clear('title');
+						}}
 						placeholder={form.kind === 'exam' ? '例如：資料結構期中考' : '例如：作業系統 HW3 繳交'}
 						maxLength={100}
 						autoFocus
 					/>
 				)}
 			</Field>
-			<Field label="日期">
-				{(id) => <Input id={id} type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />}
-			</Field>
-			<Field label="時間（選填）">
-				{(id) => <Input id={id} type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />}
-			</Field>
-			<Field label="地點（選填）" className="col-span-2">
-				{(id) => (
+			<Field label="日期" error={fields.errors.date}>
+				{(id, aria) => (
 					<Input
+						ref={fields.bind('date')}
 						id={id}
+						{...aria}
+						type="date"
+						value={form.date}
+						onChange={(e) => {
+							setForm({ ...form, date: e.target.value });
+							fields.clear('date');
+						}}
+					/>
+				)}
+			</Field>
+			<Field label="時間（選填）" error={fields.errors.time}>
+				{(id, aria) => (
+					<Input
+						ref={fields.bind('time')}
+						id={id}
+						{...aria}
+						type="time"
+						value={form.time}
+						onChange={(e) => {
+							setForm({ ...form, time: e.target.value });
+							fields.clear('time');
+						}}
+					/>
+				)}
+			</Field>
+			<Field label="地點（選填）" className="col-span-2" error={fields.errors.location}>
+				{(id, aria) => (
+					<Input
+						ref={fields.bind('location')}
+						id={id}
+						{...aria}
 						value={form.location}
-						onChange={(e) => setForm({ ...form, location: e.target.value })}
+						onChange={(e) => {
+							setForm({ ...form, location: e.target.value });
+							fields.clear('location');
+						}}
 						placeholder="例如：工學院 E101"
 						maxLength={100}
 					/>
 				)}
 			</Field>
-			<Field label="備註（選填）" className="col-span-2">
-				{(id) => (
+			<Field label="備註（選填）" className="col-span-2" error={fields.errors.notes}>
+				{(id, aria) => (
 					<Textarea
+						ref={fields.bind('notes')}
 						id={id}
+						{...aria}
 						value={form.notes}
-						onChange={(e) => setForm({ ...form, notes: e.target.value })}
+						onChange={(e) => {
+							setForm({ ...form, notes: e.target.value });
+							fields.clear('notes');
+						}}
 						placeholder="考試範圍、注意事項…"
 						maxLength={2000}
 					/>
 				)}
 			</Field>
-			<FormError error={error} />
 		</form>
 	);
 }
