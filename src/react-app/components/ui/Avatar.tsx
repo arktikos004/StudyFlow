@@ -26,22 +26,18 @@ function avatarInitial(name: string): string {
  * 頭像（圓形）。有照片時顯示照片（object-cover，邊緣一圈 ink 10% 的細線，白底照片在紙色上也有邊）；
  * 沒有照片、或照片載入失敗（例如離線）時，顯示暱稱的第一個字素：主題色底、on-accent 字（6 組主題色淺深色都 ≥ 6:1）。
  * - 照片載入中是 subtle 底，不會先閃一下首字；失敗才換成首字。src 換了（例如上傳新照片）或連回網路（online 事件）時會重新載入。
- * - label：頭像單獨出現時的無障礙名稱（role="img"）。旁邊已經有暱稱文字時不要給：整個頭像是裝飾（aria-hidden）。
+ * - 頭像是裝飾（aria-hidden）：用到的地方旁邊都有暱稱文字。要單獨出現時再加無障礙名稱。
  */
 export function Avatar({
 	name,
 	src,
 	size = 'md',
-	label,
-	className,
 }: {
 	/** 暱稱：沒有照片或照片載入失敗時顯示第一個字素 */
 	name: string;
 	/** 照片網址（例如 avatarUrl(user)、預覽用的 blob: 網址）；null 或省略就顯示首字 */
 	src?: string | null;
 	size?: AvatarSize;
-	label?: string;
-	className?: string;
 }) {
 	const [failedSrc, setFailedSrc] = useState<string | null>(null);
 	// 載入失敗多半是暫時的（離線）：連回網路時再試一次。側欄的頭像整個工作階段都掛著，
@@ -57,12 +53,11 @@ export function Avatar({
 	const initial = avatarInitial(name);
 	return (
 		<span
-			{...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}
+			aria-hidden
 			className={cn(
 				'inline-grid shrink-0 place-items-center overflow-hidden rounded-full leading-none font-semibold select-none',
 				box,
 				photo ? 'bg-subtle' : 'bg-accent text-on-accent',
-				className,
 			)}
 		>
 			{photo ? (

@@ -1,4 +1,4 @@
-import { Check, Minus } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
 import { cn } from './cn';
 
@@ -90,23 +90,13 @@ export function Switch({
 	);
 }
 
-export function Checkbox({
-	checked,
-	onChange,
-	label,
-	disabled,
-	id,
-	className,
-	indeterminate,
-	...aria
-}: ToggleProps & { indeterminate?: boolean }) {
-	const on = checked || indeterminate;
+export function Checkbox({ checked, onChange, label, disabled, id, className, ...aria }: ToggleProps) {
 	return (
 		<button
 			type="button"
 			role="checkbox"
 			id={id}
-			aria-checked={indeterminate ? 'mixed' : checked}
+			aria-checked={checked}
 			disabled={disabled}
 			onClick={() => onChange(!checked)}
 			onKeyDown={(e) => {
@@ -124,10 +114,10 @@ export function Checkbox({
 				aria-hidden
 				className={cn(
 					'grid size-5 shrink-0 place-items-center rounded-sm border-[1.5px] transition-colors duration-180 ease-out',
-					on ? 'border-accent bg-accent text-on-accent' : 'border-line-field bg-card group-hover:border-ink-3',
+					checked ? 'border-accent bg-accent text-on-accent' : 'border-line-field bg-card group-hover:border-ink-3',
 				)}
 			>
-				{indeterminate ? <Minus className="size-3.5" strokeWidth={3} /> : checked && <Check className="size-3.5" strokeWidth={3} />}
+				{checked && <Check className="size-3.5" strokeWidth={3} />}
 			</span>
 			{label && <span className="min-w-0 text-dense text-ink">{label}</span>}
 		</button>

@@ -313,7 +313,7 @@
   - 標籤 14/600 ink-2。
   - 提示 13 ink-3；錯誤 13 danger 加圖示。兩者都用 aria-describedby 連到欄位，錯誤時加 aria-invalid。
   - 輸入框：在卡片上用 page 色內嵌底；邊框 line-field；focus 時邊框變 accent，外加 3px 的 accent/20 光環。
-  - 版型：stacked（預設，標籤在上）；inline（Sprint 2）標籤與提示在左、欄位在右，用在設定列、短數字欄位。
+  - 標籤在上、欄位在中間、提示或錯誤在下（Sprint 5 刪掉沒有人用的 inline 版型）。
 - **Badge**：
   - 高 20px，12px 字，圓角 sm。
   - 狀態一律是圖示加文字；標籤用 outline；錯題、筆記用中性色加圖示。
@@ -324,14 +324,14 @@
   - 圓形。有照片時顯示照片（`object-cover`，邊緣 ink 10% 的 1px 細線）；沒有照片、或照片載入失敗（例如離線）時，顯示暱稱的第一個字素（`firstGrapheme`，emoji、組合字不切半；拉丁字母轉大寫），accent 底、on-accent 字，跟著主題色。載入失敗後，連回網路（`online` 事件）時會再試一次，側欄的頭像不會一直停在首字。
   - 照片載入中是 subtle 底，不先閃一下首字；失敗才換成首字，src 換了會重新載入。
   - 尺寸：sm 32（側欄）、md 40（手機選單）、lg 72（個人檔案）、xl 96（編輯對話框的預覽）。首字 600。
-  - 無障礙：旁邊已經有暱稱文字時是裝飾（`aria-hidden`、`alt=""`）；單獨出現時給 `label`（`role="img"`）。
+  - 無障礙：是裝飾（`aria-hidden`、`alt=""`），用到的地方旁邊都有暱稱文字。要單獨出現時再加無障礙名稱（Sprint 5 刪掉沒有人用的 `label`）。
   - 不可當成按鈕或連結的唯一內容；要可以點時，整列（頭像＋暱稱）一起當連結。
 
 **版面元件**
 - **Card**：
   - 圓角 xl，邊框 line，陰影 sm。
   - 只有可互動的卡片才有 hover 效果。
-  - 變體：inset、plain。
+  - 變體：plain（只有邊框、沒有陰影），例如已經過去的考試。
   - 卡片裡不放卡片。
 - **CardHeader**：h2，可加 meta，動作用文字加 ChevronRight。圖示直接傳 lucide 元件（18px、ink-3 由元件決定）。
 - **PageHeader**：h1，下面放即時摘要，或什麼都不放；上方可以放 eyebrow（日期這類小字）。下方間距是區塊間距（手機 24、桌面 32）。
@@ -501,20 +501,20 @@
 | `Button` | `variant: 'primary'｜'secondary'（預設）｜'ghost'｜'danger'｜'soft'`、`size: 'sm'｜'md'（預設）｜'lg'｜'icon'`、`loading` | 40px（觸控 44px；sm 32px，觸控裝置另有至少 44×44 的 `::after` 點擊範圍（Sprint 3 修正：原本只有 42px 高）；lg 48px；icon 36px、觸控 44px）。`loading` 保留文字並加 `aria-busy`。只有圖示時一定要給 `aria-label`。型別 `ButtonVariant`、`ButtonSize` |
 | `Input`、`Textarea` | 原生屬性 | 手機 16px、sm 以上 15px；page 色內嵌底、line-field 邊框、focus 時 accent 邊框加光環；`aria-invalid` 時變紅 |
 | `Select` | 原生屬性 | 右側 ChevronDown。**`className` 套在外層容器**（寬度、版面），select 填滿容器 |
-| `Field` | `label`、`hint`、`error`、`children: (id, aria) => …`、`className`；**Sprint 2**：`layout?: 'stacked'（預設）｜'inline'`（型別 `FieldLayout`） | `aria` 是 `FieldAria`（`aria-describedby`、`aria-invalid`），請展開到欄位上：`{(id, aria) => <Input id={id} {...aria} />}`。舊寫法 `(id) =>` 會自動把 aria 補到回傳的元素上。inline：標籤與提示／錯誤在左欄、欄位在右欄垂直置中，右欄寬度由欄位決定，請給欄位寬度（`className="w-24"`） |
-| `Card` | `as: 'section'｜'div'｜'article'｜'li'`、`variant: 'default'｜'inset'｜'plain'`、`interactive` | 只有整張可點的卡片才加 `interactive` |
+| `Field` | `label`、`hint`、`error`、`children: (id, aria) => …`、`className` | `aria` 是 `FieldAria`（`aria-describedby`、`aria-invalid`），請展開到欄位上：`{(id, aria) => <Input id={id} {...aria} />}`。舊寫法 `(id) =>` 會自動把 aria 補到回傳的元素上。錯誤用 `InlineError` 顯示 |
+| `Card` | `as: 'section'（預設）｜'div'｜'article'`、`variant: 'default'｜'plain'`、`interactive` | 只有整張可點的卡片才加 `interactive`；plain 沒有陰影 |
 | `CardHeader` | `title`、`icon`、`meta`、`action` | 標題是 h2（18px／600）；meta 例如「3 項」 |
 | `PageHeader` | `title`、`description`（ReactNode）、`actions` | h1；description 放即時摘要 |
 | `Badge` | `tone: 'neutral'｜'accent'｜'danger'｜'success'｜'warning'｜'outline'`、`icon` | 20px 高；圖示自動縮成 12px；型別 `BadgeTone` |
 | `EmptyState` | `icon`、`title`、`description`、`action`、`variant: 'page'｜'inline'`、`className` | inline 版：一行文字（`title`，`description`）＋右側 ghost 動作 |
 | `Spinner`、`PageLoader`、`ErrorNote` | — | PageLoader 延遲 150ms 才出現；ErrorNote 有圖示 |
-| `Segmented<T>` | `value`、`onChange`、`options: { value, label, disabled? }[]`、`label`（必填，群組名稱）、`stretch`、`className` | WAI-ARIA radio：roving tabindex、方向鍵循環並選取、Home／End |
+| `Segmented<T>` | `value`、`onChange`、`options: { value, label, disabled? }[]`、`label`（必填，群組名稱）、`className` | WAI-ARIA radio：roving tabindex、方向鍵循環並選取、Home／End |
 | `Dialog` | `open`、`onClose`、`title`、`footer`、`wide` | `aria-labelledby`；手機 bottom sheet（拖曳把手往下拉可關閉）；觸控裝置不自動 focus，桌面版 `autoFocus` 有效；關閉後卸載內容 |
-| `useConfirm(defaults?)` | 回傳 `[confirm, element]`；`confirm(opts: ConfirmOptions)` → `Promise<boolean>`。`ConfirmOptions = { title, message?, confirmText?, cancelText?, tone? }`；**Sprint 2**：`tone?: 'danger'（預設）｜'primary'`（型別 `ConfirmTone`），也可以 `useConfirm({ tone })` 設整個 hook 的預設值 | danger：danger 確認鈕、預設焦點在「取消」、省略 message 時顯示「刪除後無法復原。」、確認鈕預設「刪除」。primary：primary 確認鈕、預設焦點在確認鈕、省略 message 時不顯示、確認鈕預設「確定」（請改寫成動作）。既有呼叫端行為不變 |
+| `useConfirm()` | 回傳 `[confirm, element]`；`confirm(opts: ConfirmOptions)` → `Promise<boolean>`。`ConfirmOptions = { title, message?, confirmText?, tone? }`；**Sprint 2**：`tone?: 'danger'（預設）｜'primary'`（型別 `ConfirmTone`）。取消鈕固定是「取消」 | danger：danger 確認鈕、預設焦點在「取消」、省略 message 時顯示「刪除後無法復原。」、確認鈕預設「刪除」。primary：primary 確認鈕、預設焦點在確認鈕、省略 message 時不顯示、確認鈕預設「確定」（請改寫成動作）。既有呼叫端行為不變 |
 | `ProgressBar` | `value`、`max`（100）、`label` 或 `labelledBy`、`valueText`、`tone: 'accent'｜'success'｜'warning'｜'danger'`、`color`、`size: 'sm'｜'md'` | `role="progressbar"`；`color` 傳 `subjectTone(...).mark`，軌道自動用同色淡一階；型別 `ProgressTone` |
 | `ProgressRing` | 同上，另有 `size`（40）、`stroke`（4）、`trackColor`、`children`（圓心內容） | 底色和軌道同色時（例如膠囊底上）用 `trackColor` 換軌道色。**children 是純展示**：progressbar 的子元素在無障礙樹裡是 presentational，螢幕報讀器不會念；要報讀的內容放在 `label`／`valueText`，圓心不要放按鈕、連結等可互動元素 |
 | `GoalProgress` | `label`、`value`、`goal`（> 0）、`unit`（'分鐘'）、`format`、`color` | 已讀／目標、百分比、「還差 …」或「已達成」（圖示加文字，進度條轉成 success）。沒設目標時不要用它，改顯示「設定目標」連結 |
-| `Switch`、`Checkbox` | `checked`、`onChange(checked)`、`label`、`disabled`、`id`、`aria-*`；Checkbox 另有 `indeterminate`；**Sprint 2**：Switch 另有 `description?: ReactNode` | `role="switch"／"checkbox"` + `aria-checked`，整列可點、至少 44px；沒有 `label` 時要給 `aria-label`。description 顯示在標籤下方（13px ink-3），以 `aria-describedby` 連到開關（和呼叫端給的 aria-describedby 合併），名稱仍只有標籤；有 description 時開關對齊第一行 |
+| `Switch`、`Checkbox` | `checked`、`onChange(checked)`、`label`、`disabled`、`id`、`aria-*`；**Sprint 2**：Switch 另有 `description?: ReactNode` | `role="switch"／"checkbox"` + `aria-checked`，整列可點、至少 44px；沒有 `label` 時要給 `aria-label`。description 顯示在標籤下方（13px ink-3），以 `aria-describedby` 連到開關（和呼叫端給的 aria-describedby 合併），名稱仍只有標籤；有 description 時開關對齊第一行 |
 | `Highlight` | `text`、`query`（字串以空白分隔，或字串陣列）、`className` | 用 `<mark>`（mark token）標出關鍵字，不分大小寫 |
 | `Kbd` | `children` | 例如 `<Kbd>Ctrl</Kbd> <Kbd>K</Kbd>` |
 | `NumDisplay` | `children`、`unit`、`size: 'xl'｜'lg'（預設）｜'md'｜'sm'` | 數字字型、等寬數字；xl 為計時大字；型別 `NumSize` |
@@ -551,7 +551,7 @@
 |---|---|---|
 | `IconProp` | 型別：`LucideIcon \| ReactNode` | 元件的 icon prop：傳元件由元件決定大小顏色；傳元素照原樣 |
 | `PageStack` | `as?: 'div' \| 'section'`、其餘 HTML 屬性 | `space-y-section`：區塊之間的直向間距。兩欄以上的格線用工具類 `gap-section` |
-| `SectionLabel` | `children`、`as?: 'h2'（預設）\|'h3'\|'h4'\|'p'\|'div'`、`size?: 'meta'（預設）\|'sm'`、`tone?: 'neutral'（預設）\|'danger'\|'warning'\|'success'`（型別 `SectionLabelTone`）、`icon?: IconProp`、`count?: number`、`countUnit?: string`（'項'）、`id?`、`className?` | 小標，600、ink-2、圖示 16px（neutral 時圖示 ink-3）。count 用數字字型 ink-3，報讀成「已逾期，1項」。間距由呼叫端給（`className="mb-2 px-1"`） |
+| `SectionLabel` | `children`、`as?: 'h2'（預設）\|'h3'`、`size?: 'meta'（預設）\|'sm'`、`tone?: 'neutral'（預設）\|'danger'\|'warning'\|'success'`（型別 `SectionLabelTone`）、`icon?: IconProp`、`count?: number`、`countUnit?: string`（'項'）、`id?`、`className?` | 小標，600、ink-2、圖示 16px（neutral 時圖示 ink-3）。count 用數字字型 ink-3，報讀成「已逾期，1項」。間距由呼叫端給（`className="mb-2 px-1"`） |
 | `ToggleButton` | `pressed`、`onPressedChange(pressed)`、`busy?`、`variant?: 'text'（預設）\|'icon'`、`icon?: IconProp`、`size?: ButtonSize`、其餘 button 屬性（含 `aria-label`、`title`、`data-*`）；forwardRef | `aria-pressed`；按下時 accent-soft 底、accent-ink 字、圖示轉實心（`fill-current`）。名稱不隨狀態改字。busy 時 `aria-disabled`＋`aria-busy`、opacity .7、忽略點擊（不用 disabled，焦點不會掉）。text 版是 sm secondary（未按下時有框）；icon 版是 ghost icon（36px、觸控 44px，未按下 ink-3），一定要給 aria-label |
 | `MiniIconButton` | `label`（無障礙名稱，必填）、`icon?: LucideIcon`（預設 X）、其餘 button 屬性；forwardRef | 看起來 28px 的圓形圖示按鈕（card 90% 底、line 框、陰影 sm），`::after` 擴大到 44px。位置由 className 決定（`absolute top-1 right-1`）。焦點時底色轉成實心 card，焦點框外再墊一圈 card |
 | `StretchedButton` | `cover?: 'cell'（預設）\|'card'`、其餘 button 屬性；forwardRef | 整格可點的標題按鈕：`::after` 蓋滿最近的 relative 容器，焦點框畫在 `::after`。cell：往外 4px、圓角 md；card：貼齊、圓角 xl、焦點框內縮 2px（卡片有 overflow-hidden 也看得到）。文字樣式由 className 給 |
@@ -565,7 +565,7 @@ tokens 與工具類：`--section-gap`（`gap-section`、`space-y-section`、`mb-
 
 | 名稱 | Props | 說明 |
 |---|---|---|
-| `Avatar` | `name`（暱稱，必填）、`src?: string \| null`（照片網址，例如 `avatarUrl(user)`、預覽的 `blob:`）、`size?: AvatarSize`（預設 'md'）、`label?: string`、`className?` | 圓形頭像。有照片顯示照片；沒有或載入失敗時顯示暱稱的第一個字素（accent 底、on-accent 字）。旁邊有暱稱時不給 `label`（`aria-hidden`）；單獨出現時給 `label`（`role="img"`） |
+| `Avatar` | `name`（暱稱，必填）、`src?: string \| null`（照片網址，例如 `avatarUrl(user)`、預覽的 `blob:`）、`size?: AvatarSize`（預設 'md'） | 圓形頭像。有照片顯示照片；沒有或載入失敗時顯示暱稱的第一個字素（accent 底、on-accent 字）。是裝飾（`aria-hidden`），旁邊要有暱稱文字 |
 | `AvatarSize` | 型別：`'sm' \| 'md' \| 'lg' \| 'xl'` | 32／40／72／96px |
 
 `firstGrapheme` 沒有搬家：它本來就在中性的 `lib/format.ts`（沒有 React），`components/ui/` 與 `components/subjects.tsx` 都從那裡 import，`components/ui/` 不必反過來 import `subjects.tsx`。

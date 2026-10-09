@@ -39,14 +39,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
 /** Field 傳給欄位的無障礙屬性：提示或錯誤訊息的 id，以及錯誤狀態 */
 export type FieldAria = { 'aria-describedby'?: string; 'aria-invalid'?: true };
 
-/** Field 的版型：stacked（預設）標籤在上、欄位在下；inline 標籤與提示在左、欄位在右（設定列、短數字欄位） */
-export type FieldLayout = 'stacked' | 'inline';
-
 /**
- * 標籤 + 欄位 + 提示／錯誤。
+ * 標籤（上）+ 欄位 + 提示／錯誤（下）。
  * children 可以是 `(id, aria) => <Input id={id} {...aria} />`（建議），或舊寫法 `(id) => <Input id={id} />`：
  * 舊寫法會自動把 aria 屬性補到回傳的元素上（元素本身已指定的不覆蓋）。
- * layout="inline"：標籤與提示／錯誤在左欄、欄位在右欄並垂直置中；右欄寬度由欄位決定，請給欄位寬度（例如 `className="w-24"`）。
  */
 export function Field({
 	label,
@@ -54,14 +50,12 @@ export function Field({
 	error,
 	children,
 	className,
-	layout = 'stacked',
 }: {
 	label: ReactNode;
 	hint?: ReactNode;
 	error?: ReactNode;
 	children: (id: string, aria: FieldAria) => ReactNode;
 	className?: string;
-	layout?: FieldLayout;
 }) {
 	const id = useId();
 	const noteId = `${id}-note`;
@@ -73,35 +67,21 @@ export function Field({
 		const props = control.props;
 		control = cloneElement(control, Object.fromEntries(Object.entries(aria).filter(([k]) => props[k] === undefined)));
 	}
-	const labelEl = (
-		<label htmlFor={id} className="text-sm font-semibold text-ink-2">
-			{label}
-		</label>
-	);
-	const note = error ? (
-		<InlineError id={noteId}>{error}</InlineError>
-	) : (
-		hint && (
-			<p id={noteId} className="text-meta text-ink-3">
-				{hint}
-			</p>
-		)
-	);
-	if (layout === 'inline')
-		return (
-			<div className={cn('grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4', className)}>
-				<div className="flex min-w-0 flex-col gap-0.5">
-					{labelEl}
-					{note}
-				</div>
-				{control}
-			</div>
-		);
 	return (
 		<div className={cn('flex flex-col gap-1.5', className)}>
-			{labelEl}
+			<label htmlFor={id} className="text-sm font-semibold text-ink-2">
+				{label}
+			</label>
 			{control}
-			{note}
+			{error ? (
+				<InlineError id={noteId}>{error}</InlineError>
+			) : (
+				hint && (
+					<p id={noteId} className="text-meta text-ink-3">
+						{hint}
+					</p>
+				)
+			)}
 		</div>
 	);
 }

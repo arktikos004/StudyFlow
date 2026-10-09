@@ -4,7 +4,6 @@ import { cn } from './cn';
 /**
  * 分段按鈕（例如 7 天 / 30 天 / 90 天）。
  * WAI-ARIA radio group：只有選中的項目在 Tab 順序中（roving tabindex），方向鍵循環移動並選取，Home／End 到頭尾。
- * stretch：撐滿容器寬度、每項等寬。
  */
 export function Segmented<T extends string>({
 	value,
@@ -12,14 +11,12 @@ export function Segmented<T extends string>({
 	options,
 	label,
 	className,
-	stretch = false,
 }: {
 	value: T;
 	onChange: (v: T) => void;
 	options: { value: T; label: ReactNode; disabled?: boolean }[];
 	label: string;
 	className?: string;
-	stretch?: boolean;
 }) {
 	const refs = useRef<(HTMLButtonElement | null)[]>([]);
 	const selected = options.findIndex((o) => o.value === value);
@@ -60,7 +57,7 @@ export function Segmented<T extends string>({
 			role="radiogroup"
 			aria-label={label}
 			onKeyDown={onKeyDown}
-			className={cn('gap-0.5 rounded-lg border border-line bg-subtle p-0.5', stretch ? 'flex w-full' : 'inline-flex max-w-full', className)}
+			className={cn('inline-flex max-w-full gap-0.5 rounded-lg border border-line bg-subtle p-0.5', className)}
 		>
 			{options.map((o, i) => {
 				const checked = i === selected;
@@ -78,7 +75,6 @@ export function Segmented<T extends string>({
 						onClick={() => onChange(o.value)}
 						className={cn(
 							'inline-flex h-9 min-w-0 items-center justify-center rounded-md px-3 text-sm whitespace-nowrap transition-[color,background-color,box-shadow] duration-180 ease-out pointer-coarse:h-10 disabled:cursor-not-allowed disabled:opacity-50',
-							stretch && 'flex-1',
 							checked ? 'bg-card text-ink shadow-sm dark:bg-line' : 'text-ink-2 hover:text-ink',
 						)}
 					>
