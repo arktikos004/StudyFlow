@@ -343,6 +343,8 @@
 - **EmptyState**：
   - page 版：圖示圓、標題、一句邀請，加上 primary 動作。
   - inline 版：一行文字加 ghost 動作。
+  - `flush`（Sprint 5）：放在已經有左右內距的容器裡（例如卡片的內容區）時，不再加自己的左右內距，和旁邊的內容對齊。不要用 `className="px-0"` 去蓋：產生的 CSS 裡預設的 `px-4`、`sm:px-5` 排在後面，蓋不掉。
+- **InlineError**（Sprint 5）：行內錯誤，圖示加紅字、`role="alert"`。欄位底下用預設的 sm（13px、14px 圖示），整張表單的錯誤放在送出按鈕上方、用 md（14px、16px 圖示）。`Field` 的 `error` 就是用它；不要再自己組「圖示加 text-danger」。
 
 **覆蓋層**
 - **Dialog**：
@@ -408,6 +410,10 @@
   - 密碼：平常只有一列（「密碼」＋「變更後，其他裝置會登出」＋「變更密碼」按鈕，`aria-expanded`、ChevronDown 轉 180°），按了才在下面展開表單（漸進揭露，不用對話框）。送出中不能取消或收起（結果要有地方顯示）。
     - 表單：目前密碼、新密碼（至少 8 個字元）、確認新密碼，`autoComplete` 正確，另有隱藏的 username（Email）讓密碼管理工具知道是哪個帳號。錯誤在欄位旁、送出時焦點到第一個錯誤；目前密碼不對（後端 400）標在「目前密碼」，其他失敗在按鈕上方。
     - 「取消」ghost、「更新密碼」secondary；成功時 toast「密碼已更新，其他裝置已登出」、收起、焦點回到「變更密碼」。滑鼠操作時展開後焦點進「目前密碼」，觸控裝置不自動 focus。
+- **錯題複習卡**（Sprint 5，NOTE-3，`components/settings/MasteredReviewCard.tsx`，讀書目標卡的下面）：
+  - 一句說明（錯題在第 1、3、7、14、30 天提醒，都記得就算已掌握），加上「已掌握的錯題」選單：不提醒（預設）、每 7／14／30／60／90 天、自訂天數（選了才出現「每 [  ] 天」的輸入框，1–365）。
+  - 「儲存」是 primary，沒改時停用；自訂天數不對時錯誤在欄位底下（InlineError），不送出。成功時 toast「已更新錯題複習的設定」。
+  - 選單是 `components/MasteredReviewField.tsx`，和筆記編輯共用；選項與值的轉換在 `lib/mastered-review.ts`（有單元測試）。
 - **共用小元件**（Sprint 1 由設計師提供）：
   - ProgressBar、ProgressRing
   - Switch、Checkbox
@@ -434,6 +440,8 @@
   - 顏色依語意：有逾期是 danger，否則 warning。桌面是 soft 膠囊（`bg-*-soft text-*`）靠右；手機是實心膠囊（`bg-danger／bg-warning`＋on-accent 字＋2px card 外圈）疊在圖示右上角。
   - 數字本身 aria-hidden，報讀文字接在名稱後面：「學習任務，3 項待處理，其中 1 項逾期」「筆記與錯題，2 項待複習」。
 - **換頁**：路徑改變時捲回頂端；上一頁／下一頁交給瀏覽器還原；只改網址參數（篩選、`?open=`）不捲動。
+- **瀏覽器標題**（Sprint 5，WCAG 2.4.2）：每一頁是「頁面名稱｜StudyFlow」，名稱和導覽一致（「月曆｜StudyFlow」）；單科總覽是科目名稱，登入、註冊、找不到頁面各有自己的名稱。計時中改成「24:13 專注中｜StudyFlow」，換到別頁也一樣，停下來後回到頁面名稱。每頁用 `lib/document-title.ts` 的 `usePageTitle`，計時由 `TimerPill` 的 `useTimerTitle` 提供。
+- **新版本提示**（Sprint 5）：部署新版後，Service Worker 裝好新版時跳 toast「有新版本」，附「重新載入」動作，不會自己重新整理（可能正在編輯）；不按的話，所有分頁都關掉、下次開啟就是新版（`lib/service-worker.ts`）。
 
 **頁面元件**
 - **計時**：進度環是科目 mark 疊在 tint 軌道上；數字用 font-num；番茄數以圓點顯示；`role="timer"`。
@@ -441,6 +449,10 @@
   - 結構是 grid → row → gridcell，可用方向鍵移動。
   - 今天：accent 圓底；選取中：內框 ring。
   - chip 用科目 tint 加圖示。
+- **錯題的複習狀態**（Sprint 5，NOTE-3）：
+  - 到期（下次複習日 ≤ 今天）一律是「待複習」（warning＋Brain），包括選了定期複習、到期的已掌握題目；其他已掌握的是「已掌握」（success＋CircleCheck），詳細內容加上「・10/16 複習」。
+  - 編輯已掌握的題目時，「加入複習排程」換成「已掌握後的複習」選單：跟隨設定（每 N 天）／不提醒／每 N 天（和設定頁的錯題複習卡共用 `MasteredReviewField`）。
+  - 今天到期的複習裡，已掌握的題目標示「已掌握・定期複習」，其他是「第 N 輪」。
 - **圖表**：遵守 dataviz 的規則：
   - 2 個以上的系列要有圖例。
   - 每張圖都有表格檢視。
@@ -479,6 +491,8 @@
 - **小標**：卡片外的分組標題（「已釘選 2」「已逾期 1」）和卡片內的欄位小標（「題目」「正確答案」）用 `SectionLabel`，不自己組 class。
 - **日期範圍**：寫成「9/7（一）至 10/6（二）」，用「至」，不用破折號（–、—、~）。
 - **載入失敗**：`ErrorNote` 傳 `onRetry`（通常是 query 的 `refetch`），讓使用者不必重新整理頁面。
+- **表單驗證**（Sprint 5 補上考試與任務表單）：送出前用共用的 zod schema 檢查，錯誤用 `useFieldErrors` 標在各自的欄位上（`aria-invalid`＋`aria-describedby`），送出時焦點移到第一個錯的欄位，改了那一欄就清掉它的錯誤。不要只在表單最下面放一則錯誤。
+- **同一個錯誤只說一次**：畫面已經有行內提示（例如複習記錄失敗的「跳過這題」）時，mutation 不再另外跳 toast。
 - **例外**（只有這幾個）：
   - 外觀設定的深淺色預覽可以有邊框：它是畫面的縮圖，不算卡片裡的卡片。
   - raw 的 `white`／`black` 只允許出現在選色器的把手（`ColorPicker.tsx`：把手必須在任何顏色上都看得見）。照片燈箱的背景用 `bg-scrim`，不用 `black`。另一個例外是 `lib/profile-image.ts` 轉檔用的 canvas 底色 `#ffffff`：那是 JPEG 影像的底色（透明的地方鋪白），不是介面的顏色。
@@ -506,8 +520,9 @@
 | `CardHeader` | `title`、`icon`、`meta`、`action` | 標題是 h2（18px／600）；meta 例如「3 項」 |
 | `PageHeader` | `title`、`description`（ReactNode）、`actions` | h1；description 放即時摘要 |
 | `Badge` | `tone: 'neutral'｜'accent'｜'danger'｜'success'｜'warning'｜'outline'`、`icon` | 20px 高；圖示自動縮成 12px；型別 `BadgeTone` |
-| `EmptyState` | `icon`、`title`、`description`、`action`、`variant: 'page'｜'inline'`、`className` | inline 版：一行文字（`title`，`description`）＋右側 ghost 動作 |
+| `EmptyState` | `icon`、`title`、`description`、`action`、`variant: 'page'｜'inline'`、`flush`、`className` | inline 版：一行文字（`title`，`description`）＋右側 ghost 動作。flush：不加左右內距（放在已經有內距的容器裡） |
 | `Spinner`、`PageLoader`、`ErrorNote` | — | PageLoader 延遲 150ms 才出現；ErrorNote 有圖示 |
+| `InlineError` | `children`、`size?: 'sm'（預設）｜'md'`、`id?`、`className?` | 圖示加紅字、`role="alert"`。sm 給欄位底下，md 給整張表單的錯誤；`id` 給欄位的 `aria-describedby` |
 | `Segmented<T>` | `value`、`onChange`、`options: { value, label, disabled? }[]`、`label`（必填，群組名稱）、`className` | WAI-ARIA radio：roving tabindex、方向鍵循環並選取、Home／End |
 | `Dialog` | `open`、`onClose`、`title`、`footer`、`wide` | `aria-labelledby`；手機 bottom sheet（拖曳把手往下拉可關閉）；觸控裝置不自動 focus，桌面版 `autoFocus` 有效；關閉後卸載內容 |
 | `useConfirm()` | 回傳 `[confirm, element]`；`confirm(opts: ConfirmOptions)` → `Promise<boolean>`。`ConfirmOptions = { title, message?, confirmText?, tone? }`；**Sprint 2**：`tone?: 'danger'（預設）｜'primary'`（型別 `ConfirmTone`）。取消鈕固定是「取消」 | danger：danger 確認鈕、預設焦點在「取消」、省略 message 時顯示「刪除後無法復原。」、確認鈕預設「刪除」。primary：primary 確認鈕、預設焦點在確認鈕、省略 message 時不顯示、確認鈕預設「確定」（請改寫成動作）。既有呼叫端行為不變 |
@@ -519,6 +534,8 @@
 | `Kbd` | `children` | 例如 `<Kbd>Ctrl</Kbd> <Kbd>K</Kbd>` |
 | `NumDisplay` | `children`、`unit`、`size: 'xl'｜'lg'（預設）｜'md'｜'sm'` | 數字字型、等寬數字；xl 為計時大字；型別 `NumSize` |
 | `Countdown` | `seconds`、`size`（'xl'） | `role="timer"`，mm:ss 或 h:mm:ss，半窄字寬 |
+
+**`components/event-meta.tsx`**（Sprint 5）：`EventKindBadge({ kind })`（中性色 badge：考試 GraduationCap、截止日 CalendarClock）、`EventWhenWhere({ event, today, className? })`（CalendarDays＋`<time>` 的日期時間，不是今年時加上年份；有地點時接 MapPin＋地點）。考試頁卡片與單科總覽的「即將到來」共用。單科總覽的任務列也改用 `components/tasks/TaskMeta.tsx` 的 `DueLabel`、`ChecklistCount`、`TaskTimeLabel`、`TaskStatusBadges`，準備進度用 `PrepProgress`，和任務頁、考試頁、總覽一致。月曆當天面板的考試列維持左側圖示（`EVENT_ICON`）加 accent／neutral badge 的做法。
 
 **`components/charts.tsx`**：`StatStrip({ items: StatItem[] })`，`StatItem = { key?, label, value, sub?, icon? }`（一張卡片用分隔線分格、手機 2 欄、sm 以上最多 4 格、數值 28／600）。`Heatmap` 內建「表格／圖表」切換與 `role="img"` 摘要。`Legend`、`SubjectBars`、`MiniDailyBars`、`DailyStackedBars`、`WeeklyTaskBars`、`SeriesDef` 的 API 不變（舊的 `StatTile` 已刪除，數字格一律用 `StatStrip`）。`StatTile` 已在 Sprint 5 的清理中刪除。
 

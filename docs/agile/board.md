@@ -57,6 +57,8 @@
 | 全 codebase clean code review | code-reviewer × 5（Sonnet，分區、只讀） | 完成：後端與共用 36 項、頁面 40 項、lib 24 項、共用元件與外殼 25 項、測試 20 項 |
 | s5/clean-code：依 review 修正 | Scrum Master | 完成：44 個 commit（修 bug 12、重構 23、測試 7）。畫面截圖 74 張與基準相同；bug 修正各自用無頭 Chrome 實測，並確認拿掉修正時檢查會失敗。細目與留給使用者決定的項目見 backlog「Sprint 5 code review」 |
 | 第二次部署：s5/clean-code（沒有新的 migration） | Scrum Master | 完成（2026-10-07 21:57：先記下 Time Travel bookmark 與目前的版本、匯出備份，確認遠端沒有待套用的 migration；`npm run deploy` 後不登入的檢查通過。push main 後 Workers Builds 又部署同一個 commit，再檢查一次通過，前端檔案的雜湊和本機建置相同） |
+| s5/decisions：review 留給使用者決定的 18 項（2026-10-09 決定），新故事 NOTE-3 已掌握題目的定期複習（migration 0004、每天清理的 Cron Trigger） | Scrum Master | 完成：測試 483 項通過；畫面截圖和同一天、改動前的版本比對，74 張中 20 張不同，都是這次刻意的改動（設定頁的新卡片、單科總覽、篩選列寬度），其餘相同；每一項各自用無頭 Chrome 實測。細目見 backlog「Sprint 5 code review」 |
+| 第三次部署：s5/decisions（遠端 D1 套用 0004） | Scrum Master | 進行中 |
 
 **測試檔改名對照**（Sprint 5 依功能重新命名；舊的 sprint-review.md 記錄的是當時的檔名）
 
