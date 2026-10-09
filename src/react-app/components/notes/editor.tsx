@@ -1,18 +1,25 @@
 import { CircleAlert, Eye, Pencil } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
 import type { NoteItem } from '../../../shared/api-types';
-import { NOTE_TAGS_MAX, NOTE_TITLE_MAX, REVIEW_INTERVALS, noteSchema } from '../../../shared/schemas';
+import { NOTE_TAGS_MAX, NOTE_TITLE_MAX, REVIEW_INTERVALS, noteSchema, noteUpdateSchema } from '../../../shared/schemas';
+import { useUser } from '../../lib/account-queries';
 import { compressImage } from '../../lib/attachment-image';
+import { fromIntervalChoice, masteredReviewLabel, toIntervalChoice } from '../../lib/mastered-review';
 import { defaultScheduleReview, emptyNoteForm, formToNoteInput, noteEditorTitle, noteToForm, type NoteForm } from '../../lib/notes-form';
 import { usePendingPhotos } from '../../lib/pending-photos';
 import { useCreateNote, useDeleteAttachment, useNote, useUpdateNote, useUploadAttachment } from '../../lib/queries';
 import { DialogFooter } from '../forms/shared';
+import { MasteredReviewField } from '../MasteredReviewField';
 import { SubjectSelect } from '../subjects';
 import { Button, Checkbox, cn, Dialog, Field, Input, Segmented, Textarea, useConfirm, type ConfirmOptions } from '../ui';
 import { MarkdownView, PhotoGrid } from './content';
 import { PendingPhotoGrid, PhotoPicker } from './photos';
 
 type NoteKind = NoteItem['kind'];
+
+/** 單則筆記的「已掌握後的複習」：跟隨設定（null）、不提醒（0），或每 N 天 */
+const MASTERED_SPECIAL = { follow: null, none: 0 };
+const masteredDaysSchema = noteUpdateSchema.pick({ masteredReviewDays: true });
 
 /** 錯題的題目、答案與原因：標籤加多行文字框 */
 function TextareaField({
@@ -77,6 +84,9 @@ function NoteEditorForm({
 	const photos = usePendingPhotos();
 	const [preview, setPreview] = useState(false);
 	const [error, setError] = useState<string>();
+	const user = useUser();
+	const [masteredReview, setMasteredReview] = useState(() => toIntervalChoice(note?.masteredReviewDays ?? null, MASTERED_SPECIAL));
+	const [masteredReviewError, setMasteredReviewError] = useState<string>();
 	const scheduleHint = useId();
 	const contentLabel = useId();
 
@@ -89,11 +99,18 @@ function NoteEditorForm({
 		const input = formToNoteInput(form);
 		const parsed = noteSchema.safeParse(input);
 		if (!parsed.success) return setError(parsed.error.issues[0].message);
+		// 已掌握的題目：一併送出「已掌握後的複習」（後端只在值變了時重新排程）
+		let masteredExtra = {};
+		if (note?.mastered) {
+			const days = masteredDaysSchema.safeParse({ masteredReviewDays: fromIntervalChoice(masteredReview, MASTERED_SPECIAL) });
+			if (!days.success) return setMasteredReviewError(days.error.issues[0].message);
+			masteredExtra = { masteredReviewDays: days.data.masteredReviewDays };
+		}
 
 		setSaving(true);
 		try {
 			let id = savedId;
-			if (id) await update.mutateAsync({ id, ...input });
+			if (id) await update.mutateAsync({ id, ...input, ...masteredExtra });
 			else {
 				id = (await create.mutateAsync(input)).note.id;
 				setSavedId(id);
@@ -218,17 +235,35 @@ function NoteEditorForm({
 				<PendingPhotoGrid photos={photos.pending} onRemove={photos.remove} />
 			</div>
 
-			<div>
-				<Checkbox
-					checked={form.scheduleReview}
-					onChange={(v) => set('scheduleReview', v)}
-					label="加入複習排程"
-					aria-describedby={scheduleHint}
+			{note?.mastered ? (
+				// 已掌握的題目不看「加入複習排程」，改成選要不要定期複習、幾天一次
+				<MasteredReviewField
+					label="已掌握後的複習"
+					hint="想要久久再複習一次就選天數；跟隨設定時用設定頁「錯題複習」的預設。"
+					specialOptions={[
+						{ key: 'follow', label: `跟隨設定（${masteredReviewLabel(user.masteredReviewDays)}）` },
+						{ key: 'none', label: '不提醒' },
+					]}
+					value={masteredReview}
+					onChange={(next) => {
+						setMasteredReview(next);
+						setMasteredReviewError(undefined);
+					}}
+					error={masteredReviewError}
 				/>
-				<p id={scheduleHint} className="-mt-1 pl-[1.875rem] text-meta text-ink-3">
-					第 {REVIEW_INTERVALS.join('、')} 天提醒你複習，全部記住就算掌握
-				</p>
-			</div>
+			) : (
+				<div>
+					<Checkbox
+						checked={form.scheduleReview}
+						onChange={(v) => set('scheduleReview', v)}
+						label="加入複習排程"
+						aria-describedby={scheduleHint}
+					/>
+					<p id={scheduleHint} className="-mt-1 pl-[1.875rem] text-meta text-ink-3">
+						第 {REVIEW_INTERVALS.join('、')} 天提醒你複習，全部記住就算掌握
+					</p>
+				</div>
+			)}
 
 			{error && (
 				<p className="flex items-start gap-1.5 text-sm text-danger" role="alert">

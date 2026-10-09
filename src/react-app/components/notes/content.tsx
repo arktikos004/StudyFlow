@@ -34,20 +34,22 @@ export function KindBadge({ kind }: { kind: NoteItem['kind'] }) {
  * detailed 時另外顯示之後的複習日（neutral）。圖示加文字，不只靠顏色。
  */
 export function ReviewBadge({ note, today, detailed = false }: { note: NoteItem; today: string; detailed?: boolean }) {
-	if (note.mastered)
-		return (
-			<Badge tone="success" icon={<CircleCheck aria-hidden />}>
-				已掌握
-			</Badge>
-		);
-	if (!note.nextReviewDate) return null;
-	if (note.nextReviewDate <= today)
+	// 到期就是待複習：包括選擇定期複習、到期的已掌握題目
+	if (note.nextReviewDate && note.nextReviewDate <= today)
 		return (
 			<Badge tone="warning" icon={<Brain aria-hidden />}>
 				待複習
 			</Badge>
 		);
-	if (!detailed) return null;
+	if (note.mastered) {
+		const next = detailed && note.nextReviewDate ? `・${formatDate(note.nextReviewDate)} 複習` : '';
+		return (
+			<Badge tone="success" icon={<CircleCheck aria-hidden />}>
+				已掌握{next}
+			</Badge>
+		);
+	}
+	if (!note.nextReviewDate || !detailed) return null;
 	return <Badge icon={<Brain aria-hidden />}>{formatDate(note.nextReviewDate)} 複習</Badge>;
 }
 

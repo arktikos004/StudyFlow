@@ -3,6 +3,7 @@ import { AppearanceCard } from '../components/settings/AppearanceCard';
 import { DataCard } from '../components/settings/DataCard';
 import { GoalsCard } from '../components/settings/GoalsCard';
 import { InstallCard } from '../components/settings/InstallCard';
+import { MasteredReviewCard } from '../components/settings/MasteredReviewCard';
 import { ProfileSection } from '../components/settings/ProfileSection';
 import { SubjectsCard } from '../components/settings/SubjectsCard';
 import { PageHeader, PageStack } from '../components/ui';
@@ -20,6 +21,7 @@ export function SettingsPage() {
 					<PageStack className="min-w-0">
 						<SubjectsCard />
 						<GoalsCard />
+						<MasteredReviewCard />
 						<DataCard />
 					</PageStack>
 					<PageStack className="min-w-0">

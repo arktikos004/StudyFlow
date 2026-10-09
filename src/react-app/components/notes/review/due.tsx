@@ -127,7 +127,7 @@ export function DueReview({
 				key={subjectId ?? 'all'}
 				queue={queue}
 				title="作答後會排定下次複習的日期"
-				meta={(n) => <span className="text-meta text-ink-3">第 {n.reviewStage + 1} 輪</span>}
+				meta={(n) => <span className="text-meta text-ink-3">{n.mastered ? '已掌握・定期複習' : `第 ${n.reviewStage + 1} 輪`}</span>}
 				record={async (n, result) => {
 					await review.mutateAsync({ id: n.id, result });
 				}}
