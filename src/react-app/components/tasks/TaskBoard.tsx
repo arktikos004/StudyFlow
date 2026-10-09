@@ -34,8 +34,11 @@ const MOVE: Record<string, { label: string; icon: LucideIcon }> = {
 	'done>doing': { label: '移回進行中', icon: Undo2 },
 };
 
-/** 已完成欄一開始只顯示最近的幾項 */
-const DONE_LIMIT = 10;
+/**
+ * 已完成欄一開始只顯示最近的幾項。看板的卡片有好幾行（科目、期限、子項目進度），10 張大約是一個畫面高，
+ * 也不會讓已完成欄比待辦、進行中長出一大截；清單一列只有一行，用另一個數字（TaskList 的 DONE_SHOWN_IN_LIST）。
+ */
+const DONE_SHOWN_IN_COLUMN = 10;
 
 // 指標在欄內就以那一欄為準；指標剛好在兩欄之間時，改用卡片和欄的重疊面積判斷
 const collision: CollisionDetection = (args) => {
@@ -225,8 +228,8 @@ function BoardColumn({
 	const headingId = useId();
 	const Icon = COLUMN_ICON[status];
 	const target = !!dragging && dragging.status !== status;
-	const limited = status === 'done' && !showAll && tasks.length > DONE_LIMIT;
-	const shown = limited ? tasks.slice(0, DONE_LIMIT) : tasks;
+	const limited = status === 'done' && !showAll && tasks.length > DONE_SHOWN_IN_COLUMN;
+	const shown = limited ? tasks.slice(0, DONE_SHOWN_IN_COLUMN) : tasks;
 	return (
 		<section
 			ref={setNodeRef}
@@ -268,7 +271,13 @@ function BoardColumn({
 				)}
 			</ul>
 			{status === 'done' && (
-				<ShowAllToggle expanded={showAll} onToggle={() => setShowAll((v) => !v)} total={tasks.length} limit={DONE_LIMIT} className="mt-2" />
+				<ShowAllToggle
+					expanded={showAll}
+					onToggle={() => setShowAll((v) => !v)}
+					total={tasks.length}
+					limit={DONE_SHOWN_IN_COLUMN}
+					className="mt-2"
+				/>
 			)}
 		</section>
 	);

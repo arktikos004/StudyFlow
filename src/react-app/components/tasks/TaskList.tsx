@@ -5,8 +5,11 @@ import type { TaskGroup, TaskGroupKey } from '../../lib/task-sort';
 import { TaskRow } from '../TaskItem';
 import { Card, SectionLabel, ShowAllToggle, type SectionLabelTone } from '../ui';
 
-/** 已完成那一組一開始只顯示最近的幾項 */
-const DONE_LIMIT = 20;
+/**
+ * 已完成那一組一開始只顯示最近的幾項。清單一列只有一行、佔滿整個寬度，20 項大約是一個畫面高；
+ * 看板的卡片比較高，用另一個數字（TaskBoard 的 DONE_SHOWN_IN_COLUMN）。
+ */
+const DONE_SHOWN_IN_LIST = 20;
 
 const GROUP_ICON: Partial<Record<TaskGroupKey, LucideIcon>> = { overdue: CircleAlert, today: CalendarClock, done: CircleCheck };
 const GROUP_TONE: Partial<Record<TaskGroupKey, SectionLabelTone>> = { overdue: 'danger', today: 'warning', done: 'success' };
@@ -54,8 +57,8 @@ function GroupSection({
 }) {
 	const headingId = useId();
 	const [showAll, setShowAll] = useState(false);
-	const limited = group.key === 'done' && !showAll && group.items.length > DONE_LIMIT;
-	const items = limited ? group.items.slice(0, DONE_LIMIT) : group.items;
+	const limited = group.key === 'done' && !showAll && group.items.length > DONE_SHOWN_IN_LIST;
+	const items = limited ? group.items.slice(0, DONE_SHOWN_IN_LIST) : group.items;
 	return (
 		<section aria-labelledby={headingId}>
 			<SectionLabel
@@ -83,9 +86,14 @@ function GroupSection({
 						</li>
 					))}
 				</ul>
-				{group.key === 'done' && group.items.length > DONE_LIMIT && (
+				{group.key === 'done' && group.items.length > DONE_SHOWN_IN_LIST && (
 					<div className="border-t border-line px-2 py-1.5">
-						<ShowAllToggle expanded={showAll} onToggle={() => setShowAll((v) => !v)} total={group.items.length} limit={DONE_LIMIT} />
+						<ShowAllToggle
+							expanded={showAll}
+							onToggle={() => setShowAll((v) => !v)}
+							total={group.items.length}
+							limit={DONE_SHOWN_IN_LIST}
+						/>
 					</div>
 				)}
 			</Card>
