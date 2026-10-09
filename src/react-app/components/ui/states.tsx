@@ -8,6 +8,7 @@ import { cn } from './cn';
 /**
  * 空狀態。page 版：圖示圓、標題、一句邀請、primary 動作；inline 版：一行文字加 ghost 動作。
  * 文案用動詞開頭的邀請（「新增第一題錯題」），不要只寫「沒有資料」。
+ * flush：放在已經有左右內距的容器裡（例如卡片內容區）時不再加左右內距，和旁邊的內容對齊。
  */
 export function EmptyState({
 	icon,
@@ -15,6 +16,7 @@ export function EmptyState({
 	description,
 	action,
 	variant = 'page',
+	flush = false,
 	className,
 }: {
 	icon?: ReactNode;
@@ -22,11 +24,12 @@ export function EmptyState({
 	description?: ReactNode;
 	action?: ReactNode;
 	variant?: 'page' | 'inline';
+	flush?: boolean;
 	className?: string;
 }) {
 	if (variant === 'inline')
 		return (
-			<div className={cn('flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3 sm:px-5', className)}>
+			<div className={cn('flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3', !flush && 'px-4 sm:px-5', className)}>
 				<p className="min-w-0 text-sm text-ink-2">
 					{title}
 					{description && <span className="text-ink-3">，{description}</span>}
@@ -35,7 +38,7 @@ export function EmptyState({
 			</div>
 		);
 	return (
-		<div className={cn('flex flex-col items-center justify-center gap-1 px-6 py-10 text-center', className)}>
+		<div className={cn('flex flex-col items-center justify-center gap-1 py-10 text-center', !flush && 'px-6', className)}>
 			{icon && (
 				<div className="mb-2 grid size-12 place-items-center rounded-full bg-subtle text-ink-3 [&_svg]:size-6" aria-hidden>
 					{icon}

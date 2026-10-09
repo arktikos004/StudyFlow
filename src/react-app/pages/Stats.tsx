@@ -95,7 +95,7 @@ export function StatsPage() {
 									{subjectBars.length ? (
 										<SubjectBars items={subjectBars} />
 									) : (
-										<EmptyState variant="inline" className="px-0 sm:px-0" title="這段期間還沒有各科的學習時間" />
+										<EmptyState variant="inline" flush title="這段期間還沒有各科的學習時間" />
 									)}
 								</div>
 							</Card>
