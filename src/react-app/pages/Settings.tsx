@@ -7,10 +7,12 @@ import { MasteredReviewCard } from '../components/settings/MasteredReviewCard';
 import { ProfileSection } from '../components/settings/ProfileSection';
 import { SubjectsCard } from '../components/settings/SubjectsCard';
 import { PageHeader, PageStack } from '../components/ui';
+import { usePageTitle } from '../lib/document-title';
 
 // 設定頁只負責組合卡片；每張卡片在 components/settings/，各自管理自己的狀態與資料。
 // 最上面是整頁寬的個人檔案（PRO-1）；下面左欄是讀書相關（科目、目標、匯出），右欄是外觀與帳號；手機依 DOM 順序由上而下排列。
 export function SettingsPage() {
+	usePageTitle('設定');
 	return (
 		<div>
 			<PageHeader title="設定" />

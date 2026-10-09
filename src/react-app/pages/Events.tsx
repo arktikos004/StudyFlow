@@ -10,12 +10,13 @@ import { useSubjectMark } from '../components/dashboard/hooks';
 import { EventDialog, TaskDialog } from '../components/forms';
 import { SubjectSelect, SubjectTag } from '../components/subjects';
 import { Badge, Button, Card, cn, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack, TextLink } from '../components/ui';
+import { useUser } from '../lib/account-queries';
 import { useMinuteClock } from '../lib/clock';
 import { useDeepLink, useOpenDeepLink } from '../lib/deep-link';
+import { usePageTitle } from '../lib/document-title';
 import { eventsSummary } from '../lib/events-format';
 import { formatDateForToday } from '../lib/format';
 import { useEvents, useSubjectMap, useSubjects } from '../lib/queries';
-import { useUser } from '../lib/account-queries';
 
 function EventCard({
 	event,
@@ -114,6 +115,7 @@ function EventCard({
 type DialogState = { event?: EventItem; subjectId?: string | null } | null;
 
 export function EventsPage() {
+	usePageTitle('考試與截止日');
 	const user = useUser();
 	// 每 30 秒更新「今天」：頁面開著跨過午夜時，倒數也會跟著換日（依使用者時區）
 	const clock = useMinuteClock();

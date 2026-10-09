@@ -1,6 +1,6 @@
 import { Timer as TimerIcon, type LucideIcon } from 'lucide-react';
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { useTimerTitle } from '../lib/document-title';
 import { formatDuration } from '../lib/format';
 import { timerReading, useNow, useTimerState } from '../lib/timer';
 import { cn, ProgressRing } from './ui';
@@ -18,9 +18,7 @@ export function TimerPill() {
 	// 休息不能暫停；沒在跑的休息是「自動開始休息」關閉時，等使用者按開始
 	const status = s.running ? `${label}中` : isBreak ? `準備${label}` : `${label}暫停`;
 
-	useEffect(() => {
-		document.title = active ? `${formatDuration(shown / 1000)} ${status}｜StudyFlow` : 'StudyFlow 學習管理';
-	}, [active, shown, status]);
+	useTimerTitle(active ? `${formatDuration(shown / 1000)} ${status}` : null);
 
 	if (!active) return null;
 	return (

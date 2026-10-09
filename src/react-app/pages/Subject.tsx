@@ -12,10 +12,11 @@ import { TasksCard } from '../components/subject/tasks';
 import { UpcomingCard } from '../components/subject/upcoming';
 import { SubjectIconTile } from '../components/subjects';
 import { Badge, Button, ButtonLink, Card, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack } from '../components/ui';
+import { useUser } from '../lib/account-queries';
 import { isNotFound } from '../lib/api';
+import { usePageTitle } from '../lib/document-title';
 import { formatMinutes } from '../lib/format';
 import { useSubjectOverview, useSubjects } from '../lib/queries';
-import { useUser } from '../lib/account-queries';
 import { useSubjectTone } from '../lib/subject-color';
 
 // 單科總覽（SUB-3）：/subjects/:id，資料用一次 API（useSubjectOverview）取得。
@@ -134,6 +135,7 @@ function SubjectNotFound() {
 export function SubjectPage() {
 	const { id } = useParams();
 	const { data, isPending, error, refetch, isRefetching } = useSubjectOverview(id);
+	usePageTitle(data?.subject.name ?? '科目總覽');
 	// 科目清單（編輯科目、任務與考試對話框的科目選單要用）和總覽同時開始載入，不必等總覽回來才去要
 	useSubjects();
 	if (isPending) return <PageLoader />;

@@ -6,6 +6,7 @@ import { MistakeMasteryCard } from '../components/stats/mistakes';
 import { StatsSummary } from '../components/stats/summary';
 import { WeeklyTasksCard } from '../components/stats/weekly';
 import { ButtonLink, Card, CardHeader, cn, EmptyState, ErrorNote, PageHeader, PageLoader, PageStack, Segmented } from '../components/ui';
+import { usePageTitle } from '../lib/document-title';
 import { formatDate, formatRange } from '../lib/format';
 import { useStats, useSubjects } from '../lib/queries';
 import { statsSeries } from '../lib/stats-series';
@@ -16,6 +17,7 @@ const RANGES = ['7', '30', '90'] as const;
 type Range = (typeof RANGES)[number];
 
 export function StatsPage() {
+	usePageTitle('學習統計');
 	const [range, setRange] = useState<Range>('30');
 	const { data, isPending, error, isPlaceholderData, refetch, isRefetching } = useStats(Number(range) as 7 | 30 | 90);
 	// 等科目資料也到齊再畫，否則科目名稱會暫時顯示成「已刪除的科目」

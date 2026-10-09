@@ -9,15 +9,17 @@ import { NotesFilterBar } from '../components/notes/filter-bar';
 import { NotesList } from '../components/notes/list';
 import { ReviewView } from '../components/notes/review';
 import { Button, PageHeader, PageLoader } from '../components/ui';
+import { useUser } from '../lib/account-queries';
 import { isNotFound } from '../lib/api';
 import { useDebounced } from '../lib/debounce';
 import { useDeepLink } from '../lib/deep-link';
+import { usePageTitle } from '../lib/document-title';
 import { notesSummary } from '../lib/notes-format';
 import { useNotesParams } from '../lib/notes-params';
 import { useNote, useNotes, useSubjects, useSummary, type NoteFilters } from '../lib/queries';
-import { useUser } from '../lib/account-queries';
 
 export function NotesPage() {
+	usePageTitle('筆記與錯題');
 	const user = useUser();
 	const today = todayOf(user.timezone);
 	const subjects = useSubjects();

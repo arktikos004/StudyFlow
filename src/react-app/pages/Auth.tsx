@@ -7,8 +7,9 @@ import { loginSchema, registerSchema } from '../../shared/schemas';
 import { LogoMark } from '../components/Logo';
 import { SubjectChip } from '../components/subjects';
 import { Button, cn, Field, Input } from '../components/ui';
-import { fieldErrors, useFieldErrors } from '../lib/form-errors';
 import { useLogin, useRegister } from '../lib/account-queries';
+import { usePageTitle } from '../lib/document-title';
+import { fieldErrors, useFieldErrors } from '../lib/form-errors';
 import { useIsDark } from '../lib/theme';
 
 /** 品牌欄的筆記頁預覽（裝飾）：三列筆記，科目用推薦色的螢光筆 chip 標出 */
@@ -114,6 +115,7 @@ const LOGIN_FIELDS = ['email', 'password'] as const;
 const REGISTER_FIELDS = ['displayName', 'email', 'password', 'confirm'] as const;
 
 export function LoginPage() {
+	usePageTitle('登入');
 	const [form, setForm] = useState({ email: '', password: '' });
 	// 成功後由 GuestOnly 導回原本要去的頁面
 	const login = useLogin();
@@ -182,6 +184,7 @@ export function LoginPage() {
 }
 
 export function RegisterPage() {
+	usePageTitle('註冊');
 	const [form, setForm] = useState({ displayName: '', email: '', password: '', confirm: '' });
 	// 成功後由 GuestOnly 導回原本要去的頁面
 	const register = useRegister();

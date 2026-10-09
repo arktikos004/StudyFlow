@@ -1,7 +1,9 @@
 import { Link } from 'react-router';
+import { usePageTitle } from '../lib/document-title';
 
 /** 網址對不到任何頁面（在版面裡顯示，側欄與頁首還在） */
 export function NotFound() {
+	usePageTitle('找不到這個頁面');
 	return (
 		<div className="py-16 text-center">
 			<p className="text-5xl font-bold text-ink-3" aria-hidden>

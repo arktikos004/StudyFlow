@@ -2,8 +2,8 @@ import { CircleCheck, Trophy } from 'lucide-react';
 import { useId } from 'react';
 import type { Achievement } from '../../shared/api-types';
 import {
-	ButtonLink,
 	Badge,
+	ButtonLink,
 	Card,
 	CardHeader,
 	cn,
@@ -15,10 +15,11 @@ import {
 	ProgressBar,
 	TextLink,
 } from '../components/ui';
-import { useAchievements } from '../lib/queries';
 import { useUser } from '../lib/account-queries';
 import { achievementUnit, formatProgress, groupAchievements, nextMilestone, splitColumns, unlockedDate } from '../lib/achievement-display';
 import { AchievementIcon } from '../lib/achievement-icons';
+import { usePageTitle } from '../lib/document-title';
+import { useAchievements } from '../lib/queries';
 
 /**
  * 徽章：已解鎖的用藍筆塗滿（accent 底、on-accent 圖示，外圈一圈 accent-soft 像蓋章）；
@@ -145,6 +146,7 @@ function AchievementRow({ achievement: a, hasDailyGoal, timeZone }: { achievemen
 
 /** 成就與里程碑（APP-2）：由現有資料即時計算，只有本人看得到，沒有排行榜 */
 export function AchievementsPage() {
+	usePageTitle('成就');
 	const user = useUser();
 	const { data, isPending, error, refetch, isRefetching } = useAchievements();
 	const hasDailyGoal = user.dailyGoalMinutes != null;

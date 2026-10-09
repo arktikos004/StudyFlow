@@ -3,18 +3,19 @@ import { useDeferredValue, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import type { Task, TaskItem } from '../../shared/api-types';
 import { today as todayOf } from '../../shared/dates';
+import { TASK_STATUS_LABEL } from '../../shared/labels';
 import { TaskDialog } from '../components/forms';
 import { TaskBoard } from '../components/tasks/TaskBoard';
 import { TaskList } from '../components/tasks/TaskList';
 import { TaskToolbar, type StatusFilter } from '../components/tasks/TaskToolbar';
 import { Button, Card, EmptyState, ErrorNote, PageHeader, PageLoader, useConfirm } from '../components/ui';
-import { TASK_STATUS_LABEL } from '../../shared/labels';
-import { useEvents, useSubjects, useTasks } from '../lib/queries';
 import { useUser } from '../lib/account-queries';
+import { useDeepLink, useOpenDeepLink } from '../lib/deep-link';
+import { usePageTitle } from '../lib/document-title';
+import { useEvents, useSubjects, useTasks } from '../lib/queries';
 import { justCompleted, toggleChecklistItem } from '../lib/task-checklist';
 import { useTaskListParams, useTaskPatch, useTaskView } from '../lib/task-queries';
 import { boardColumns, filterTasks, groupTasks, taskSummary, type TaskStatus } from '../lib/task-sort';
-import { useDeepLink, useOpenDeepLink } from '../lib/deep-link';
 
 /** 頁首的即時摘要：未完成、已逾期、今天到期（數字用等寬數字） */
 function Summary({ open, overdue, dueToday }: { open: number; overdue: number; dueToday: number }) {
@@ -30,6 +31,7 @@ function Summary({ open, overdue, dueToday }: { open: number; overdue: number; d
 }
 
 export function TasksPage() {
+	usePageTitle('學習任務');
 	const user = useUser();
 	const today = todayOf(user.timezone);
 	const [view, setView] = useTaskView();
