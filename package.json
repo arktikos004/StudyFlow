@@ -9,7 +9,7 @@
 		"clsx": "^2.1.1",
 		"date-fns": "^4.4.0",
 		"drizzle-orm": "^0.45.3",
-		"hono": "^4.13.10",
+		"hono": "^4.13.18",
 		"lucide-react": "^1.48.0",
 		"react": "^19.3.0",
 		"react-dom": "^19.3.0",
@@ -18,7 +18,7 @@
 		"recharts": "^3.10.1",
 		"remark-gfm": "^4.0.1",
 		"sonner": "^2.0.8",
-		"zod": "^4.6.5"
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.62.0",

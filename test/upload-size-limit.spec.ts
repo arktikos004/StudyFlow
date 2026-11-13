@@ -128,4 +128,22 @@ describe('沒有 Content-Length 的上傳：筆記照片', () => {
 		}
 		expect((await c.get(`/api/notes/${note.id}`)).data.note.attachments).toEqual([]);
 	});
+
+	it('超過 1MB、沒超過 5MB 的照片照常上傳：一般 API 的 1MB 上限不套用在上傳路由', async () => {
+		const c = await registeredClient();
+		const note = await makeNote(c);
+		const size = 2 * MB;
+
+		const bytes = new Uint8Array(size);
+		bytes.set(PNG_1X1);
+		const form = new FormData();
+		form.append('file', new File([bytes], 'photo.png', { type: 'image/png' }));
+		const withLength = await c.post(`/api/notes/${note.id}/attachments`, form);
+		expect(withLength.status, JSON.stringify(withLength.data)).toBe(201);
+		expect(withLength.data.attachment.size).toBe(size);
+
+		const chunked = await chunkedUpload(c, 'POST', `/api/notes/${note.id}/attachments`, PNG_1X1, size - PNG_1X1.byteLength);
+		expect(chunked.status, JSON.stringify(chunked.data)).toBe(201);
+		expect(chunked.data.attachment?.size).toBe(size);
+	});
 });

@@ -6,6 +6,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { z } from 'zod';
 import { deleteExpired } from './lib/cleanup';
 import { createDb } from './lib/db';
+import { apiBodyLimit } from './middleware/body-limit';
 import { achievementRoutes } from './routes/achievements';
 import { attachmentRoutes } from './routes/attachments';
 import { authRoutes } from './routes/auth';
@@ -45,6 +46,8 @@ app.use('/api/*', secureHeaders());
 app.use('/api/*', csrf());
 app.use('/api/*', injectDb);
 app.use('/api/*', noStoreByDefault);
+// body 大小上限放在所有路由之前，登入、註冊也擋得到；放在上面幾個之後，413 的回應才會帶同樣的標頭
+app.use('/api/*', apiBodyLimit);
 
 app
 	.get('/api/health', (c) => c.json({ ok: true }))
