@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { NOTE_TAGS_MAX, NOTE_TITLE_MAX } from '../src/shared/schemas';
 import worker from '../src/worker/index';
 import { API_BODY_MAX_BYTES } from '../src/worker/middleware/body-limit';
-import { BASE, createClient, PNG_1X1, registeredClient, type Client } from './helpers';
+import { BASE, createClient, makeNote, PNG_1X1, registeredClient, type Client } from './helpers';
 
 // 一般 API 請求的 body 上限（middleware/body-limit.ts）：超過就回 413，而且不會先把整個 body 讀進記憶體。
 // 照片上傳的路由用自己的上限，測試在 upload-size-limit.spec.ts。
@@ -98,6 +98,30 @@ describe('不用登入的路由', () => {
 		expect(res.status).toBe(413);
 		expect(await res.json()).toEqual({ error: TOO_LARGE });
 	});
+
+	it('Content-Length 不是純數字時回 400，不會被當成沒有超過上限（上傳路由也一樣）', async () => {
+		// 這種請求正常在 HTTP 層就被拒絕，所以直接呼叫 Worker 才測得到
+		const body = JSON.stringify({ email: 'someone@example.com', password: 'not-the-password' });
+		const send = async (method: string, path: string, contentLength: string) => {
+			const request = new Request(`${BASE}${path}`, {
+				method,
+				headers: { origin: BASE, 'cf-connecting-ip': '10.9.9.9', 'content-type': 'application/json', 'content-length': contentLength },
+				body,
+			});
+			const ctx = createExecutionContext();
+			const res = await worker.fetch(request, env, ctx);
+			await waitOnExecutionContext(ctx);
+			return { status: res.status, data: (await res.json()) as ErrorBody };
+		};
+		for (const value of ['abc', '5abc', '-1', '1e9', '0x10', '']) {
+			const res = await send('POST', '/api/auth/login', value);
+			expect(res, JSON.stringify(value)).toEqual({ status: 400, data: { error: 'Content-Length 格式錯誤' } });
+		}
+		expect((await send('PUT', '/api/auth/avatar', 'abc')).status).toBe(400);
+		// 正常的數字照常進到登入的檢查
+		const ok = await send('POST', '/api/auth/login', String(new TextEncoder().encode(body).byteLength));
+		expect(ok).toEqual({ status: 401, data: { error: 'Email 或密碼錯誤' } });
+	});
 });
 
 describe('登入後的路由', () => {
@@ -167,5 +191,14 @@ describe('登入後的路由', () => {
 		const wrongMethod = await c.post('/api/auth/avatar', bigPhoto());
 		expect(wrongMethod.status).toBe(413);
 		expect(wrongMethod.data.error).toBe(TOO_LARGE);
+		// 頭像的方法，但路徑多了結尾的斜線（沒有這條路由）
+		const trailingSlash = await c.put('/api/auth/avatar/', bigPhoto());
+		expect(trailingSlash.status).toBe(413);
+		expect(trailingSlash.data.error).toBe(TOO_LARGE);
+		// 筆記照片的路徑，但方法不是 POST
+		const note = await makeNote(c, '有照片的筆記');
+		const wrongMethodOnNote = await c.put(`/api/notes/${note.id}/attachments`, bigPhoto());
+		expect(wrongMethodOnNote.status).toBe(413);
+		expect(wrongMethodOnNote.data.error).toBe(TOO_LARGE);
 	});
 });

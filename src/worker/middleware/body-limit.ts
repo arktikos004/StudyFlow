@@ -35,6 +35,11 @@ const limitApiBody = bodyLimit({
  * 錯誤丟 HTTPException，由 index.ts 的 onError 回 { error }，和其他錯誤同一種格式。
  */
 export const apiBodyLimit = createMiddleware<AppEnv>((c, next) => {
+	// Content-Length 只能是數字。bodyLimit 用 parseInt 比大小，「abc」「5abc」「-1」都會被當成沒有超過。
+	// 這種請求正常在 HTTP 層就被拒絕、到不了這裡；多檢查一次，上限就不必依賴那一層（上傳路由也一樣）。
+	const declared = c.req.header('content-length');
+	if (declared !== undefined && !/^\d+$/.test(declared)) throw new HTTPException(400, { message: 'Content-Length 格式錯誤' });
+
 	const isUpload = UPLOAD_ROUTES.some((route) => route.method === c.req.method && route.path.test(c.req.path));
 	return isUpload ? next() : limitApiBody(c, next);
 });
