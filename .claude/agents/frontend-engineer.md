@@ -21,7 +21,11 @@ model: inherit
 ## 開工流程（在自己的 worktree 裡）
 1. 確認分支起點：`git merge-base --is-ancestor develop HEAD || git reset --hard develop`。只有在剛建立、還沒有任何修改時才可以 reset。
 2. `git branch -m <派工時指定的分支名稱>`。
-3. `cp -cR /Users/user/Documents/studyflow/node_modules ./node_modules && rm -rf node_modules/.tmp node_modules/.vite`。不要用 symlink。
+3. 從主目錄複製 `node_modules`。主目錄的位置由 git 找出來，不寫死路徑；路徑可能有空白，一律加引號。不要用 symlink。
+   ```sh
+   MAIN="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+   cp -cR "$MAIN/node_modules" ./node_modules && rm -rf node_modules/.tmp node_modules/.vite
+   ```
 4. 需要看畫面時：
    1. 先跑 `npm run db:migrate:local`。
    2. 再執行 `npm run dev -- --port <派工時指定，5174 以上> --strictPort`。
@@ -40,15 +44,14 @@ model: inherit
 - **文案**：zh-TW、動詞開頭、具體；錯誤訊息說明發生了什麼、怎麼處理。
 - **時間**：日期時間依 `user.timezone` 顯示，不要用裝置的時區。
 - **圖表**：先載入 dataviz skill，遵守它的規則：顏色跟著科目走、2 個以上系列要有圖例、每張圖都有表格檢視。
-- **共用檔案**（不在你的獨佔清單裡的都不能改）：
+- **共用檔案**（不在派工單獨佔清單裡的都不能改）。下面是預設的歸屬，派工單另外指定時以派工單為準：
   - `components/ui/`、`index.css` 屬於設計師。需要新元件時，先做在自己的檔案裡，回報時提出來，讓設計師決定要不要收進共用元件。
   - `lib/queries.ts`、`lib/account-queries.ts`、`lib/query-keys.ts`、`src/shared/*` 屬於後端。需要新的 hook 或樂觀更新時，寫在以領域命名的 `lib/<領域>-queries.ts`（例如 `task-queries.ts`），不要用 lane 名稱；query key 與修改後要重新取得的清單一律用 `lib/query-keys.ts` 的，缺的請後端補。
-  - `lib/format.ts` 在 Sprint 2 凍結。新的格式化函式放在自己的 `lib/<lane>-format.ts`。
-  - `main.tsx` 的路由、導覽項目已經事先建好，不要修改。
-- **Sprint 2 凍結的介面**：只能使用，不能修改。
-  - `TaskCheckbox({task})`、`EventDialog`／`TaskDialog` 的 props、`SubjectTag`／`SubjectSelect` 的 props、`<TimerPill/>`。
-  - 計時 API：`configure`、`start`、`useTimerState`、`targetMs`、`elapsedMs`、`useNow`、`useTimerEngine`。
-  - 頁面 export 名稱：`SubjectPage`、`AchievementsPage`。
+  - 格式化函式放在以領域命名的 `lib/<領域>-format.ts`（例如 `task-format.ts`），不要用 lane 名稱。`lib/format.ts` 是各頁共用的，只有派工單指派時才改。
+  - `main.tsx` 的路由與導覽項目由 Scrum Master 維護。需要新路由時在回報提出，或由派工單指派。
+- **跨 lane 共用的介面**：不在你獨佔清單裡的元件與 hook 只能使用，不能修改。自己檔案裡被其他 lane 使用的 export（元件的 props、hook 的簽章、頁面的 export 名稱）要改時，先確認使用處：
+  - 使用處都在你的獨佔清單裡：一起改。
+  - 有使用處在別的 lane：保留舊的介面或加別名，在回報列出，由 Scrum Master 安排換用與合併順序。
 - **深連結**（負責的頁面要支援）：
   - `?open=<id>`：開啟該項目。
   - `?new=1`：開啟新增對話框；筆記頁是 `?new=mistake|note`。

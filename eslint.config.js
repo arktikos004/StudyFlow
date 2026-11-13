@@ -5,7 +5,8 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-	{ ignores: ["dist", ".claude/**"] },
+	// worker-configuration.d.ts 由 `wrangler types` 產生，不檢查
+	{ ignores: ["dist", ".claude/**", "worker-configuration.d.ts"] },
 	{
 		extends: [js.configs.recommended, ...tseslint.configs.recommended],
 		files: ["**/*.{ts,tsx}"],

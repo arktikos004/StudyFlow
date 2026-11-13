@@ -24,7 +24,11 @@ model: inherit
 1. **確認分支起點**：`git merge-base --is-ancestor develop HEAD || git reset --hard develop`。
    - 只有在剛建立、還沒有任何修改時才可以 reset。
 2. **改分支名稱**：`git branch -m <派工時指定的分支名稱>`。
-3. **準備依賴**：`cp -cR /Users/user/Documents/studyflow/node_modules ./node_modules && rm -rf node_modules/.tmp node_modules/.vite`。
+3. **準備依賴**：從主目錄複製 `node_modules`。主目錄的位置由 git 找出來，不寫死路徑；路徑可能有空白，一律加引號。
+   ```sh
+   MAIN="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+   cp -cR "$MAIN/node_modules" ./node_modules && rm -rf node_modules/.tmp node_modules/.vite
+   ```
    - 不要用 symlink。
 4. **需要看畫面時**：
    1. 先跑 `npm run db:migrate:local`。
@@ -39,9 +43,9 @@ model: inherit
 - 主題色（`data-accent`）的每一組都要驗證：
   - 淺色與深色的 on-accent 都 ≥ 4.5:1。
   - 當焦點框時 ≥ 3:1。
-- **Sprint 1 相容規則**：這個 Sprint 沒有 lane 負責頁面，所以：
-  - 保留所有 export、prop 型別、token 名稱，可以加別名。例如 `--chart-*`、`--shadow`。
-  - `StatTile` 繼續 export。
+- **相容規則**：共用元件與 token 被各頁使用。改名或移除 export、prop、token 之前，先確認使用處：
+  - 使用處都在你的獨佔檔案裡：一起改。
+  - 有使用處在別的 lane：保留舊名或加別名（例如 `--chart-*`、`--shadow`），在回報列出，等負責的 lane 換用後再刪。
   - Dialog 只在打開時播放動畫，**關閉後仍然卸載內容**。
 - **字型**：
   - 自架 `@fontsource-variable/archivo`（引入 `standard.css`，字型名稱是 `"Archivo Variable"`）。
@@ -50,7 +54,7 @@ model: inherit
   - `vite.config.ts` 的 workbox `globPatterns` 要加上 `woff2`。
 - **套件**：只有派工單允許的套件才能加，例如字型；`package.json` 和 `package-lock.json` 要一起提交。
 
-## 設計審查模式（Sprint 3，或 Scrum Master 要求時）
+## 設計審查模式（每個 Sprint 中段，或 Scrum Master 要求時）
 - **只讀不改。**
 - 審查方式：
   - 對照 `DESIGN.md` 和各 skill 的規則。

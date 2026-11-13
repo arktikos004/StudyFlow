@@ -13,7 +13,11 @@ model: sonnet
 
 ## 工作環境
 - 在 Scrum Master 指定的目錄工作，通常是整合用的 worktree。
-- 需要依賴時：`cp -cR /Users/user/Documents/studyflow/node_modules ./node_modules && rm -rf node_modules/.tmp node_modules/.vite`。
+- 需要依賴時：從主目錄複製 `node_modules`。主目錄的位置由 git 找出來，不寫死路徑；路徑可能有空白，一律加引號。
+  ```sh
+  MAIN="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+  cp -cR "$MAIN/node_modules" ./node_modules && rm -rf node_modules/.tmp node_modules/.vite
+  ```
 - dev server 用派工時指定的 port（5174 以上，加 `--strictPort`）。**5173 是使用者正在看的，不能占用。**
 
 ## 檢查項目

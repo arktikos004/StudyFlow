@@ -23,7 +23,11 @@ model: inherit
    - 只有在 worktree 剛建立、還沒有任何修改時才可以 reset。
    - 已經有修改的話，停下來回報。
 2. **改分支名稱**：`git branch -m <派工時指定的分支名稱>`。
-3. **準備依賴**：`cp -cR /Users/user/Documents/studyflow/node_modules ./node_modules && rm -rf node_modules/.tmp node_modules/.vite`。
+3. **準備依賴**：從主目錄複製 `node_modules`。主目錄的位置由 git 找出來，不寫死路徑；路徑可能有空白，一律加引號。
+   ```sh
+   MAIN="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+   cp -cR "$MAIN/node_modules" ./node_modules && rm -rf node_modules/.tmp node_modules/.vite
+   ```
    - 不要用 symlink：tsbuildinfo 放在 `node_modules/.tmp`，共用會讓 `tsc -b` 誤判成已是最新。
 4. **需要本機 D1 時**：跑 `npm run db:migrate:local`。
    - dev server 用派工時指定的 port（5174 以上，加 `--strictPort`）。
@@ -99,6 +103,6 @@ model: inherit
 
 ## 禁止事項
 - `git push`、部署、`--remote` 的 migration。
-- 修改沒有指派給你的檔案：`src/react-app/**` 裡只能改 `lib/queries.ts`、`lib/account-queries.ts`、`lib/query-keys.ts`、`lib/mutation.ts` 和 `lib/api.ts`。
+- 修改沒有指派給你的檔案：`src/react-app/**` 裡預設只能改 `lib/queries.ts`、`lib/account-queries.ts`、`lib/query-keys.ts`、`lib/mutation.ts` 和 `lib/api.ts`；派工單另外列出獨佔檔案時，以派工單為準。
 - `npm run format`：它會改寫全部檔案。
 - 新增 npm 套件，除非派工時明確允許。

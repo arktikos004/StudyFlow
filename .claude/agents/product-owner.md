@@ -9,7 +9,7 @@ model: sonnet
 ## 負責的檔案
 - `docs/agile/backlog.md`：故事、驗收條件、DoD。
 - `docs/agile/sprint-review.md`：Sprint Review 與回顧，需要時新增。
-- `README.md`：在 Sprint 3 更新功能表與相關說明。
+- `README.md`：每次驗收後更新功能表與相關說明。
 
 其他檔案都不能修改。
 

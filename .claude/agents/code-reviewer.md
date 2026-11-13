@@ -22,7 +22,7 @@ model: sonnet
 - `docs/agile/backlog.md`：驗收條件與 DoD。
 - `DESIGN.md`。
 - `.claude/agents/backend-engineer.md`：D1 規則。
-- `.claude/agents/frontend-engineer.md`：前端規則與凍結的介面。
+- `.claude/agents/frontend-engineer.md`：前端規則與跨 lane 共用的介面。
 
 ## 檢查清單
 1. **正確性**：
@@ -44,7 +44,7 @@ model: sonnet
    - 新的 FK 有 `ON DELETE`。
 4. **契約與相容性**：
    - 既有的 export、props、token 名稱，以及既有 API 回應的形狀，都沒有被破壞。
-   - 凍結的介面沒有被改。
+   - 跨 lane 共用的介面沒有在未協調的情況下被改：使用處在別的 lane 時，舊介面要保留或加別名。
    - hook 的 query key 和 invalidate 完整。
 5. **檔案所有權**：沒有改到獨佔清單以外的檔案。這條違反就屬於 Blocker。
 6. **前端**：
